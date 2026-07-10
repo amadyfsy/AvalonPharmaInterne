@@ -84,7 +84,8 @@ jobs:
             if [ -z "$ENC" ]; then ENC=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"); fi
             CORS="${PUBLIC_CORS_ORIGINS:-https://avalon-pharma.vercel.app}"
 
-            DB_URL="mysql+pymysql://${PA_USER}:${MYSQL_PASSWORD}@${PA_USER}.mysql.pythonanywhere-services.com/${PA_USER}%24Avalon_pharma?charset=utf8mb4"
+            ENC_PWD=$(python -c "import urllib.parse, os; print(urllib.parse.quote_plus(os.environ['MYSQL_PASSWORD']))")
+            DB_URL="mysql+pymysql://${PA_USER}:${ENC_PWD}@${PA_USER}.mysql.pythonanywhere-services.com/${PA_USER}%24Avalon_pharma?charset=utf8mb4"
 
             cat > .env <<EOF
             SECRET_KEY=${SK}
