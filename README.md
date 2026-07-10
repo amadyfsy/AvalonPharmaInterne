@@ -4,6 +4,16 @@ ERP privé **Avalon Pharma Senegal** (GestAvalon) — ventes, stock, RH, dépens
 
 > Le **site catalogue public** est dans le dépôt séparé [AvalonPharmapublic](https://github.com/amadyfsy/AvalonPharmapublic) et se déploie sur **Vercel**.
 
+## Déploiement automatique (GitHub Actions)
+
+Chaque push sur `main` déploie sur **PythonAnywhere** sans intervention manuelle.
+
+**Configuration unique** : voir [deploy/GITHUB_ACTIONS.md](deploy/GITHUB_ACTIONS.md)
+
+Secrets GitHub requis : `PA_USERNAME`, `PA_PASSWORD`, `PA_API_TOKEN`
+
+Guide détaillé PA : [deploy/PYTHONANYWHERE.md](deploy/PYTHONANYWHERE.md)
+
 ## Déploiement cible
 
 | Composant | Hébergement |
