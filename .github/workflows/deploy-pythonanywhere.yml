@@ -19,39 +19,48 @@ jobs:
           PA_USERNAME: ${{ secrets.PA_USERNAME }}
           PA_PASSWORD: ${{ secrets.PA_PASSWORD }}
           PA_API_TOKEN: ${{ secrets.PA_API_TOKEN }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
         run: |
           missing=0
-          for name in PA_USERNAME PA_PASSWORD PA_API_TOKEN; do
+          for name in PA_USERNAME PA_PASSWORD PA_API_TOKEN MYSQL_PASSWORD; do
             if [ -z "${!name}" ]; then
-              echo "::error::Secret manquant : $name"
+              echo "::error::Secret GitHub manquant : $name"
               missing=1
             fi
           done
           if [ "$missing" -eq 1 ]; then
-            echo "Configurez les secrets : GitHub → Settings → Secrets → Actions"
-            echo "Documentation : deploy/GITHUB_ACTIONS.md"
+            echo "Ajoutez les secrets dans GitHub → Settings → Secrets → Actions"
+            echo "Voir deploy/register_secrets.md"
             exit 1
           fi
 
       - name: Déployer sur PythonAnywhere (SSH)
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          PA_USERNAME: ${{ secrets.PA_USERNAME }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          SECURITY_PASSWORD_SALT: ${{ secrets.SECURITY_PASSWORD_SALT }}
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+          PUBLIC_CORS_ORIGINS: ${{ secrets.PUBLIC_CORS_ORIGINS }}
         with:
           host: ${{ secrets.PA_SSH_HOST || 'ssh.pythonanywhere.com' }}
           username: ${{ secrets.PA_USERNAME }}
           password: ${{ secrets.PA_PASSWORD }}
-          command_timeout: 15m
+          command_timeout: 20m
+          envs: PA_USERNAME,MYSQL_PASSWORD,SECRET_KEY,SECURITY_PASSWORD_SALT,ENCRYPTION_KEY,PUBLIC_CORS_ORIGINS
           script: |
             set -euo pipefail
 
             PROJECT_DIR="$HOME/AvalonPharmaInterne"
             VENV_DIR="$HOME/.virtualenvs/avalon-interne"
-            REPO_URL="https://github.com/${{ github.repository }}.git"
+            REPO_URL="https://github.com/amadyfsy/AvalonPharmaInterne.git"
             PYTHON_BIN="/usr/bin/python3.10"
+            PA_USER="${PA_USERNAME}"
 
-            echo "=== Projet : $PROJECT_DIR ==="
+            echo "=== AvalonPharmaInterne — $PA_USER ==="
 
             if [ ! -d "$PROJECT_DIR/.git" ]; then
-              echo "Premier clone…"
               git clone "$REPO_URL" "$PROJECT_DIR"
             fi
 
@@ -60,25 +69,38 @@ jobs:
             git reset --hard origin/main
 
             if [ ! -d "$VENV_DIR/bin" ]; then
-              echo "Création du virtualenv…"
               mkdir -p "$(dirname "$VENV_DIR")"
               "$PYTHON_BIN" -m venv "$VENV_DIR"
             fi
-
-            # shellcheck disable=SC1090
             source "$VENV_DIR/bin/activate"
-            pip install --upgrade pip
-            pip install -r requirements.txt
+            pip install -q --upgrade pip
+            pip install -q -r requirements.txt
 
-            if [ ! -f .env ]; then
-              echo "ERREUR: fichier .env absent sur PythonAnywhere."
-              echo "Exécutez une fois : bash deploy/bootstrap_pythonanywhere.sh \$USER"
-              echo "Puis éditez .env et relancez le workflow."
-              exit 1
-            fi
+            SK="${SECRET_KEY:-}"
+            SALT="${SECURITY_PASSWORD_SALT:-}"
+            ENC="${ENCRYPTION_KEY:-}"
+            if [ -z "$SK" ]; then SK=$(python -c "import secrets; print(secrets.token_hex(32))"); fi
+            if [ -z "$SALT" ]; then SALT=$(python -c "import secrets; print(secrets.token_hex(16))"); fi
+            if [ -z "$ENC" ]; then ENC=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"); fi
+            CORS="${PUBLIC_CORS_ORIGINS:-https://avalon-pharma.vercel.app}"
+
+            DB_URL="mysql+pymysql://${PA_USER}:${MYSQL_PASSWORD}@${PA_USER}.mysql.pythonanywhere-services.com/${PA_USER}%24Avalon_pharma?charset=utf8mb4"
+
+            cat > .env <<EOF
+            SECRET_KEY=${SK}
+            SECURITY_PASSWORD_SALT=${SALT}
+            ENCRYPTION_KEY=${ENC}
+            DATABASE_URL=${DB_URL}
+            FLASK_CONFIG=production
+            TALISMAN_FORCE_HTTPS=true
+            PUBLIC_CORS_ORIGINS=${CORS}
+            MAIL_SUPPRESS_SEND=true
+            MAIL_DEFAULT_SENDER=noreply@avalon-pharma.sn
+            COMPANY_NAME=Avalon Pharma Senegal
+            EOF
+            sed -i 's/^[[:space:]]*//' .env
 
             set -a
-            # shellcheck disable=SC1091
             source .env
             set +a
 
@@ -86,14 +108,39 @@ jobs:
             from app import create_app
             from app.extensions import db
             import app.models  # noqa: F401
-
             app = create_app("production")
             with app.app_context():
                 db.create_all()
-                print("Schéma BDD à jour.")
+                print("Tables MySQL OK.")
             PY
 
-            echo "Déploiement fichiers terminé."
+            WSGI="/var/www/${PA_USER}_pythonanywhere_com_wsgi.py"
+            cat > "$WSGI" <<EOF
+            import sys
+            project_home = '/home/${PA_USER}/AvalonPharmaInterne'
+            if project_home not in sys.path:
+                sys.path.insert(0, project_home)
+            from wsgi import application
+            EOF
+
+            echo "Déploiement terminé."
+
+      - name: Configurer l'application Web (API)
+        env:
+          PA_USERNAME: ${{ secrets.PA_USERNAME }}
+          PA_API_TOKEN: ${{ secrets.PA_API_TOKEN }}
+          PA_DOMAIN: ${{ secrets.PA_DOMAIN }}
+          PA_API_HOST: ${{ secrets.PA_API_HOST }}
+        run: |
+          API_HOST="${PA_API_HOST:-www.pythonanywhere.com}"
+          DOMAIN="${PA_DOMAIN:-${PA_USERNAME}.pythonanywhere.com}"
+          USER="${PA_USERNAME}"
+          curl -fsS -X PATCH \
+            -H "Authorization: Token ${PA_API_TOKEN}" \
+            "https://${API_HOST}/api/v0/user/${USER}/webapps/${DOMAIN}/" \
+            -d "source_directory=/home/${USER}/AvalonPharmaInterne" \
+            -d "virtualenv_path=/home/${USER}/.virtualenvs/avalon-interne" \
+            -d "force_https=true" || echo "Config webapp ignorée (peut déjà exister)."
 
       - name: Recharger l'application Web
         env:
@@ -107,4 +154,4 @@ jobs:
           curl -fsS -X POST \
             -H "Authorization: Token ${PA_API_TOKEN}" \
             "https://${API_HOST}/api/v0/user/${PA_USERNAME}/webapps/${DOMAIN}/reload/"
-          echo "Application rechargée : https://${DOMAIN}"
+          echo "✓ https://${DOMAIN}"
