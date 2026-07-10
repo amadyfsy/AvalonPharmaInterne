@@ -4,6 +4,8 @@ ERP privé **Avalon Pharma Senegal** (GestAvalon) — ventes, stock, RH, dépens
 
 > Le **site catalogue public** est dans le dépôt séparé [AvalonPharmapublic](https://github.com/amadyfsy/AvalonPharmapublic) et se déploie sur **Vercel**.
 
+> **Important** : si `dms07.pythonanywhere.com` héberge déjà DMS-Shoper, créez un **nouveau compte** PythonAnywhere pour Avalon. Voir [deploy/HOSTING.md](deploy/HOSTING.md).
+
 ## Déploiement automatique (GitHub Actions)
 
 Chaque push sur `main` déploie sur **PythonAnywhere** sans intervention manuelle.

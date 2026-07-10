@@ -57,6 +57,7 @@ jobs:
             REPO_URL="https://github.com/amadyfsy/AvalonPharmaInterne.git"
             PYTHON_BIN="/usr/bin/python3.10"
             PA_USER="${PA_USERNAME}"
+            DB_NAME="${PA_DB_NAME:-${PA_USER}%24Avalon_pharma}"
 
             echo "=== AvalonPharmaInterne — $PA_USER ==="
 
@@ -85,7 +86,7 @@ jobs:
             CORS="${PUBLIC_CORS_ORIGINS:-https://avalon-pharma.vercel.app}"
 
             ENC_PWD=$(python -c "import urllib.parse, os; print(urllib.parse.quote_plus(os.environ['MYSQL_PASSWORD']))")
-            DB_URL="mysql+pymysql://${PA_USER}:${ENC_PWD}@${PA_USER}.mysql.pythonanywhere-services.com/${PA_USER}%24Avalon_pharma?charset=utf8mb4"
+            DB_URL="mysql+pymysql://${PA_USER}:${ENC_PWD}@${PA_USER}.mysql.pythonanywhere-services.com/${DB_NAME}?charset=utf8mb4"
 
             cat > .env <<EOF
             SECRET_KEY=${SK}

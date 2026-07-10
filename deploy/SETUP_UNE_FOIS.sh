@@ -3,12 +3,15 @@
 set -euo pipefail
 
 # ═══ REMPLISSEZ ICI (une seule fois) ═══
+# ⚠️  N'utilisez PAS DMS07 si DMS-Shoper tourne déjà sur dms07.pythonanywhere.com
+#     Créez un NOUVEAU compte PythonAnywhere pour Avalon (voir deploy/HOSTING.md)
+PA_USERNAME='avalonpharmasn'
+PA_DOMAIN='avalonpharmasn.pythonanywhere.com'
 PA_PASSWORD='VOTRE_MOT_DE_PASSE_CONNEXION_PYTHONANYWHERE'
 PA_API_TOKEN='VOTRE_TOKEN_API_PYTHONANYWHERE'
 MYSQL_PASSWORD='VOTRE_MOT_DE_PASSE_MYSQL_DATABASES'
 # ═══════════════════════════════════════
 
-PA_USERNAME="${PA_USERNAME:-DMS07}"
 REPO="amadyfsy/AvalonPharmaInterne"
 
 if ! command -v gh >/dev/null 2>&1; then
@@ -28,6 +31,7 @@ SALT=$(python3 -c "import secrets; print(secrets.token_hex(16))")
 ENC=$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
 
 gh secret set PA_USERNAME -R "$REPO" -b"$PA_USERNAME"
+gh secret set PA_DOMAIN -R "$REPO" -b"$PA_DOMAIN"
 gh secret set PA_PASSWORD -R "$REPO" -b"$PA_PASSWORD"
 gh secret set PA_API_TOKEN -R "$REPO" -b"$PA_API_TOKEN"
 gh secret set MYSQL_PASSWORD -R "$REPO" -b"$MYSQL_PASSWORD"
@@ -42,4 +46,4 @@ echo "→ Lancement du déploiement automatique…"
 gh workflow run deploy-pythonanywhere.yml -R "$REPO" --ref main
 echo ""
 echo "Suivez : https://github.com/$REPO/actions"
-echo "Site   : https://${PA_USERNAME}.pythonanywhere.com/auth/login"
+echo "ERP    : https://${PA_DOMAIN}/auth/login"
