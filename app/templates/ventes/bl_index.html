@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% macro badge_statut_bl(st) -%}
+  {% if st == 'livre' %}
+    <span class="badge bg-success">Livré</span>
+  {% elif st == 'prepare' %}
+    <span class="badge bg-secondary">Préparé</span>
+  {% elif st == 'partiellement_livre' %}
+    <span class="badge bg-info text-dark">Partiel</span>
+  {% elif st == 'retourne' %}
+    <span class="badge bg-dark">Retourné</span>
+  {% else %}
+    <span class="badge bg-light text-dark">{{ st }}</span>
+  {% endif %}
+{%- endmacro %}
+
+{% macro libelle_statut_bl(st) -%}
+  {% if st == 'livre' %}Livré
+  {% elif st == 'prepare' %}Préparé
+  {% elif st == 'partiellement_livre' %}Partiellement livré
+  {% elif st == 'retourne' %}Retourné
+  {% else %}{{ st }}
+  {% endif %}
+{%- endmacro %}
+
+{% block title %}Bons de livraison — Avalon Pharma{% endblock %}
+
+{% block content %}
+  <div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+      <h1 class="page-title">Bons de livraison</h1>
+      <p class="page-subtitle mb-0">Suivi des livraisons clients. Les filtres s’appliquent automatiquement.</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{{ url_for('ventes.nouvelle_vente') }}" class="btn btn-primary">
+        <i class="bi bi-cart-plus me-1"></i> Nouvelle vente
+      </a>
+      <a href="{{ url_for('ventes.nouveau_bl') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-truck me-1"></i> BL seul
+      </a>
+    </div>
+  </div>
+
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+      <form id="blFiltersForm" method="get" action="{{ url_for('ventes.bons_livraison') }}" class="row g-3 align-items-end" role="search">
+        <div class="col-md-5 col-lg-6">
+          <label class="form-label small text-muted mb-1" for="blQ">Rechercher</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="search" class="form-control" id="blQ" name="q" value="{{ q }}" placeholder="N° BL, client…" autocomplete="off">
+          </div>
+        </div>
+        <div class="col-md-4 col-lg-3">
+          <label class="form-label small text-muted mb-1" for="blStatut">Statut</label>
+          <select class="form-select" id="blStatut" name="statut" onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()">
+            <option value="" {% if not statut_filtre %}selected{% endif %}>Tous les statuts</option>
+            {% for st in statuts_bl %}
+              <option value="{{ st }}" {% if statut_filtre == st %}selected{% endif %}>{{ libelle_statut_bl(st) }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3 col-lg-3 d-flex align-items-end">
+          {% if q or statut_filtre %}
+            <a href="{{ url_for('ventes.bons_livraison') }}" class="btn btn-outline-secondary">Tout afficher</a>
+          {% endif %}
+        </div>
+      </form>
+      <p class="small text-muted mb-0 mt-2">
+        {% if pagination.total %}
+          <strong>{{ pagination.total }}</strong> bon(s) de livraison
+          {% if q %} pour « {{ q }} »{% endif %}
+          {% if statut_filtre %} · statut : {{ libelle_statut_bl(statut_filtre) }}{% endif %}
+          {% if pagination.pages > 1 %} · page {{ pagination.page }}/{{ pagination.pages }}{% endif %}
+        {% else %}
+          Aucun bon de livraison ne correspond aux critères.
+        {% endif %}
+      </p>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Numéro</th>
+              <th>Client</th>
+              <th>Date livraison</th>
+              <th>Statut</th>
+              <th class="text-end" style="min-width:200px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for bl in bls %}
+              <tr>
+                <td>
+                  <a href="{{ url_for('ventes.bl_detail', id=bl.id) }}" class="fw-semibold text-decoration-none">
+                    {{ bl.numero }}
+                  </a>
+                </td>
+                <td>{{ bl.client.raison_sociale if bl.client else '—' }}</td>
+                <td>{{ bl.date_livraison.strftime('%d/%m/%Y') if bl.date_livraison else '' }}</td>
+                <td>{{ badge_statut_bl(bl.statut) }}</td>
+                <td class="text-end">
+                  <div class="btn-group btn-group-sm" role="group">
+                    <a class="btn btn-outline-secondary" href="{{ url_for('ventes.bl_detail', id=bl.id) }}" title="Voir">
+                      <i class="bi bi-eye"></i>
+                    </a>
+                    <a class="btn btn-outline-primary" href="{{ url_for('ventes.bl_imprimer', id=bl.id) }}" target="_blank" rel="noopener" title="Imprimer">
+                      <i class="bi bi-printer"></i>
+                    </a>
+                    <a class="btn btn-outline-secondary" href="{{ url_for('ventes.bl_pdf', id=bl.id) }}" target="_blank" rel="noopener" title="PDF">
+                      <i class="bi bi-file-earmark-pdf"></i>
+                    </a>
+                    {% if bl.statut != 'livre' %}
+                      <form method="post" action="{{ url_for('ventes.valider_bl', id=bl.id) }}" class="d-inline">
+                        <button class="btn btn-outline-success" type="submit" title="Marquer livré">
+                          <i class="bi bi-check-lg"></i>
+                        </button>
+                      </form>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="5" class="text-center text-muted py-5">
+                  <i class="bi bi-inbox d-block fs-2 mb-2 opacity-50"></i>
+                  {% if q or statut_filtre %}
+                    Aucun BL ne correspond aux filtres.
+                    <div class="mt-2"><a href="{{ url_for('ventes.bons_livraison') }}">Voir tous les BL</a></div>
+                  {% else %}
+                    Aucun bon de livraison. Créez une <a href="{{ url_for('ventes.nouvelle_vente') }}">nouvelle vente</a> ou un
+                    <a href="{{ url_for('ventes.nouveau_bl') }}">BL seul</a>.
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if pagination.pages > 1 %}
+        <nav class="d-flex flex-wrap justify-content-between align-items-center gap-2 px-3 py-3 border-top" aria-label="Pagination bons de livraison">
+          <span class="small text-muted mb-0">
+            Affichage {{ ((pagination.page - 1) * pagination.per_page) + 1 }}
+            – {{ [pagination.page * pagination.per_page, pagination.total]|min }}
+            sur {{ pagination.total }}
+          </span>
+          <ul class="pagination pagination-sm mb-0">
+            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+              <a class="page-link" href="{{ url_for('ventes.bons_livraison', page=pagination.prev_num, **filtres_url) if pagination.has_prev else '#' }}" aria-label="Page précédente">
+                <i class="bi bi-chevron-left"></i>
+              </a>
+            </li>
+            {% for pnum in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+              {% if pnum %}
+                <li class="page-item {% if pnum == pagination.page %}active{% endif %}">
+                  <a class="page-link" href="{{ url_for('ventes.bons_livraison', page=pnum, **filtres_url) }}">{{ pnum }}</a>
+                </li>
+              {% else %}
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+              {% endif %}
+            {% endfor %}
+            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+              <a class="page-link" href="{{ url_for('ventes.bons_livraison', page=pagination.next_num, **filtres_url) if pagination.has_next else '#' }}" aria-label="Page suivante">
+                <i class="bi bi-chevron-right"></i>
+              </a>
+            </li>
+          </ul>
+        </nav>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    var form = document.getElementById('blFiltersForm');
+    var search = document.getElementById('blQ');
+    if (!form || !search) return;
+    var t;
+    function submitForm() {
+      if (form.requestSubmit) form.requestSubmit();
+      else form.submit();
+    }
+    function scheduleSubmit() {
+      clearTimeout(t);
+      t = setTimeout(submitForm, 400);
+    }
+    search.addEventListener('input', scheduleSubmit);
+    search.addEventListener('search', function () {
+      clearTimeout(t);
+      submitForm();
+    });
+  })();
+</script>
+{% endblock %}

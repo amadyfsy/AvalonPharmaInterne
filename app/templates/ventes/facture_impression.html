@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Facture {{ facture.numero }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="{{ url_for('static', filename='public/css/facture.css') }}" rel="stylesheet">
+</head>
+<body class="invoice-body">
+
+  <div class="invoice-toolbar no-print">
+    <span class="invoice-toolbar__title">
+      Aperçu — Facture {{ facture.numero }}{% if avec_bl and bl %} + BL {{ bl.numero }}{% endif %}
+    </span>
+    <div class="invoice-toolbar__actions">
+      <button type="button" class="invoice-btn invoice-btn--primary" onclick="printInvoice()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Imprimer
+      </button>
+      <button type="button" class="invoice-btn invoice-btn--ghost" onclick="window.close()">Fermer</button>
+    </div>
+  </div>
+
+  {% set sorted_lignes = facture.lignes|sort(attribute='id')|list %}
+  {% set page_size = 12 %}
+  {% set n_lignes = sorted_lignes|length %}
+  {% set n_chunks = ((n_lignes - 1) // page_size + 1) if n_lignes > 0 else 1 %}
+  {% set last_chunk_full = n_lignes > 0 and (n_lignes % page_size == 0) %}
+  {% set total_pages = n_chunks + (1 if last_chunk_full else 0) %}
+
+  {% set ns = namespace(sous_total=0) %}
+  {% for l in sorted_lignes %}
+    {% set ns.sous_total = ns.sous_total + (l.montant_ht|float) %}
+  {% endfor %}
+  {% set remise_pct = (facture.remise_globale|float) if facture.remise_globale else 0 %}
+
+  <div id="app">
+    <div class="invoice-shell">
+      {% for page_idx in range(total_pages) %}
+        {% set is_lines_page = page_idx < n_chunks %}
+        {% set is_bottom_page = not is_lines_page %}
+        {% set page_lignes = sorted_lignes[page_idx * page_size : (page_idx + 1) * page_size] if is_lines_page else [] %}
+        {% set page_num = page_idx + 1 %}
+
+        <div class="invoice-page">
+          <div class="invoice-container">
+            <div class="invoice-accent-bar" aria-hidden="true"></div>
+
+            <div class="invoice-main">
+              <header class="invoice-header">
+                <div class="invoice-header-grid">
+                  <div class="invoice-header-logo">
+                    {% if logo_url %}
+                      <img src="{{ logo_url }}" alt="Logo" class="invoice-logo">
+                    {% else %}
+                      <div class="invoice-logo-fallback" aria-hidden="true">A</div>
+                    {% endif %}
+                  </div>
+                  {% if doc_params and (doc_params.raison_sociale or doc_params.adresse_ligne) %}
+                    <div class="invoice-header-company">
+                      {% if doc_params.raison_sociale %}
+                        <strong>{{ doc_params.raison_sociale }}</strong>
+                      {% endif %}
+                      {% if doc_params.adresse_ligne %}
+                        <span>{{ doc_params.adresse_ligne }}</span>
+                      {% endif %}
+                    </div>
+                  {% endif %}
+                  <div class="invoice-header-qr-row">
+                    <p class="invoice-slogan">Serving those who care for others</p>
+                    <div class="invoice-header-qr__canvas" data-qr-url="{{ site_web_url }}" aria-label="QR code vers {{ site_web_label }}"></div>
+                  </div>
+                </div>
+              </header>
+
+              <div class="invoice-info-grid">
+                <div class="invoice-info-card invoice-info-card--facture">
+                  <div class="invoice-info-card__label">Facture</div>
+                  <div class="invoice-doc-number">N° {{ facture.numero }}</div>
+                  {% if facture.date_emission %}
+                    <div class="invoice-doc-date">Émise le {{ facture.date_emission.strftime('%d/%m/%Y') }}</div>
+                  {% endif %}
+                  {% if facture.bc %}
+                    <div class="invoice-doc-bc">BC : {{ facture.bc }}</div>
+                  {% endif %}
+
+                  <div class="invoice-info-card__divider"></div>
+
+                  <div class="invoice-info-card__label">Client</div>
+                  <div class="invoice-info-card__name">
+                    {{ facture.client.raison_sociale if facture.client else '—' }}
+                  </div>
+                  {% if facture.client and facture.client.telephone %}
+                    <p class="invoice-info-card__detail invoice-info-card__detail--phone">
+                      Tél. {{ facture.client.telephone }}
+                    </p>
+                  {% endif %}
+                </div>
+
+                <div class="invoice-info-card">
+                  <div class="invoice-info-card__label">Informations</div>
+                  {% if doc_params and doc_params.telephone %}
+                    <p class="invoice-info-card__detail">Tél. {{ doc_params.telephone }}</p>
+                  {% endif %}
+                  {% if doc_params and doc_params.email %}
+                    <p class="invoice-info-card__detail">Email {{ doc_params.email }}</p>
+                  {% endif %}
+                  {% if doc_params and doc_params.rc %}
+                    <p class="invoice-info-card__detail">RC {{ doc_params.rc }}</p>
+                  {% endif %}
+                  {% if doc_params and doc_params.ninea %}
+                    <p class="invoice-info-card__detail">NINEA {{ doc_params.ninea }}</p>
+                  {% endif %}
+                  {% if facture.mode_paiement %}
+                    <p class="invoice-info-card__detail">Paiement {{ facture.mode_paiement }}</p>
+                  {% endif %}
+                  {% if doc_params and doc_params.compte_bancaire %}
+                    <p class="invoice-info-card__detail">Compte bancaire {{ doc_params.compte_bancaire }}</p>
+                  {% endif %}
+                </div>
+              </div>
+
+              {% if is_lines_page %}
+                <div class="table-wrapper">
+                  <table class="invoice-table">
+                    <thead>
+                      <tr>
+                        <th class="col-left">Désignation</th>
+                        <th class="col-center" style="width:14%;">Quantité</th>
+                        <th class="col-center" style="width:19%;">Prix unitaire<br>(FCFA)</th>
+                        <th class="col-num" style="width:19%;">Total<br>(FCFA)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for l in page_lignes %}
+                        <tr>
+                          <td class="col-left">
+                            <span class="line-designation">{{ l.produit.designation if l.produit else '—' }}</span>
+                          </td>
+                          <td class="col-center">{{ l.quantite }}</td>
+                          <td class="col-center">{{ format_fcfa(l.prix_unitaire_ht) }}</td>
+                          <td class="col-num col-amount">{{ format_fcfa(l.montant_ht) }}</td>
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              {% endif %}
+
+              {% if is_bottom_page or (is_lines_page and page_idx == n_chunks - 1 and not last_chunk_full) %}
+                <div class="invoice-bottom">
+                  <div class="invoice-words">
+                    Arrêtée la présente facture à la somme de : <strong>{{ montant_lettres }}</strong>.
+                  </div>
+
+                  <dl class="invoice-totals">
+                    {% if remise_pct > 0 %}
+                      {% set remise_montant = ns.sous_total - (facture.total_ht|float) %}
+                      <div class="invoice-totals__row">
+                        <dt>Sous-total HT</dt>
+                        <dd>{{ format_fcfa(ns.sous_total) }}</dd>
+                      </div>
+                      <div class="invoice-totals__row">
+                        <dt>Remise ({{ remise_pct }}&nbsp;%)</dt>
+                        <dd>−{{ format_fcfa(remise_montant) }}</dd>
+                      </div>
+                    {% endif %}
+                    {% if affiche_tva %}
+                      <div class="invoice-totals__row">
+                        <dt>Total HT</dt>
+                        <dd>{{ format_fcfa(facture.total_ht) }}</dd>
+                      </div>
+                      <div class="invoice-totals__row">
+                        <dt>TVA</dt>
+                        <dd>{{ format_fcfa(facture.tva_montant) }}</dd>
+                      </div>
+                      <div class="invoice-totals__row invoice-totals__row--grand">
+                        <dt>Total TTC</dt>
+                        <dd>{{ format_fcfa(facture.total_ttc) }}</dd>
+                      </div>
+                    {% else %}
+                      <div class="invoice-totals__row invoice-totals__row--grand">
+                        <dt>Total</dt>
+                        <dd>{{ format_fcfa(facture.total_ht) }}</dd>
+                      </div>
+                    {% endif %}
+                  </dl>
+                </div>
+
+                <div class="invoice-closure">
+                  <div class="invoice-signature">
+                    <p>{{ date_signature_fr }}</p>
+                  </div>
+                </div>
+              {% endif %}
+            </div>
+
+            <div class="invoice-page-number">Page {{ page_num }} / {{ total_pages }}</div>
+          </div>
+        </div>
+      {% endfor %}
+
+      {% if avec_bl and bl %}
+        {% include 'ventes/_bl_impression_pages.html' %}
+      {% endif %}
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script>
+    function printInvoice() {
+      window.print();
+    }
+
+    function initInvoiceQr() {
+      if (typeof QRCode === "undefined") return;
+      document.querySelectorAll(".invoice-header-qr__canvas").forEach(function (el) {
+        const url = el.getAttribute("data-qr-url");
+        if (!url) return;
+        el.innerHTML = "";
+        new QRCode(el, {
+          text: url,
+          width: 38,
+          height: 38,
+          colorDark: "#0f172a",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.H
+        });
+      });
+    }
+
+    window.addEventListener("load", function () {
+      initInvoiceQr();
+    });
+  </script>
+</body>
+</html>

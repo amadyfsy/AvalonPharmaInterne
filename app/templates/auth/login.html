@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Connexion - Avalon Pharma Senegal{% endblock %}
+
+{% block guest_outer_class %}auth-page{% endblock %}
+{% block guest_container_class %}{% endblock %}
+{% block guest_container_style %}max-width:none{% endblock %}
+{% block guest_flashes_class %}guest-flashes{% endblock %}
+
+{% block extra_css %}
+  <link href="{{ url_for('static', filename='public/css/auth.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block guest_content %}
+  <div class="auth-shell auth-shell--login-bg">
+    <div class="auth-bg-orb auth-bg-orb--one" aria-hidden="true"></div>
+    <div class="auth-bg-orb auth-bg-orb--two" aria-hidden="true"></div>
+
+    <div class="auth-form-panel">
+      <div class="auth-glass-wrap">
+        <div class="auth-form-card">
+          <div class="auth-form-card__shine" aria-hidden="true"></div>
+          <div class="auth-form-card__header">
+            <img
+              src="{{ url_for('static', filename='public/img/avalon-logo.png') }}"
+              alt="Logo Avalon Pharma"
+              class="auth-form-logo"
+            >
+            <h1>Bienvenue</h1>
+            <p>Connectez-vous à votre espace de gestion</p>
+          </div>
+
+        <div class="auth-form-card__body">
+          <form method="post" novalidate>
+            {{ form.hidden_tag() }}
+
+            <div class="mb-3">
+              <label class="auth-field-label" for="emailInput">{{ form.email.label.text }}</label>
+              <div class="input-group auth-input-group">
+                <span class="input-group-text"><i class="bi bi-person-badge" aria-hidden="true"></i></span>
+                {{ form.email(class="form-control", id="emailInput", placeholder="email@exemple.com ou 77 123 45 67", autocomplete="username") }}
+              </div>
+              {% for error in form.email.errors %}
+                <div class="text-danger small mt-1">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            <div class="mb-3">
+              <label class="auth-field-label" for="passwordInput">{{ form.password.label.text }}</label>
+              <div class="input-group auth-input-group">
+                <span class="input-group-text"><i class="bi bi-lock" aria-hidden="true"></i></span>
+                {{ form.password(class="form-control", id="passwordInput", placeholder="••••••••", autocomplete="current-password") }}
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary password-toggle-btn"
+                  id="togglePasswordBtn"
+                  aria-label="Afficher le mot de passe"
+                  aria-pressed="false"
+                >
+                  <i class="bi bi-eye" id="togglePasswordIcon" aria-hidden="true"></i>
+                </button>
+              </div>
+              {% for error in form.password.errors %}
+                <div class="text-danger small mt-1">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <div class="form-check mb-0">
+                {{ form.remember_me(class="form-check-input") }}
+                {{ form.remember_me.label(class="form-check-label small") }}
+              </div>
+              <a href="{{ url_for('auth.forgot_password') }}" class="auth-forgot-link">Mot de passe oublié ?</a>
+            </div>
+
+            {{ form.submit(class="btn btn-primary auth-submit-btn w-100", value="Se connecter") }}
+
+            <p class="auth-secure-note mb-0">
+              <i class="bi bi-shield-check" aria-hidden="true"></i>
+              Connexion sécurisée — réservée au personnel autorisé
+            </p>
+          </form>
+        </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script>
+    (function () {
+      var input = document.getElementById('passwordInput');
+      var btn = document.getElementById('togglePasswordBtn');
+      var icon = document.getElementById('togglePasswordIcon');
+      if (!input || !btn || !icon) return;
+
+      btn.addEventListener('click', function () {
+        var show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        icon.classList.toggle('bi-eye', !show);
+        icon.classList.toggle('bi-eye-slash', show);
+        btn.setAttribute('aria-pressed', String(show));
+        btn.setAttribute('aria-label', show ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
+      });
+    })();
+  </script>
+{% endblock %}

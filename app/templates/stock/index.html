@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block title %}Produits &amp; stock — Avalon Pharma{% endblock %}
+
+{% block extra_css %}
+<style>
+  .stock-page-hero {
+    background: linear-gradient(135deg, var(--brand-burgundy, #721818) 0%, var(--brand-burgundy-dark, #5a1218) 100%);
+    border-radius: 0.75rem;
+    color: #fff;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 0.5rem 1.25rem rgba(114, 24, 24, 0.22);
+  }
+  .stock-page-hero .breadcrumb-item + .breadcrumb-item::before { color: rgba(255,255,255,.65); }
+  .stock-filters-card {
+    border-radius: 0.65rem;
+    border: 1px solid var(--border-color, #e5eef0);
+    background: var(--card-bg, #fff);
+  }
+  .stock-table-card .table thead th {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary, #6c757d);
+    border-bottom-width: 1px;
+    white-space: nowrap;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+  <div class="stock-page-hero d-flex flex-wrap justify-content-between align-items-start gap-3">
+    <div>
+      <nav aria-label="breadcrumb" class="mb-2">
+        <ol class="breadcrumb mb-0 small">
+          <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}" class="text-white text-decoration-underline">Tableau de bord</a></li>
+          <li class="breadcrumb-item text-white active" aria-current="page">Produits</li>
+        </ol>
+      </nav>
+      <h1 class="h4 mb-1 fw-semibold text-white">Catalogue produits</h1>
+      <p class="mb-0 text-white small" style="opacity: .92;">
+        Les filtres et la recherche s’appliquent <strong>automatiquement</strong> (catégorie, spécialité, texte).
+      </p>
+    </div>
+    <a href="{{ url_for('stock.nouveau_produit') }}" class="btn btn-light btn-sm">
+      <i class="bi bi-plus-lg me-1"></i> Nouveau produit
+    </a>
+  </div>
+
+  <div class="card stock-filters-card shadow-sm mb-3">
+    <div class="card-body py-3">
+      <form id="stockFiltersForm" method="get" action="{{ url_for('stock.index') }}" class="row g-2 g-md-3 align-items-end" role="search">
+        <div class="col-12 col-lg-4">
+          <label for="stockSearch" class="form-label small text-muted mb-1">Recherche</label>
+          <div class="input-group input-group-sm">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input
+              id="stockSearch"
+              type="search"
+              name="q"
+              class="form-control"
+              value="{{ q or '' }}"
+              placeholder="Référence, désignation, unité…"
+              autocomplete="off"
+            >
+          </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg-2">
+          <label for="filterCategorie" class="form-label small text-muted mb-1">Catégorie</label>
+          <select id="filterCategorie" name="categorie_id" class="form-select form-select-sm" onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()">
+            <option value="">Toutes</option>
+            {% for c in categories %}
+              <option value="{{ c.id }}" {% if categorie_id == c.id %}selected{% endif %}>{{ c.nom }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-md-4 col-lg-3">
+          <label for="filterSpecialite" class="form-label small text-muted mb-1">Spécialité</label>
+          <select
+            id="filterSpecialite"
+            name="specialite"
+            class="form-select form-select-sm"
+            onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()"
+            {% if specialites_filtre_flat is not none and specialites_filtre_flat|length == 0 %}
+              disabled
+              title="Cette catégorie n’a pas de liste spécialité sur le formulaire produit"
+            {% endif %}
+          >
+            <option value="">Toutes</option>
+            {% if specialites_filtre_grouped %}
+              {% for grp_label, grp_liste in specialites_filtre_grouped %}
+                <optgroup label="{{ grp_label }}">
+                  {% for s in grp_liste %}
+                    <option value="{{ s }}" {% if specialite == s %}selected{% endif %}>{{ s }}</option>
+                  {% endfor %}
+                </optgroup>
+              {% endfor %}
+            {% elif specialites_filtre_flat is not none %}
+              {% for val, lib in specialites_filtre_flat %}
+                <option value="{{ val }}" {% if specialite == val %}selected{% endif %}>{{ lib }}</option>
+              {% endfor %}
+            {% endif %}
+          </select>
+        </div>
+        <div class="col-12 col-lg-auto d-flex align-items-end">
+          {% if has_filters %}
+            <a href="{{ url_for('stock.index') }}" class="btn btn-sm btn-outline-secondary">Tout afficher</a>
+          {% endif %}
+        </div>
+      </form>
+      <p class="small text-muted mb-0 mt-2 pt-2 border-top">
+        <strong>{{ produits|length }}</strong> produit(s) affiché(s)
+        {% if has_filters %}<span class="text-secondary">· critères actifs</span>{% endif %}
+      </p>
+    </div>
+  </div>
+
+  <div class="card shadow-sm stock-table-card border-0">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Référence</th>
+              <th>Désignation</th>
+              <th>Catégorie</th>
+              <th>Spécialité</th>
+              <th class="text-end">Stock</th>
+              <th class="text-end">Seuil</th>
+              <th class="text-end" style="min-width: 110px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in produits %}
+              {% set qte = p.stock.quantite_disponible if p.stock else 0 %}
+              <tr class="{% if qte <= p.seuil_alerte_stock %}table-warning{% endif %}">
+                <td><strong class="text-primary">{{ p.reference }}</strong></td>
+                <td>
+                  {{ p.designation }}
+                  {% if not p.est_actif %}
+                    <span class="badge bg-secondary ms-1">Inactif</span>
+                  {% endif %}
+                </td>
+                <td><span class="small">{{ p.categorie.nom if p.categorie else '—' }}</span></td>
+                <td><span class="small">{{ (p.donnees_metier or {}).get('specialite') or '—' }}</span></td>
+                <td class="text-end fw-medium">{{ qte }}</td>
+                <td class="text-end text-muted small">{{ p.seuil_alerte_stock }}</td>
+                <td class="text-end">
+                  <div class="d-inline-flex gap-1 justify-content-end">
+                    <a href="{{ url_for('stock.detail_produit', id=p.id) }}" class="btn btn-sm btn-outline-primary" title="Fiche produit">
+                      <i class="bi bi-eye"></i>
+                    </a>
+                    <a href="{{ url_for('stock.modifier_produit', id=p.id) }}" class="btn btn-sm btn-outline-secondary" title="Modifier">
+                      <i class="bi bi-pencil"></i>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="7" class="text-center text-muted py-5">
+                  Aucun produit ne correspond aux critères.
+                  {% if has_filters %}
+                    <br><a href="{{ url_for('stock.index') }}">Voir tout le catalogue</a>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    var form = document.getElementById('stockFiltersForm');
+    var search = document.getElementById('stockSearch');
+    if (!form || !search) return;
+    var t;
+    function scheduleSubmit() {
+      clearTimeout(t);
+      t = setTimeout(function () {
+        if (form.requestSubmit) form.requestSubmit();
+        else form.submit();
+      }, 400);
+    }
+    search.addEventListener('input', scheduleSubmit);
+    search.addEventListener('search', function () {
+      clearTimeout(t);
+      if (form.requestSubmit) form.requestSubmit();
+      else form.submit();
+    });
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,148 @@
+{# Sélecteur client : recherche + liste + création rapide (nom structure seul). Requiert : clients (liste), optionnel select_id (défaut clientSelect) #}
+{% set sel_id = (client_select_id if client_select_id is defined else 'clientSelect') %}
+{% set search_id = (client_search_id if client_search_id is defined else 'clientSearch') %}
+{% set modal_id = (client_modal_id if client_modal_id is defined else 'clientRapideModal') %}
+
+<div class="client-picker mb-0">
+  <label class="form-label">{{ (client_label if client_label is defined else 'Client') }} {% if client_required|default(true) %}<span class="text-danger">*</span>{% endif %}</label>
+  <div class="input-group mb-2">
+    <span class="input-group-text bg-body-secondary"><i class="bi bi-search" aria-hidden="true"></i></span>
+    <input type="search" class="form-control" id="{{ search_id }}" placeholder="Rechercher par nom, code, téléphone, ville…" autocomplete="off" aria-label="Filtrer les clients">
+    <button class="btn btn-outline-success" type="button" data-bs-toggle="modal" data-bs-target="#{{ modal_id }}" title="Ajouter un client (nom seulement)">
+      <i class="bi bi-person-plus me-1"></i> Rapide
+    </button>
+  </div>
+  <select class="form-select" name="{{ (client_field_name if client_field_name is defined else 'client_id') }}" id="{{ sel_id }}" {% if client_required|default(true) %}required{% endif %} size="{{ (client_select_size if client_select_size is defined else 1) }}">
+    {% for c in clients %}
+      <option value="{{ c.id }}" data-adresse="{{ (c.adresse or '')|e }}" data-code="{{ (c.code or '')|e }}">{{ c.raison_sociale }}{% if c.code %} — {{ c.code }}{% endif %}</option>
+    {% else %}
+      <option value="" disabled selected>Aucun client — utilisez « Rapide »</option>
+    {% endfor %}
+  </select>
+  <div class="form-text">Filtrez avec la barre de recherche ou créez un client avec le bouton vert.</div>
+</div>
+
+<div class="modal fade" id="{{ modal_id }}" tabindex="-1" aria-labelledby="{{ modal_id }}Label" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title" id="{{ modal_id }}Label"><i class="bi bi-building-add me-2 text-success"></i>Nouveau client rapide</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label fw-semibold" for="{{ modal_id }}Nom">Nom de la structure</label>
+        <input type="text" class="form-control form-control-lg" id="{{ modal_id }}Nom" placeholder="Ex. Pharmacie Les Lauriers" maxlength="150" autocomplete="organization">
+        <p class="small text-muted mb-0 mt-2">Un <strong>code interne</strong> (ex. RAP-00012) est attribué automatiquement. Complétez téléphone, adresse, etc. plus tard dans la fiche client.</p>
+        <div class="alert alert-danger small d-none mt-2 mb-0" id="{{ modal_id }}Err" role="alert"></div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button type="button" class="btn btn-success" id="{{ modal_id }}Btn">
+          <i class="bi bi-check-lg me-1"></i> Créer et sélectionner
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var search = document.getElementById('{{ search_id }}');
+  var sel = document.getElementById('{{ sel_id }}');
+  var modal = document.getElementById('{{ modal_id }}');
+  var nomInput = document.getElementById('{{ modal_id }}Nom');
+  var btn = document.getElementById('{{ modal_id }}Btn');
+  var err = document.getElementById('{{ modal_id }}Err');
+  var apiUrl = {{ url_for('clients.api_client_rapide')|tojson }};
+
+  function filterClients() {
+    if (!search || !sel) return;
+    var q = (search.value || '').toLowerCase().trim();
+    if (!q) {
+      sel.querySelectorAll('option').forEach(function (opt) {
+        if (opt.value) opt.disabled = false;
+      });
+      return;
+    }
+    sel.querySelectorAll('option').forEach(function (opt) {
+      if (!opt.value) { opt.disabled = false; return; }
+      var t = (opt.textContent || '').toLowerCase();
+      var ad = (opt.getAttribute('data-adresse') || '').toLowerCase();
+      var cd = (opt.getAttribute('data-code') || '').toLowerCase();
+      var ok = !q || t.indexOf(q) !== -1 || ad.indexOf(q) !== -1 || cd.indexOf(q) !== -1;
+      opt.disabled = !ok;
+    });
+    if (q) {
+      for (var i = 0; i < sel.options.length; i++) {
+        var o = sel.options[i];
+        if (o.value && !o.disabled) { sel.selectedIndex = i; break; }
+      }
+    }
+  }
+
+  if (search) {
+    search.addEventListener('input', filterClients);
+    search.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        sel.focus();
+      }
+    });
+  }
+
+  function showErr(msg) {
+    if (!err) return;
+    err.textContent = msg || '';
+    err.classList.toggle('d-none', !msg);
+  }
+
+  if (modal) {
+    modal.addEventListener('show.bs.modal', function () {
+      showErr('');
+      if (nomInput) nomInput.value = '';
+      if (nomInput) setTimeout(function () { nomInput.focus(); }, 400);
+    });
+  }
+
+  if (btn && nomInput && sel) {
+    btn.addEventListener('click', function () {
+      var nom = (nomInput.value || '').trim();
+      if (nom.length < 2) {
+        showErr('Saisissez au moins 2 caractères pour le nom de la structure.');
+        return;
+      }
+      showErr('');
+      btn.disabled = true;
+      fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ raison_sociale: nom })
+      })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          btn.disabled = false;
+          if (!res.ok || !res.j.ok) {
+            showErr((res.j && res.j.error) ? res.j.error : 'Erreur lors de la création.');
+            return;
+          }
+          var opt = document.createElement('option');
+          opt.value = res.j.id;
+          opt.textContent = res.j.raison_sociale + ' — ' + res.j.code;
+          opt.setAttribute('data-adresse', '');
+          opt.setAttribute('data-code', res.j.code || '');
+          sel.appendChild(opt);
+          sel.value = String(res.j.id);
+          sel.dispatchEvent(new Event('change', { bubbles: true }));
+          if (search) search.value = '';
+          filterClients();
+          var inst = bootstrap.Modal.getInstance(modal);
+          if (inst) inst.hide();
+        })
+        .catch(function () {
+          btn.disabled = false;
+          showErr('Erreur réseau ou serveur.');
+        });
+    });
+  }
+})();
+</script>

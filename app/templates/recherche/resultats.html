@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}Recherche{% if q %} — « {{ q }} »{% endif %} — Avalon Pharma{% endblock %}
+
+{% block extra_css %}
+<style>
+  .search-hit {
+    border-radius: 10px;
+    transition: background-color 0.15s ease;
+  }
+  .search-hit:hover {
+    background-color: rgba(176, 219, 221, 0.2);
+  }
+  .search-section-title {
+    font-size: 0.8rem;
+    letter-spacing: 0.04em;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+  <div class="page-header flex-wrap gap-2">
+    <div>
+      <h1 class="page-title">Résultats de recherche</h1>
+      <p class="page-subtitle mb-0">
+        {% if too_short %}
+          Saisissez au moins <strong>2 caractères</strong> pour lancer une recherche dans les clients, produits, factures, BL, proformas et fournisseurs.
+        {% elif q %}
+          Terme « <strong>{{ q }}</strong> » — {{ counts.total }} occurrence(s) trouvée(s) au total.
+        {% else %}
+          Utilisez la barre de recherche en haut de page pour trouver des fiches et des documents.
+        {% endif %}
+      </p>
+    </div>
+    <form class="d-flex gap-2 flex-grow-1" style="max-width: 420px;" method="get" action="{{ url_for('recherche.index') }}" role="search">
+      <input type="search" name="q" class="form-control" placeholder="Nouvelle recherche…" value="{{ q }}" autocomplete="off" aria-label="Terme de recherche">
+      <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i></button>
+    </form>
+  </div>
+
+  {% if too_short %}
+    <div class="alert alert-info border-0 shadow-sm rounded-3">
+      <i class="bi bi-info-circle me-2"></i>
+      La recherche analyse les <strong>noms</strong>, <strong>codes</strong>, <strong>numéros de pièces</strong>, téléphones, villes et libellés utiles dans toute l’application.
+    </div>
+  {% elif q and truncated %}
+    <div class="alert alert-warning border-0 shadow-sm rounded-3 small">
+      <i class="bi bi-layers me-2"></i>
+      Au moins une catégorie affiche le maximum de lignes ({{ per_section }}). Affinez le terme ou ouvrez la liste du module concerné pour parcourir davantage.
+    </div>
+  {% endif %}
+
+  {% if not too_short and q %}
+    {% macro section(title, icon, count) %}
+      <div class="mb-4">
+        <h2 class="text-uppercase text-muted fw-semibold search-section-title mb-2">
+          <i class="bi {{ icon }} me-1"></i>{{ title }}
+          <span class="badge bg-secondary bg-opacity-25 text-dark ms-1">{{ count }}</span>
+        </h2>
+        {{ caller() }}
+      </div>
+    {% endmacro %}
+
+    {% if clients %}
+      {% call section('Clients', 'bi-people', counts.clients) %}
+        <div class="list-group list-group-flush border rounded-3 overflow-hidden shadow-sm">
+          {% for c in clients %}
+            <a href="{{ url_for('clients.detail', id=c.id) }}" class="list-group-item list-group-item-action search-hit py-3">
+              <div class="d-flex justify-content-between align-items-start gap-2">
+                <div>
+                  <span class="fw-semibold">{{ c.raison_sociale }}</span>
+                  <span class="text-muted small ms-1">{{ c.code }}</span>
+                  {% if c.ville %}<div class="small text-muted">{{ c.ville }}{% if c.telephone %} · {{ c.telephone }}{% endif %}</div>{% endif %}
+                </div>
+                <i class="bi bi-chevron-right text-muted"></i>
+              </div>
+            </a>
+          {% endfor %}
+        </div>
+        <p class="small text-muted mt-2 mb-0">
+          <a href="{{ url_for('clients.index', q=q) }}">Voir tous les clients correspondants dans l’annuaire</a>
+        </p>
+      {% endcall %}
+    {% endif %}
+
+    {% if produits %}
+      {% call section('Produits (stock)', 'bi-box-seam', counts.produits) %}
+        <div class="list-group list-group-flush border rounded-3 overflow-hidden shadow-sm">
+          {% for p in produits %}
+            <a href="{{ url_for('stock.detail_produit', id=p.id) }}" class="list-group-item list-group-item-action search-hit py-3">
+              <div class="d-flex justify-content-between align-items-start gap-2">
+                <div>
+                  <span class="fw-semibold">{{ p.designation }}</span>
+                  <span class="text-muted small ms-1">{{ p.reference }}</span>
+                </div>
+                <i class="bi bi-chevron-right text-muted"></i>
+              </div>
+            </a>
+          {% endfor %}
+        </div>
+      {% endcall %}
+    {% endif %}
+
+    {% if factures %}
+      {% call section('Factures', 'bi-receipt', counts.factures) %}
+        <div class="list-group list-group-flush border rounded-3 overflow-hidden shadow-sm">
+          {% for f in factures %}
+            <a href="{{ url_for('ventes.facture_detail', id=f.id) }}" class="list-group-item list-group-item-action search-hit py-3">
+              <div class="d-flex justify-content-between align-items-start gap-2">
+                <div>
+                  <span class="fw-semibold">{{ f.numero }}</span>
+                  <span class="text-muted small">· {{ f.date_emission }}</span>
+                  {% if f.client %}<div class="small text-muted">{{ f.client.raison_sociale }}</div>{% endif %}
+                </div>
+                <span class="badge text-bg-light text-dark">{{ f.statut }}</span>
+              </div>
+            </a>
+          {% endfor %}
+        </div>
+        <p class="small text-muted mt-2 mb-0">
+          <a href="{{ url_for('ventes.factures') }}">Liste des factures</a>
+        </p>
+      {% endcall %}
+    {% endif %}
+
+    {% if bons_livraison %}
+      {% call section('Bons de livraison', 'bi-truck', counts.bons_livraison) %}
+        <div class="list-group list-group-flush border rounded-3 overflow-hidden shadow-sm">
+          {% for bl in bons_livraison %}
+            <a href="{{ url_for('ventes.bl_detail', id=bl.id) }}" class="list-group-item list-group-item-action search-hit py-3">
+              <div class="d-flex justify-content-between align-items-start gap-2">
+                <div>
+                  <span class="fw-semibold">{{ bl.numero }}</span>
+                  <span class="text-muted small">· {{ bl.date_livraison }}</span>
+                  {% if bl.client %}<div class="small text-muted">{{ bl.client.raison_sociale }}</div>{% endif %}
+                </div>
+                <span class="badge text-bg-light text-dark">{{ bl.statut }}</span>
+              </div>
+            </a>
+          {% endfor %}
+        </div>
+      {% endcall %}
+    {% endif %}
+
+    {% if proformas %}
+      {% call section('Proformas', 'bi-file-earmark-text', counts.proformas) %}
+        <div class="list-group list-group-flush border rounded-3 overflow-hidden shadow-sm">
+          {% for pf in proformas %}
+            <a href="{{ url_for('ventes.proforma_detail', id=pf.id) }}" class="list-group-item list-group-item-action search-hit py-3">
+              <div class="d-flex justify-content-between align-items-start gap-2">
+                <div>
+                  <span class="fw-semibold">{{ pf.numero }}</span>
+                  <span class="text-muted small">· {{ pf.date_emission }}</span>
+                  {% if pf.client %}<div class="small text-muted">{{ pf.client.raison_sociale }}</div>{% endif %}
+                </div>
+                <span class="badge text-bg-light text-dark">{{ pf.statut }}</span>
+              </div>
+            </a>
+          {% endfor %}
+        </div>
+      {% endcall %}
+    {% endif %}
+
+    {% if fournisseurs %}
+      {% call section('Fournisseurs', 'bi-building', counts.fournisseurs) %}
+        <div class="list-group list-group-flush border rounded-3 overflow-hidden shadow-sm">
+          {% for fo in fournisseurs %}
+            <div class="list-group-item py-3 search-hit">
+              <div class="fw-semibold">{{ fo.raison_sociale }}</div>
+              <div class="small text-muted">{{ fo.code }}{% if fo.ville %} · {{ fo.ville }}{% endif %}{% if fo.telephone %} · {{ fo.telephone }}{% endif %}</div>
+              <a href="{{ url_for('fournisseurs.index') }}" class="small stretched-link">Module achats — fournisseurs</a>
+            </div>
+          {% endfor %}
+        </div>
+      {% endcall %}
+    {% endif %}
+
+    {% if counts.total == 0 and not too_short %}
+      <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-5 text-muted">
+          <i class="bi bi-search display-4 d-block mb-3 opacity-50"></i>
+          <p class="mb-0">Aucun résultat pour « {{ q }} ». Essayez un autre terme ou vérifiez l’orthographe.</p>
+        </div>
+      </div>
+    {% endif %}
+  {% endif %}
+{% endblock %}

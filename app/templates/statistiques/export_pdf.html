@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Statistiques — {{ periode.label }}</title>
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 11px; color: #222; margin: 24px; }
+    h1 { font-size: 18px; margin: 0 0 4px; color: #0066cc; }
+    h2 { font-size: 13px; margin: 20px 0 8px; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
+    .meta { color: #666; margin-bottom: 16px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+    th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
+    th { background: #0066cc; color: #fff; }
+    td.num, th.num { text-align: right; }
+    .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+    .kpi-box { border: 1px solid #ddd; padding: 8px; border-radius: 4px; }
+    .kpi-label { font-size: 10px; color: #666; }
+    .kpi-val { font-size: 14px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Statistiques — Avalon Pharma</h1>
+  <p class="meta">
+    Période : <strong>{{ periode.label }}</strong>
+    ({{ periode.debut.strftime('%d/%m/%Y') }} → {{ periode.fin.strftime('%d/%m/%Y') }})
+    · Généré le {{ genere_le.strftime('%d/%m/%Y à %H:%M') }}
+  </p>
+
+  <h2>Indicateurs clés</h2>
+  <div class="kpi-grid">
+    <div class="kpi-box"><div class="kpi-label">CA TTC</div><div class="kpi-val">{{ format_fcfa(kpi.ca_ttc) }} FCFA</div></div>
+    <div class="kpi-box"><div class="kpi-label">Marge brute</div><div class="kpi-val">{{ format_fcfa(kpi.marge_brute) }} FCFA ({{ '%.1f'|format(kpi.taux_marge) }} %)</div></div>
+    <div class="kpi-box"><div class="kpi-label">Dépenses validées</div><div class="kpi-val">{{ format_fcfa(kpi.depenses_ttc) }} FCFA</div></div>
+    <div class="kpi-box"><div class="kpi-label">Achats fournisseurs</div><div class="kpi-val">{{ format_fcfa(kpi.achats_ttc) }} FCFA</div></div>
+    <div class="kpi-box"><div class="kpi-label">Bénéfice net estimé</div><div class="kpi-val">{{ format_fcfa(kpi.benefice_net) }} FCFA</div></div>
+    <div class="kpi-box"><div class="kpi-label">Créances / Stock</div><div class="kpi-val">{{ format_fcfa(kpi.creances_total) }} / {{ format_fcfa(kpi.valeur_stock) }} FCFA</div></div>
+  </div>
+
+  <h2>Évolution</h2>
+  <table>
+    <thead>
+      <tr><th>Période</th><th class="num">CA TTC</th><th class="num">Achats</th><th class="num">Dépenses</th><th class="num">Marge</th></tr>
+    </thead>
+    <tbody>
+      {% set evo = chart_data.evolution %}
+      {% for lbl in evo.labels %}
+        <tr>
+          <td>{{ lbl }}</td>
+          <td class="num">{{ format_fcfa(evo.ca[loop.index0]) }}</td>
+          <td class="num">{{ format_fcfa(evo.achats[loop.index0]) }}</td>
+          <td class="num">{{ format_fcfa(evo.depenses[loop.index0]) }}</td>
+          <td class="num">{{ format_fcfa(evo.marge[loop.index0]) }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>Top clients</h2>
+  <table>
+    <thead><tr><th>Client</th><th>Type</th><th class="num">Factures</th><th class="num">CA TTC</th></tr></thead>
+    <tbody>
+      {% for c in top_clients %}
+        <tr><td>{{ c.nom }}</td><td>{{ c.type }}</td><td class="num">{{ c.nb_factures }}</td><td class="num">{{ format_fcfa(c.montant) }}</td></tr>
+      {% else %}
+        <tr><td colspan="4">Aucune vente.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>Top produits</h2>
+  <table>
+    <thead><tr><th>Produit</th><th class="num">Quantité</th><th class="num">Montant HT</th></tr></thead>
+    <tbody>
+      {% set tp = chart_data.top_produits %}
+      {% for lbl in tp.labels %}
+        <tr><td>{{ lbl }}</td><td class="num">{{ tp.qty[loop.index0] }}</td><td class="num">{{ format_fcfa(tp.montants[loop.index0]) }}</td></tr>
+      {% else %}
+        <tr><td colspan="3">Aucun produit vendu.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>Dépenses par catégorie</h2>
+  <table>
+    <thead><tr><th>Catégorie</th><th class="num">Montant TTC</th></tr></thead>
+    <tbody>
+      {% set dep = chart_data.depenses_categorie %}
+      {% for lbl in dep.labels %}
+        <tr><td>{{ lbl }}</td><td class="num">{{ format_fcfa(dep.data[loop.index0]) }}</td></tr>
+      {% else %}
+        <tr><td colspan="2">Aucune dépense.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>Créances par ancienneté</h2>
+  <table>
+    <thead><tr><th>Tranche</th><th class="num">Montant</th><th class="num">Factures</th></tr></thead>
+    <tbody>
+      {% set cre = chart_data.creances %}
+      {% for lbl in cre.labels %}
+        <tr><td>{{ lbl }}</td><td class="num">{{ format_fcfa(cre.data[loop.index0]) }}</td><td class="num">{{ cre.counts[loop.index0] }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>Alertes stock</h2>
+  <p>Sous seuil : {{ alertes.sous_seuil }} · Péremption &lt; 90 j : {{ alertes.peremption_90 }} · &lt; 30 j : {{ alertes.peremption_30 }}</p>
+</body>
+</html>

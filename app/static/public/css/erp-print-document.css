@@ -1,0 +1,244 @@
+/* ========================================
+   Documents imprimables / aperçu navigateur (toute l’app)
+   En-tête + pied paramétrables, répétition multi-pages (thead/tfoot)
+   ======================================== */
+
+.erp-print-scope {
+  position: relative;
+}
+
+.erp-print-sheet {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  table-layout: fixed;
+}
+
+.erp-print-sheet__corner,
+.erp-print-sheet__body {
+  padding: 0;
+  vertical-align: top;
+  border: none;
+}
+
+.erp-print-sheet__corner {
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Deuxième document (ex. BL après facture) : évite de couper un seul tableau au milieu */
+.erp-print-sheet--follows-break {
+  margin-top: 1.5rem;
+}
+
+.erp-running-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 56px;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.erp-header-logo {
+  max-height: 56px;
+  max-width: 220px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
+
+.erp-running-footer {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #dee2e6;
+  text-align: left;
+  font-size: 11pt;
+  line-height: 1.35;
+  color: #333;
+  display: grid;
+  grid-template-rows: repeat(4, calc(11pt * 1.35));
+  align-content: start;
+  width: 100%;
+}
+
+.erp-footer-line {
+  word-break: break-word;
+}
+
+.erp-footer-line--pied {
+  white-space: pre-wrap;
+}
+
+/* Corps mesuré par JS ; espaceur rempli seulement à l’impression si le contenu tient sur 1 page */
+.erp-print-page-spacer {
+  display: none;
+  flex-shrink: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+@media print {
+  /*
+   * 5 cm entre le bas de la zone de contenu et le bord bas de la feuille.
+   * Le pied (tfoot) reste dans le flux : fixed à l’impression est trop souvent rogné / invisible.
+   */
+  @page {
+    size: A4;
+    margin: 12mm 14mm 5cm 14mm;
+  }
+
+  html,
+  body {
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  .sidebar,
+  .sidebar-overlay,
+  #sidebarOverlay,
+  .main-header,
+  .erp-print-toolbar,
+  .facture-print-toolbar,
+  .btn-menu {
+    display: none !important;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  .page-content {
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+
+  body {
+    background: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .erp-print-scope {
+    position: static;
+  }
+
+  .erp-print-sheet thead {
+    display: table-header-group;
+  }
+
+  .erp-print-sheet tfoot {
+    display: table-footer-group;
+  }
+
+  .erp-print-sheet tbody {
+    display: table-row-group;
+  }
+
+  .erp-print-sheet thead tr,
+  .erp-print-sheet tfoot tr {
+    page-break-inside: avoid;
+  }
+
+  .erp-print-sheet__corner {
+    max-width: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  .erp-running-header {
+    position: static;
+    width: 100%;
+    min-height: 0;
+    margin: 0 0 4mm 0;
+    padding: 0 0 3mm 0;
+    border-bottom: 1px solid #999;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    background: white;
+    box-sizing: border-box;
+  }
+
+  .erp-header-logo {
+    max-height: 14mm;
+    max-width: 50mm;
+  }
+
+  /*
+   * Classe .erp-print-sheet--one-page ajoutée par JS : tableau = hauteur utile A4,
+   * ligne corps en flex → espaceur pousse le tfoot au bas (pied type Word).
+   */
+  .erp-print-sheet--one-page > tbody > tr {
+    height: 100%;
+  }
+
+  .erp-print-sheet--one-page .erp-print-sheet__body {
+    height: 100%;
+  }
+
+  .erp-running-body {
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    min-height: 0;
+  }
+
+  .erp-running-body-inner {
+    flex: 0 0 auto;
+  }
+
+  .erp-running-footer {
+    position: static;
+    width: 100%;
+    margin: 0;
+    padding: 2mm 0 0 0;
+    border-top: 1px solid #999;
+    background: white;
+    box-sizing: border-box;
+    font-size: 11pt !important;
+    line-height: 1.35 !important;
+    text-align: left !important;
+    color: #000 !important;
+    display: grid;
+    grid-template-rows: repeat(4, calc(11pt * 1.35));
+    align-content: end;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .erp-running-footer .erp-footer-line {
+    max-height: calc(11pt * 1.35);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .erp-footer-line--pied {
+    white-space: nowrap;
+  }
+
+  .erp-print-page-spacer {
+    display: block;
+    flex: 0 0 auto;
+    min-height: 0;
+    overflow: hidden;
+    /* flex: 1 1 auto appliqué par JS si le contenu tient sur une page */
+  }
+
+  .erp-print-sheet--follows-break {
+    page-break-before: always;
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 576px) {
+  .erp-running-footer {
+    font-size: 10pt;
+  }
+}

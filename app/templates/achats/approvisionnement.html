@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Nouvelle commande fournisseur - Avalon Pharma{% endblock %}
+
+{% block extra_css %}
+<link href="{{ url_for('static', filename='public/css/approvisionnement.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+{% include 'includes/approvisionnement_body.html' %}
+{% endblock %}
+
+{% block modals %}
+{% include 'includes/approvisionnement_modals.html' %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+window.APPROVISIONNEMENT = {
+    submitUrl: {{ url_for('achats.approvisionnement_commande')|tojson }},
+    today: {{ today.isoformat()|tojson }}
+};
+</script>
+<script src="{{ url_for('static', filename='public/js/approvisionnement.js') }}"></script>
+{% endblock %}

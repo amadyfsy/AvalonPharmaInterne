@@ -1,0 +1,149 @@
+{# Navigation MediGest — alignée sur public/index.html + public/approvisionnement.html #}
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="logo">
+      {% if global_logo_url %}
+        <img src="{{ global_logo_url }}" alt="Logo entreprise" class="sidebar-logo-img">
+      {% else %}
+        <i class="bi bi-hospital"></i>
+        <span>Avalon Pharma</span>
+      {% endif %}
+    </div>
+    <button type="button" class="btn-close-sidebar d-lg-none" id="closeSidebar" aria-label="Fermer le menu">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section">
+      <span class="nav-section-title">Principal</span>
+      <a href="{{ url_for('dashboard.index') }}" class="nav-link{% if request.endpoint == 'dashboard.index' %} active{% endif %}">
+        <i class="bi bi-grid-1x2"></i>
+        <span>Tableau de bord</span>
+      </a>
+      <a href="{{ url_for('statistiques.index') }}" class="nav-link{% if request.endpoint and request.endpoint.startswith('statistiques.') %} active{% endif %}">
+        <i class="bi bi-bar-chart-line"></i>
+        <span>Statistiques</span>
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <span class="nav-section-title">Ventes</span>
+      <a href="{{ url_for('ventes.index') }}" class="nav-link{% if request.endpoint == 'ventes.index' %} active{% endif %}">
+        <i class="bi bi-cart3"></i>
+        <span>Module ventes</span>
+      </a>
+      <a href="{{ url_for('ventes.factures') }}" class="nav-link{% if request.endpoint == 'ventes.factures' %} active{% endif %}">
+        <i class="bi bi-receipt"></i>
+        <span>Factures</span>
+      </a>
+      <a href="{{ url_for('clients.index') }}" class="nav-link{% if request.endpoint and request.endpoint.startswith('clients.') %} active{% endif %}">
+        <i class="bi bi-people"></i>
+        <span>Clients / Paiements</span>
+      </a>
+      <a href="{{ url_for('ventes.proformas') }}" class="nav-link{% if request.endpoint == 'ventes.proformas' %} active{% endif %}">
+        <i class="bi bi-file-earmark-text"></i>
+        <span>Proformas / Devis</span>
+      </a>
+      <a href="{{ url_for('ventes.bons_livraison') }}" class="nav-link{% if request.endpoint == 'ventes.bons_livraison' %} active{% endif %}">
+        <i class="bi bi-truck"></i>
+        <span>Bons de livraison</span>
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <span class="nav-section-title">Stock</span>
+      <a href="{{ url_for('stock.index') }}" class="nav-link{% if request.endpoint in ('stock.index', 'stock.detail_produit', 'stock.nouveau_produit', 'stock.modifier_produit') %} active{% endif %}">
+        <i class="bi bi-box-seam"></i>
+        <span>Produits</span>
+      </a>
+      <a href="{{ url_for('achats.approvisionnement') }}" class="nav-link{% if request.endpoint in ('achats.approvisionnement', 'achats.nouvelle_commande') %} active{% endif %}">
+        <i class="bi bi-cart-plus"></i>
+        <span>Commande fournisseur</span>
+      </a>
+      <a href="{{ url_for('stock.mouvements') }}" class="nav-link{% if request.endpoint == 'stock.mouvements' %} active{% endif %}">
+        <i class="bi bi-clipboard-check"></i>
+        <span>Mouvements</span>
+      </a>
+      <a href="{{ url_for('fournisseurs.index') }}" class="nav-link{% if request.endpoint and request.endpoint.startswith('fournisseurs.') %} active{% endif %}">
+        <i class="bi bi-truck"></i>
+        <span>Fournisseurs</span>
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <span class="nav-section-title">Achats</span>
+      <a href="{{ url_for('achats.index') }}" class="nav-link{% if request.endpoint == 'achats.index' %} active{% endif %}">
+        <i class="bi bi-bag-check"></i>
+        <span>Commandes fournisseur</span>
+      </a>
+      <a href="{{ url_for('achats.approvisionnement') }}" class="nav-link{% if request.endpoint in ('achats.approvisionnement', 'achats.nouvelle_commande') %} active{% endif %}">
+        <i class="bi bi-plus-circle"></i>
+        <span>Nouvelle commande</span>
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <span class="nav-section-title">Finances</span>
+      <a href="{{ url_for('tresorerie.index') }}" class="nav-link{% if request.endpoint and request.endpoint.startswith('tresorerie.') %} active{% endif %}">
+        <i class="bi bi-wallet2"></i>
+        <span>Trésorerie</span>
+      </a>
+      {% set dep_ep = request.endpoint or '' %}
+      <a href="{{ url_for('depenses.index') }}" class="nav-link{% if dep_ep == 'depenses.index' or dep_ep == 'depenses.nouvelle_depense' %} active{% endif %}">
+        <i class="bi bi-graph-up"></i>
+        <span>Dépenses</span>
+      </a>
+      <a href="{{ url_for('depenses.categories_depenses_index') }}" class="nav-link{% if dep_ep == 'depenses.categories_depenses_index' or dep_ep == 'depenses.categorie_depense_nouvelle' %} active{% endif %}">
+        <i class="bi bi-folder2"></i>
+        <span>Catégories dépenses</span>
+      </a>
+      {% if current_user.is_authenticated and current_user.role in ('admin', 'manager', 'comptable', 'commercial', 'rh', 'magasinier') %}
+      <a href="{{ url_for('rappels.index') }}" class="nav-link{% if request.endpoint and request.endpoint.startswith('rappels.') %} active{% endif %}">
+        <i class="bi bi-bell"></i>
+        <span>Rappels &amp; échéances</span>
+      </a>
+      {% endif %}
+    </div>
+
+    <div class="nav-section">
+      <span class="nav-section-title">RH</span>
+      <a href="{{ url_for('rh.index') }}" class="nav-link{% if request.endpoint == 'rh.index' %} active{% endif %}">
+        <i class="bi bi-person-badge"></i>
+        <span>Employés</span>
+      </a>
+      <a href="{{ url_for('rh.conges') }}" class="nav-link{% if request.endpoint and 'conge' in request.endpoint %} active{% endif %}">
+        <i class="bi bi-calendar-check"></i>
+        <span>Congés</span>
+      </a>
+      <a href="{{ url_for('rh.paies') }}" class="nav-link{% if request.endpoint and 'paie' in request.endpoint %} active{% endif %}">
+        <i class="bi bi-cash-stack"></i>
+        <span>Paie</span>
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <span class="nav-section-title">Administration</span>
+      <a href="{{ url_for('auth.profil') }}" class="nav-link{% if request.endpoint == 'auth.profil' %} active{% endif %}">
+        <i class="bi bi-gear"></i>
+        <span>Profil / mot de passe</span>
+      </a>
+      <a href="{{ url_for('rapports.index') }}" class="nav-link{% if request.endpoint and request.endpoint.startswith('rapports.') %} active{% endif %}">
+        <i class="bi bi-file-earmark-bar-graph"></i>
+        <span>Rapports</span>
+      </a>
+      {% if current_user.is_authenticated and current_user.role in ('admin', 'manager') %}
+      <a href="{{ url_for('parametres.documents') }}" class="nav-link{% if request.endpoint and request.endpoint.startswith('parametres.') %} active{% endif %}">
+        <i class="bi bi-file-earmark-pdf"></i>
+        <span>PDF / logo société</span>
+      </a>
+      {% endif %}
+      {% if current_user.is_authenticated and current_user.role == 'admin' %}
+      <a href="{{ url_for('securite.utilisateurs') }}" class="nav-link{% if request.endpoint and request.endpoint.startswith('securite.') %} active{% endif %}">
+        <i class="bi bi-shield-lock"></i>
+        <span>Sécurité</span>
+      </a>
+      {% endif %}
+    </div>
+  </nav>
+</aside>

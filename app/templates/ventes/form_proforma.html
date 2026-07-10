@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}Nouveau Proforma - Medical ERP{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h4 mb-0">Nouvelle proforma</h1>
+    <a href="{{ url_for('ventes.proformas') }}" class="btn btn-secondary btn-sm">Retour</a>
+  </div>
+
+  <form method="post" id="proformaForm">
+    <div class="row g-3 mb-3">
+      <div class="col-12 col-md-6">
+        {% include 'partials/_client_picker.html' %}
+      </div>
+
+      <div class="col-12 col-md-3">
+        <label class="form-label">Date émission</label>
+        <input class="form-control" type="date" name="date_emission" required>
+      </div>
+
+      <div class="col-12 col-md-3">
+        <label class="form-label">Date validité</label>
+        <input class="form-control" type="date" name="date_validite" required>
+      </div>
+
+      <div class="col-12 col-md-4">
+        <label class="form-label">Remise globale (%)</label>
+        <input class="form-control" type="number" step="0.01" name="remise_globale" value="0">
+      </div>
+
+      <div class="col-12 col-md-8">
+        <label class="form-label">Notes</label>
+        <textarea class="form-control" name="notes" rows="2"></textarea>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Lignes</span>
+        <button type="button" class="btn btn-outline-primary btn-sm" id="addLine">
+          <i class="bi bi-plus-lg me-1"></i> Ajouter une ligne
+        </button>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Produit</th>
+                <th style="width:120px;">Quantité</th>
+                <th style="width:160px;">Prix unitaire HT</th>
+                <th style="width:60px;"></th>
+              </tr>
+            </thead>
+            <tbody id="linesBody">
+              <tr class="line-row">
+                <td>
+                  <select class="form-select" name="produit_id[]" required>
+                    <option value="" disabled selected>Choisir...</option>
+                    {% for p in produits %}
+                      <option value="{{ p.id }}">{{ p.reference }} - {{ p.designation }}</option>
+                    {% else %}
+                      <option value="" disabled>Aucun produit</option>
+                    {% endfor %}
+                  </select>
+                </td>
+                <td>
+                  <input class="form-control" type="number" min="1" name="quantite[]" value="1" required>
+                </td>
+                <td>
+                  <input class="form-control" type="number" step="0.01" min="0" name="prix_unitaire_ht[]" required>
+                </td>
+                <td>
+                  <button type="button" class="btn btn-sm btn-outline-danger removeLine" title="Supprimer">
+                    <i class="bi bi-x"></i>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">
+      <i class="bi bi-save me-1"></i> Enregistrer
+    </button>
+  </form>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    (function () {
+      const apiBase = "/ventes/api/produits/";
+      const form = document.getElementById("proformaForm");
+      const linesBody = document.getElementById("linesBody");
+      const addBtn = document.getElementById("addLine");
+
+      function updatePriceForRow(row) {
+        const select = row.querySelector("select[name='produit_id[]']");
+        const priceInput = row.querySelector("input[name='prix_unitaire_ht[]']");
+        if (!select || !priceInput) return;
+
+        const attach = () => {
+          select.addEventListener("change", async function () {
+            const id = select.value;
+            if (!id) { priceInput.value = ""; return; }
+
+            try {
+              const res = await fetch(apiBase + id);
+              if (!res.ok) throw new Error("API error");
+              const data = await res.json();
+              priceInput.value = data.prix_vente_ht ?? "";
+            } catch (e) {
+              // silently ignore to not block the user
+            }
+          });
+        };
+
+        attach();
+      }
+
+      function updateAllRows() {
+        document.querySelectorAll(".line-row").forEach(updatePriceForRow);
+      }
+
+      addBtn.addEventListener("click", function () {
+        const firstRow = document.querySelector(".line-row");
+        const newRow = firstRow.cloneNode(true);
+
+        newRow.querySelectorAll("input").forEach(i => {
+          if (i.name === "quantite[]" ) i.value = 1;
+          if (i.name === "prix_unitaire_ht[]") i.value = "";
+        });
+
+        newRow.querySelectorAll("select").forEach(s => {
+          s.selectedIndex = 0;
+        });
+
+        linesBody.appendChild(newRow);
+
+        // re-attach events for price auto-fill
+        updatePriceForRow(newRow);
+        // re-attach remove line handlers
+        const removeBtn = newRow.querySelector(".removeLine");
+        if (removeBtn) {
+          removeBtn.addEventListener("click", function () {
+            const row = this.closest(".line-row");
+            if (row) row.remove();
+          });
+        }
+      });
+
+      linesBody.querySelectorAll(".removeLine").forEach(btn => {
+        btn.addEventListener("click", function () {
+          const row = this.closest(".line-row");
+          if (row) row.remove();
+        });
+      });
+
+      updateAllRows();
+    })();
+  </script>
+{% endblock %}
+

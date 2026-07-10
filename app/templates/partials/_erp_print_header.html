@@ -1,0 +1,38 @@
+{# En-tête document (logo + coordonnées à droite) — contexte : logo_url, doc_params #}
+<header class="erp-running-header" aria-label="En-tête document" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem;">
+  <div class="erp-header-logo-container">
+    {% if logo_url %}
+      <img src="{{ logo_url }}" alt="" class="erp-header-logo" style="max-height: 105px; max-width: 250px; object-fit: contain;">
+    {% endif %}
+  </div>
+  
+  <div class="erp-header-info" style="text-align: right; color: #1a1a1a; font-family: 'Times New Roman', Times, serif; font-size: 13px; line-height: 1.4;">
+    {% if doc_params %}
+      {% if doc_params.raison_sociale %}
+        <div style="font-weight: bold; font-size: 15px; margin-bottom: 4px;">{{ doc_params.raison_sociale }}</div>
+      {% endif %}
+      
+      {% if doc_params.adresse_ligne %}
+        <div>{{ doc_params.adresse_ligne }}</div>
+      {% endif %}
+      
+      {% set contact_parts = [] %}
+      {% if doc_params.telephone %}{% set _ = contact_parts.append('Tel : ' ~ doc_params.telephone) %}{% endif %}
+      {% if doc_params.email %}{% set _ = contact_parts.append('Email : ' ~ doc_params.email) %}{% endif %}
+      {% if contact_parts %}
+        <div>{{ contact_parts | join(' &nbsp;|&nbsp; ') | safe }}</div>
+      {% endif %}
+      
+      {% set legal_parts = [] %}
+      {% if doc_params.rc %}{% set _ = legal_parts.append('RC : ' ~ doc_params.rc) %}{% endif %}
+      {% if doc_params.ninea %}{% set _ = legal_parts.append('NINEA : ' ~ doc_params.ninea) %}{% endif %}
+      {% if legal_parts %}
+        <div>{{ legal_parts | join(' &nbsp;|&nbsp; ') | safe }}</div>
+      {% endif %}
+      
+      {% if doc_params.compte_bancaire %}
+        <div>Banque : {{ doc_params.compte_bancaire }}</div>
+      {% endif %}
+    {% endif %}
+  </div>
+</header>

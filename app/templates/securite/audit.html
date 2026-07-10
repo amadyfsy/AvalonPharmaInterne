@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Journal d'audit — Sécurité{% endblock %}
+
+{% block content %}
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+      <h1 class="h4 mb-1"><i class="bi bi-journal-text me-2"></i>Journal d'audit</h1>
+      <p class="small text-muted mb-0">Historique des actions sensibles sur la plateforme (création, modification, connexion…).</p>
+    </div>
+    <a href="{{ url_for('securite.utilisateurs') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left me-1"></i> Retour sécurité
+    </a>
+  </div>
+
+  <div class="card shadow-sm border-0 mb-3">
+    <div class="card-body py-3">
+      <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-4">
+          <label class="form-label small mb-1">Module</label>
+          <input type="search" name="module" class="form-control form-control-sm" value="{{ module_filtre }}" placeholder="ex. ventes, rh…">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small mb-1">Action</label>
+          <select name="action" class="form-select form-select-sm">
+            <option value="">Toutes</option>
+            {% for act in ['CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT', 'EXPORT', 'PRINT'] %}
+              <option value="{{ act }}" {% if action_filtre == act %}selected{% endif %}>{{ act }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-funnel"></i> Filtrer</button>
+        </div>
+        <div class="col-md-2">
+          <a href="{{ url_for('securite.audit_logs') }}" class="btn btn-outline-secondary btn-sm w-100">Réinitialiser</a>
+        </div>
+      </form>
+      <p class="small text-muted mb-0 mt-2">
+        {% if pagination.total %}
+          <strong>{{ pagination.total }}</strong> entrée(s)
+          {% if pagination.pages > 1 %} · page {{ pagination.page }}/{{ pagination.pages }}{% endif %}
+        {% else %}
+          Aucune entrée.
+        {% endif %}
+      </p>
+    </div>
+  </div>
+
+  <div class="card shadow-sm border-0">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Date</th>
+            <th>Utilisateur</th>
+            <th>Action</th>
+            <th>Module</th>
+            <th>Entité</th>
+            <th>IP</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in logs %}
+            <tr>
+              <td class="text-nowrap small">{{ log.timestamp.strftime('%d/%m/%Y %H:%M') if log.timestamp else '—' }}</td>
+              <td class="small">{{ log.user.email if log.user else '—' }}</td>
+              <td><span class="badge text-bg-secondary">{{ log.action }}</span></td>
+              <td class="small">{{ log.module }}</td>
+              <td class="small">{{ log.entite }}{% if log.entite_id %} #{{ log.entite_id }}{% endif %}</td>
+              <td class="small text-muted">{{ log.ip_address or '—' }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="6" class="text-center text-muted py-4">Aucun log.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if pagination.pages > 1 %}
+      <div class="card-footer bg-transparent d-flex justify-content-between align-items-center py-3">
+        <span class="small text-muted">
+          {{ ((pagination.page - 1) * pagination.per_page) + 1 }}
+          – {{ [pagination.page * pagination.per_page, pagination.total]|min }} / {{ pagination.total }}
+        </span>
+        <ul class="pagination pagination-sm mb-0">
+          <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('securite.audit_logs', page=pagination.prev_num, **filtres_url) if pagination.has_prev else '#' }}">‹</a>
+          </li>
+          {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+            {% if p %}
+              <li class="page-item {% if p == pagination.page %}active{% endif %}">
+                <a class="page-link" href="{{ url_for('securite.audit_logs', page=p, **filtres_url) }}">{{ p }}</a>
+              </li>
+            {% else %}
+              <li class="page-item disabled"><span class="page-link">…</span></li>
+            {% endif %}
+          {% endfor %}
+          <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('securite.audit_logs', page=pagination.next_num, **filtres_url) if pagination.has_next else '#' }}">›</a>
+          </li>
+        </ul>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}

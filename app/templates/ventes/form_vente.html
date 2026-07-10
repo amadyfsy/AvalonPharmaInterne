@@ -1,0 +1,1022 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} — Avalon Pharma{% endblock %}
+
+{% block extra_css %}
+  <style>
+    .wizard-step-shell {
+      border: 1px solid #e9edf5;
+      border-radius: 14px;
+      background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+      padding: 14px 14px 4px;
+      margin-bottom: 14px;
+    }
+    .wizard-step-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #f3f6fb;
+      border: 1px solid #e1e8f5;
+    }
+    .wizard-step-head h2 {
+      font-size: 1rem;
+      margin: 0;
+      font-weight: 700;
+    }
+    .wizard-step-head p {
+      margin: 0;
+      font-size: .85rem;
+      color: #6c757d;
+    }
+    .wizard-step-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #0d6efd;
+      color: #fff;
+      font-size: .95rem;
+      flex: 0 0 auto;
+    }
+    .wizard-progress-wrap {
+      position: relative;
+      border-radius: 999px;
+      padding: 2px;
+      background: linear-gradient(90deg, #dbeafe 0%, #dcfce7 100%);
+    }
+    #wizardProgress {
+      background: linear-gradient(90deg, #2563eb 0%, #16a34a 100%) !important;
+      box-shadow: 0 0 0.6rem rgba(37, 99, 235, 0.35);
+      transition: width .25s ease;
+    }
+    .vente-lignes-row .vente-cart-card,
+    .vente-lignes-row .vente-products-card {
+      min-height: 420px;
+    }
+    .vente-products-card .card-body {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .vente-product-list {
+      flex: 1;
+      overflow-y: auto;
+      max-height: 360px;
+      border: 1px solid var(--bs-border-color);
+      border-radius: 0.5rem;
+    }
+    .vente-product-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      width: 100%;
+      text-align: left;
+      padding: 0.65rem 0.85rem;
+      border: 0;
+      border-bottom: 1px solid var(--bs-border-color);
+      background: transparent;
+      transition: background-color 0.15s ease;
+    }
+    .vente-product-item:last-child {
+      border-bottom: 0;
+    }
+    .vente-product-item:hover,
+    .vente-product-item:focus-visible {
+      background: rgba(13, 110, 253, 0.08);
+      outline: none;
+    }
+    .vente-product-item.in-cart {
+      background: rgba(25, 135, 84, 0.08);
+    }
+    .vente-product-name {
+      display: block;
+      font-weight: 600;
+      font-size: 0.9rem;
+      line-height: 1.25;
+    }
+    .vente-product-meta {
+      display: block;
+      font-size: 0.78rem;
+      color: var(--bs-secondary-color);
+    }
+    .vente-cart-empty {
+      padding: 2.5rem 1rem;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <nav aria-label="breadcrumb" class="mb-2">
+    <ol class="breadcrumb mb-0 small">
+      <li class="breadcrumb-item"><a href="{{ url_for('ventes.index') }}">Ventes</a></li>
+      <li class="breadcrumb-item active" aria-current="page">{{ title }}</li>
+    </ol>
+  </nav>
+  <div class="page-header mb-4">
+    <div>
+      <h1 class="page-title">{{ title }}</h1>
+      <p class="page-subtitle mb-0">
+        Vente directe → <strong>facture</strong> (émise) + <strong>bon de livraison</strong>. Mode proforma → devis seul, conversion facture + BL depuis la liste.
+      </p>
+    </div>
+    <div class="page-actions">
+      <a href="{{ url_for('ventes.index') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i> Module ventes
+      </a>
+    </div>
+  </div>
+
+  <form method="post" id="venteForm" enctype="multipart/form-data">
+    <div class="card shadow-sm mb-3">
+      <div class="card-body py-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="d-flex align-items-center gap-2">
+            <strong>Progression</strong>
+            <span class="badge rounded-pill text-bg-primary" id="wizardModeBadge">Mode Facture</span>
+          </div>
+            <span class="small text-muted" id="wizardStepLabel">Étape 1 / 5</span>
+        </div>
+        <div class="wizard-progress-wrap">
+          <div class="progress" style="height: 10px; border-radius: 999px; overflow: hidden;">
+            <div id="wizardProgress" class="progress-bar" role="progressbar" style="width: 20%;"></div>
+          </div>
+        </div>
+        <div class="d-flex flex-wrap gap-2 mt-3" id="wizardStepPills">
+          <span class="badge rounded-pill text-bg-primary" data-step-pill="1">1. Base</span>
+          <span class="badge rounded-pill text-bg-light text-dark border" data-step-pill="2">2. Lignes</span>
+          <span class="badge rounded-pill text-bg-light text-dark border" data-step-pill="3">3. Paramètres</span>
+          <span class="badge rounded-pill text-bg-light text-dark border" data-step-pill="4">4. Dépenses</span>
+          <span class="badge rounded-pill text-bg-light text-dark border" data-step-pill="5">5. Récapitulatif</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="wizard-step wizard-step-shell" data-step="1">
+    <div class="wizard-step-head">
+      <div>
+        <h2>Étape 1 — Informations de base</h2>
+        <p>Choisissez le mode de vente, le client et les dates principales.</p>
+      </div>
+      <span class="wizard-step-icon"><i class="bi bi-info-circle"></i></span>
+    </div>
+    <div class="card border-primary border-opacity-25 shadow-sm mb-3">
+      <div class="card-body py-3">
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" name="proforma_seulement" value="1" id="chkProforma" {% if prefill_proforma %}checked{% endif %}>
+          <label class="form-check-label fw-semibold" for="chkProforma">Proforma uniquement</label>
+        </div>
+        <p class="small text-muted mb-0 mt-1" id="helpProforma">
+          <span id="helpProformaOff">Décoché : enregistrement d’une <strong>vente ferme</strong> — génération automatique de la <strong>facture</strong> (statut émise) et du <strong>BL</strong> (préparé). Les PDF sont disponibles tout de suite.</span>
+          <span id="helpProformaOn" class="d-none">Coché : seule une <strong>proforma / devis</strong> est créée. Vous pourrez plus tard la convertir en <strong>facture + bon de livraison</strong> depuis la liste des proformas.</span>
+        </p>
+      </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+      <div class="col-12 col-md-6">
+        {% include 'partials/_client_picker.html' %}
+      </div>
+
+      <div class="col-12 col-md-3">
+        <label class="form-label">Date émission <span class="text-danger">*</span></label>
+        <input class="form-control" type="date" name="date_emission" id="dateEmission" value="{{ today }}" required>
+      </div>
+
+      <div class="col-12 col-md-3" id="blockDateEcheance">
+        <label class="form-label">Date échéance (facture) <span class="text-danger">*</span></label>
+        <input class="form-control" type="date" name="date_echeance" value="{{ default_echeance }}" required>
+      </div>
+
+      <div class="col-12 col-md-3 d-none" id="blockDateValidite">
+        <label class="form-label">Date validité (proforma) <span class="text-danger">*</span></label>
+        <input class="form-control" type="date" name="date_validite" value="{{ default_validite }}">
+      </div>
+    </div>
+    <p class="small text-muted mb-0">Étape 1 épurée : client + dates uniquement.</p>
+    </div>
+
+    <div class="wizard-step wizard-step-shell d-none" data-step="2">
+    <div class="wizard-step-head">
+      <div>
+        <h2>Étape 2 — Lignes de vente</h2>
+        <p>Ajoutez les produits, quantités et prix.</p>
+      </div>
+      <span class="wizard-step-icon"><i class="bi bi-list-check"></i></span>
+    </div>
+    <div class="card shadow-sm mb-3">
+      <div class="card-body py-2">
+        <div class="row g-3 vente-lignes-row">
+          <div class="col-lg-7">
+            <div class="card shadow-sm h-100 vente-cart-card border-0">
+              <div class="card-header bg-body-secondary d-flex justify-content-between align-items-center py-2">
+                <span class="fw-semibold"><i class="bi bi-cart3 me-1"></i> Panier</span>
+                <span class="small text-muted" id="cartLineCount">0 ligne(s)</span>
+              </div>
+              <div class="card-body p-0 d-flex flex-column">
+                <div class="table-responsive flex-grow-1">
+                  <table class="table table-sm align-middle mb-0">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Produit</th>
+                        <th style="width:100px;">Qté</th>
+                        <th style="width:140px;">Prix HT</th>
+                        <th style="width:110px;" class="text-end">Total</th>
+                        <th style="width:44px;"></th>
+                      </tr>
+                    </thead>
+                    <tbody id="linesBody"></tbody>
+                  </table>
+                </div>
+                <div id="cartEmptyMsg" class="vente-cart-empty text-center text-muted small">
+                  <i class="bi bi-basket display-6 d-block mb-2 opacity-50"></i>
+                  Aucun produit dans le panier.<br>
+                  Utilisez la liste à droite pour ajouter des articles.
+                </div>
+              </div>
+              <div class="card-footer d-flex justify-content-between align-items-center py-2">
+                <span class="fw-semibold">Total HT panier</span>
+                <span class="fw-bold text-primary" id="cartTotalHt">0 FCFA</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-5">
+            <div class="card shadow-sm h-100 vente-products-card border-0">
+              <div class="card-header bg-body-secondary py-2">
+                <span class="fw-semibold"><i class="bi bi-box-seam me-1"></i> Catalogue produits</span>
+              </div>
+              <div class="card-body py-2">
+                <label class="form-label small mb-1" for="venteProductSearch">Rechercher un produit</label>
+                <div class="input-group input-group-sm mb-2">
+                  <span class="input-group-text"><i class="bi bi-search"></i></span>
+                  <input
+                    type="search"
+                    class="form-control"
+                    id="venteProductSearch"
+                    placeholder="Référence, désignation…"
+                    autocomplete="off"
+                  >
+                </div>
+                <div class="small text-muted mb-2">Cliquez sur un produit pour l’ajouter au panier.</div>
+                <div class="vente-product-list" id="venteProductList">
+                  {% for pd in produits_data %}
+                    <button
+                      type="button"
+                      class="vente-product-item"
+                      data-id="{{ pd.obj.id }}"
+                      data-ref="{{ pd.obj.reference }}"
+                      data-name="{{ pd.obj.designation }}"
+                      data-price="{{ pd.prix_vente }}"
+                      data-stock="{{ pd.stock_dispo }}"
+                      data-search="{{ (pd.obj.reference ~ ' ' ~ pd.obj.designation)|lower }}"
+                    >
+                      <span class="flex-grow-1 min-width-0">
+                        <span class="vente-product-name text-truncate d-block">{{ pd.obj.designation }}</span>
+                        <span class="vente-product-meta">{{ pd.obj.reference }} · Stock : {{ pd.stock_dispo }}</span>
+                      </span>
+                      <span class="badge text-bg-light border text-nowrap">{{ "{:,.0f}".format(pd.prix_vente).replace(",", "\u202f") }} F</span>
+                    </button>
+                  {% else %}
+                    <div class="text-center text-muted small py-4">Aucun produit actif dans le catalogue.</div>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+
+    <div class="wizard-step wizard-step-shell d-none" data-step="3">
+      <div class="wizard-step-head">
+        <div>
+          <h2>Étape 3 — Paramètres</h2>
+          <p>Complétez la remise globale et les options documentaires.</p>
+        </div>
+        <span class="wizard-step-icon"><i class="bi bi-sliders"></i></span>
+      </div>
+      <div class="card shadow-sm mb-3">
+        <div class="card-header fw-semibold">Paramètres complémentaires</div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-12 col-md-4">
+              <label class="form-label">Remise globale (%)</label>
+              <input class="form-control" type="number" step="0.01" name="remise_globale" value="0">
+            </div>
+            <div class="col-12 col-md-8 d-none" id="blockNotesProforma">
+              <label class="form-label">Notes (proforma)</label>
+              <textarea class="form-control" name="notes" rows="2" placeholder="Conditions, validité…"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="wizard-step wizard-step-shell d-none" data-step="4" id="blockStepDepenses">
+      <div class="wizard-step-head">
+        <div>
+          <h2>Étape 4 — Dépenses liées</h2>
+          <p>Saisissez les coûts qui accompagnent la vente (hors facture client).</p>
+        </div>
+        <span class="wizard-step-icon"><i class="bi bi-cash-coin"></i></span>
+      </div>
+      <div class="card shadow-sm mb-3 d-none" id="blockVenteDirecte">
+        <div class="card-header fw-semibold">Livraison & dépenses liées</div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                <label class="form-label mb-0">Informations de livraison</label>
+                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#livraisonModal">
+                  <i class="bi bi-truck me-1"></i> Renseigner livraison
+                </button>
+              </div>
+              <div class="border rounded-3 p-3 bg-light bg-opacity-25 small">
+                <div><span class="text-muted">Date livraison :</span> <strong id="livraisonSummaryDate">{{ today }}</strong></div>
+                <div><span class="text-muted">Transporteur / Livreur :</span> <strong id="livraisonSummaryLivreur">—</strong></div>
+                <div><span class="text-muted">Adresse :</span> <span id="livraisonSummaryAdresse">—</span></div>
+                <div><span class="text-muted">Notes :</span> <span id="livraisonSummaryNotes">—</span></div>
+              </div>
+            </div>
+
+            <div class="col-12 mt-2">
+              <div class="card border-warning border-opacity-25 shadow-sm">
+                <div class="card-header bg-warning-subtle d-flex justify-content-between align-items-center">
+                  <span><i class="bi bi-cash-coin me-2"></i>Dépenses liées à la vente (non imprimées)</span>
+                  <button type="button" class="btn btn-outline-secondary btn-sm" id="addDepenseLine">
+                    <i class="bi bi-plus-lg me-1"></i> Ajouter
+                  </button>
+                </div>
+                <div class="card-body">
+                  <p class="small text-muted mb-3">
+                    Exemple : transport, manutention, carburant, etc. Ces dépenses seront créées en base (module Dépenses) mais n’apparaîtront pas sur la facture. <strong>Justificatif facultatif</strong> (PDF, PNG ou JPEG) pour chaque ligne avec montant &gt; 0.
+                  </p>
+                  <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                      <thead>
+                        <tr>
+                          <th>Type de dépense</th>
+                          <th>Description</th>
+                          <th style="width:140px;">Montant HT</th>
+                          <th style="width:150px;">Mode paiement</th>
+                          <th style="width:200px;">Justificatif</th>
+                          <th style="width:60px;"></th>
+                        </tr>
+                      </thead>
+                      <tbody id="depensesBody">
+                        <tr class="depense-row">
+                          <td>
+                            <select class="form-select" name="depense_categorie_id[]">
+                              {% for c in depense_categories %}
+                                <option value="{{ c.id }}" {% if default_depense_cat_id and c.id == default_depense_cat_id %}selected{% endif %}>{{ c.nom }}</option>
+                              {% endfor %}
+                            </select>
+                          </td>
+                          <td>
+                            <input class="form-control" type="text" name="depense_description[]" placeholder="Ex. Transport livraison Dakar → St Louis">
+                            <input type="hidden" name="depense_libelle[]" value="">
+                          </td>
+                          <td>
+                            <input class="form-control depense-montant" type="number" min="0" step="0.01" name="depense_montant[]" value="0">
+                          </td>
+                          <td>
+                            <select class="form-select" name="depense_mode[]">
+                              <option value="espece">Espèce</option>
+                              <option value="virement">Virement</option>
+                              <option value="cheque">Chèque</option>
+                              <option value="carte">Carte</option>
+                            </select>
+                          </td>
+                          <td>
+                            <input class="form-control form-control-sm depense-justificatif" type="file" name="depense_justificatif[]" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg">
+                          </td>
+                          <td>
+                            <button type="button" class="btn btn-sm btn-outline-danger removeDepenseLine" title="Supprimer">
+                              <i class="bi bi-x"></i>
+                            </button>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card shadow-sm mb-3 d-none" id="depensesProformaInfo">
+        <div class="card-body">
+          <p class="small text-muted mb-0">
+            Mode proforma : cette étape n’ajoute pas de dépenses. Vous pouvez poursuivre vers le récapitulatif.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="livraisonModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-truck me-2"></i>Informations de livraison</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label">Date livraison (BL)</label>
+                <input class="form-control" type="date" name="date_livraison" id="dateLivraison" value="{{ today }}">
+                <div class="form-text">Par défaut = date d’émission.</div>
+              </div>
+              <div class="col-md-8">
+                <label class="form-label">Transporteur / Livreur (optionnel)</label>
+                <input class="form-control" type="text" name="livreur" id="livreurInput" placeholder="Nom du transporteur/livreur">
+              </div>
+              <div class="col-12">
+                <label class="form-label">Adresse de livraison</label>
+                <textarea class="form-control" name="adresse_livraison" id="adresseLivraison" rows="2" placeholder="Saisie ou remplie depuis la fiche client"></textarea>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Notes (BL)</label>
+                <textarea class="form-control" name="notes_bl" id="notesBlInput" rows="2" placeholder="Optionnel"></textarea>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fermer</button>
+            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Valider</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wizard-step wizard-step-shell d-none" data-step="5">
+      <div class="wizard-step-head">
+        <div>
+          <h2>Étape 5 — Récapitulatif</h2>
+          <p>Vérifiez tout avant de finaliser l’enregistrement.</p>
+        </div>
+        <span class="wizard-step-icon"><i class="bi bi-check2-square"></i></span>
+      </div>
+      <div class="card shadow-sm mb-3">
+        <div class="card-body">
+          <h2 class="h6 mb-2">Récapitulatif final</h2>
+          <p class="text-muted small mb-0">
+            Vérifiez les lignes et informations saisies avant validation.
+            Les dépenses liées (transport/autres) sont enregistrées à part et ne figurent pas sur la facture client.
+          </p>
+        </div>
+      </div>
+      <div class="card shadow-sm mb-3">
+        <div class="card-body" id="recapContainer">
+          <p class="text-muted small mb-0">Le récapitulatif se mettra à jour automatiquement.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <button type="button" class="btn btn-outline-secondary d-none" id="btnPrevStep">
+        <i class="bi bi-arrow-left me-1"></i> Précédent
+      </button>
+      <button type="button" class="btn btn-primary ms-auto" id="btnNextStep">
+        Suivant <i class="bi bi-arrow-right ms-1"></i>
+      </button>
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-lg" id="btnSubmit">
+      <i class="bi bi-check2-circle me-1"></i> <span id="btnSubmitLabel">Enregistrer la vente (facture + BL)</span>
+    </button>
+  </form>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    (function () {
+      const apiBase = "/ventes/api/produits/";
+      const linesBody = document.getElementById("linesBody");
+      const cartEmptyMsg = document.getElementById("cartEmptyMsg");
+      const cartTotalHt = document.getElementById("cartTotalHt");
+      const cartLineCount = document.getElementById("cartLineCount");
+      const venteProductSearch = document.getElementById("venteProductSearch");
+      const venteProductList = document.getElementById("venteProductList");
+      const chk = document.getElementById("chkProforma");
+      const blockEcheance = document.getElementById("blockDateEcheance");
+      const blockValidite = document.getElementById("blockDateValidite");
+      const blockNotesP = document.getElementById("blockNotesProforma");
+      const blockVente = document.getElementById("blockVenteDirecte");
+      const depensesProformaInfo = document.getElementById("depensesProformaInfo");
+      const helpOn = document.getElementById("helpProformaOn");
+      const helpOff = document.getElementById("helpProformaOff");
+      const btnLabel = document.getElementById("btnSubmitLabel");
+      const btnSubmit = document.getElementById("btnSubmit");
+      const clientSelect = document.getElementById("clientSelect");
+      const adresseTa = document.getElementById("adresseLivraison");
+      const dateEmission = document.getElementById("dateEmission");
+      const dateLivraison = document.getElementById("dateLivraison");
+      const livreurInput = document.getElementById("livreurInput");
+      const notesBlInput = document.getElementById("notesBlInput");
+      const livraisonSummaryDate = document.getElementById("livraisonSummaryDate");
+      const livraisonSummaryLivreur = document.getElementById("livraisonSummaryLivreur");
+      const livraisonSummaryAdresse = document.getElementById("livraisonSummaryAdresse");
+      const livraisonSummaryNotes = document.getElementById("livraisonSummaryNotes");
+      const depensesBody = document.getElementById("depensesBody");
+      const addDepenseBtn = document.getElementById("addDepenseLine");
+      const wizardSteps = Array.from(document.querySelectorAll(".wizard-step"));
+      const wizardProgress = document.getElementById("wizardProgress");
+      const wizardStepLabel = document.getElementById("wizardStepLabel");
+      const wizardModeBadge = document.getElementById("wizardModeBadge");
+      const stepPills = Array.from(document.querySelectorAll("[data-step-pill]"));
+      const btnPrevStep = document.getElementById("btnPrevStep");
+      const btnNextStep = document.getElementById("btnNextStep");
+      const recapContainer = document.getElementById("recapContainer");
+      let currentStep = 1;
+
+      function syncProformaMode() {
+        const pro = chk && chk.checked;
+        if (blockEcheance) {
+          blockEcheance.classList.toggle("d-none", pro);
+          blockEcheance.querySelectorAll("input").forEach(function (inp) {
+            inp.required = !pro;
+            inp.disabled = !!pro;
+          });
+        }
+        if (blockValidite) {
+          blockValidite.classList.toggle("d-none", !pro);
+          const dv = blockValidite.querySelector("input[name='date_validite']");
+          if (dv) {
+            dv.required = !!pro;
+            dv.disabled = !pro;
+          }
+        }
+        if (blockNotesP) {
+          blockNotesP.classList.toggle("d-none", !pro);
+          blockNotesP.querySelectorAll("textarea").forEach(function (el) {
+            el.disabled = !pro;
+          });
+        }
+        if (blockVente) {
+          blockVente.classList.toggle("d-none", pro);
+          blockVente.querySelectorAll("input, textarea").forEach(function (el) {
+            el.disabled = !!pro;
+          });
+        }
+        if (depensesProformaInfo) {
+          depensesProformaInfo.classList.toggle("d-none", !pro);
+        }
+        if (helpOn) helpOn.classList.toggle("d-none", !pro);
+        if (helpOff) helpOff.classList.toggle("d-none", pro);
+        if (btnLabel) {
+          btnLabel.textContent = pro
+            ? "Enregistrer la proforma uniquement"
+            : "Enregistrer la vente (facture + BL)";
+        }
+        updateWizardUi();
+      }
+
+      function maxStep() {
+        return 5;
+      }
+
+      function updateWizardUi() {
+        const max = maxStep();
+        const modeTxt = (chk && chk.checked) ? "Proforma" : "Facture";
+        if (currentStep > max) currentStep = max;
+        wizardSteps.forEach((stepEl) => {
+          const stepN = Number(stepEl.getAttribute("data-step"));
+          stepEl.classList.toggle("d-none", stepN !== currentStep || stepN > max);
+        });
+        stepPills.forEach((pill) => {
+          const stepN = Number(pill.getAttribute("data-step-pill"));
+          if (stepN > max) {
+            pill.classList.add("d-none");
+            return;
+          }
+          pill.classList.remove("d-none");
+          const active = stepN === currentStep;
+          pill.classList.toggle("text-bg-primary", active);
+          pill.classList.toggle("text-bg-light", !active);
+          pill.classList.toggle("text-dark", !active);
+          pill.classList.toggle("border", !active);
+        });
+        const pct = Math.round((currentStep / max) * 100);
+        if (wizardProgress) wizardProgress.style.width = `${pct}%`;
+        if (wizardStepLabel) wizardStepLabel.textContent = `Étape ${currentStep} / ${max} — ${modeTxt}`;
+        if (wizardModeBadge) {
+          wizardModeBadge.textContent = `Mode ${modeTxt}`;
+          wizardModeBadge.classList.toggle("text-bg-primary", modeTxt === "Facture");
+          wizardModeBadge.classList.toggle("text-bg-success", modeTxt === "Proforma");
+        }
+        if (btnPrevStep) btnPrevStep.classList.toggle("d-none", currentStep === 1);
+        if (btnNextStep) btnNextStep.classList.toggle("d-none", currentStep >= max);
+        if (btnSubmit) btnSubmit.classList.toggle("d-none", currentStep < max);
+        if (btnSubmit) {
+          btnSubmit.classList.toggle("btn-primary", modeTxt === "Facture");
+          btnSubmit.classList.toggle("btn-success", modeTxt === "Proforma");
+        }
+        if (currentStep === 5) renderRecap();
+      }
+
+      function esc(s) {
+        return String(s ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;");
+      }
+
+      function money(n) {
+        const x = Number(n || 0);
+        return Number.isFinite(x)
+          ? x.toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + " FCFA"
+          : "0 FCFA";
+      }
+
+      function renderRecap() {
+        if (!recapContainer) return;
+        const pro = chk && chk.checked;
+        const clientTxt = (clientSelect && clientSelect.selectedOptions[0] && clientSelect.selectedOptions[0].textContent) || "—";
+        const dateEm = dateEmission ? (dateEmission.value || "—") : "—";
+        const dateEch = (document.querySelector("input[name='date_echeance']") || {}).value || "—";
+        const dateVal = (document.querySelector("input[name='date_validite']") || {}).value || "—";
+        const remise = (document.querySelector("input[name='remise_globale']") || {}).value || "0";
+
+        let lignesMiniHtml = "";
+        let totalHt = 0;
+        document.querySelectorAll(".line-row").forEach((row) => {
+          const label = row.querySelector(".cart-prod-label");
+          const prod = label ? label.textContent.trim() : "";
+          const q = Number((row.querySelector("input[name='quantite[]']") || {}).value || 0);
+          const pu = Number((row.querySelector("input[name='prix_unitaire_ht[]']") || {}).value || 0);
+          if (!prod) return;
+          const mt = q * pu;
+          totalHt += mt;
+          lignesMiniHtml += `<tr><td>${esc(prod)}</td><td class="text-end">${q}</td><td class="text-end">${money(mt)}</td></tr>`;
+        });
+        if (!lignesMiniHtml) lignesMiniHtml = `<tr><td colspan="3" class="text-muted text-center">Aucune ligne produit</td></tr>`;
+
+        let depensesHtml = "";
+        let depensesMiniHtml = "";
+        let depTotal = 0;
+        if (!pro) {
+          document.querySelectorAll(".depense-row").forEach((row) => {
+            const cat = row.querySelector("select[name='depense_categorie_id[]']");
+            const catTxt = cat && cat.selectedOptions[0] ? cat.selectedOptions[0].textContent.trim() : "";
+            const desc = (row.querySelector("input[name='depense_description[]']") || {}).value || "";
+            const mt = Number((row.querySelector("input[name='depense_montant[]']") || {}).value || 0);
+            const mode = row.querySelector("select[name='depense_mode[]']");
+            const modeTxt = mode && mode.selectedOptions[0] ? mode.selectedOptions[0].textContent.trim() : "";
+            if (mt <= 0) return;
+            const descFinal = desc.trim() || catTxt || "Dépense";
+            depTotal += mt;
+            depensesHtml += `<tr><td>${esc(catTxt || "—")}</td><td>${esc(descFinal)}</td><td class="text-end">${money(mt)}</td><td>${esc(modeTxt || "—")}</td></tr>`;
+            depensesMiniHtml += `<tr><td>${esc(catTxt || "—")}</td><td>${esc(descFinal)}</td><td class="text-end">${money(mt)}</td></tr>`;
+          });
+          if (!depensesHtml) depensesHtml = `<tr><td colspan="4" class="text-muted text-center">Aucune dépense saisie</td></tr>`;
+          if (!depensesMiniHtml) depensesMiniHtml = `<tr><td colspan="3" class="text-muted text-center">Aucune dépense saisie</td></tr>`;
+        }
+
+        const totalRem = totalHt * (1 - (Number(remise || 0) / 100));
+        recapContainer.innerHTML = `
+          <div class="row g-3">
+            <div class="col-12 col-lg-5">
+              <div class="border rounded-3 p-3 h-100 bg-light bg-opacity-25">
+                <h3 class="h6 mb-3">Informations de la vente</h3>
+                <dl class="row small mb-0">
+                  <dt class="col-6 text-muted">Mode</dt>
+                  <dd class="col-6 text-end fw-semibold">${pro ? "Proforma" : "Facture + BL"}</dd>
+                  <dt class="col-6 text-muted">Client</dt>
+                  <dd class="col-6 text-end fw-semibold">${esc(clientTxt)}</dd>
+                  <dt class="col-6 text-muted">Date émission</dt>
+                  <dd class="col-6 text-end">${esc(dateEm)}</dd>
+                  <dt class="col-6 text-muted">${pro ? "Date validité" : "Date échéance"}</dt>
+                  <dd class="col-6 text-end">${esc(pro ? dateVal : dateEch)}</dd>
+                  <dt class="col-6 text-muted">Remise globale</dt>
+                  <dd class="col-6 text-end">${esc(remise)}%</dd>
+                  <dt class="col-6 text-muted">Total HT brut</dt>
+                  <dd class="col-6 text-end fw-semibold">${money(totalHt)}</dd>
+                  <dt class="col-6 text-muted">Total après remise</dt>
+                  <dd class="col-6 text-end fw-semibold">${money(totalRem)}</dd>
+                  ${pro ? "" : `<dt class="col-6 text-muted">Dépenses liées</dt><dd class="col-6 text-end">${money(depTotal)}</dd>`}
+                </dl>
+              </div>
+            </div>
+            <div class="col-12 col-lg-7">
+              <div class="border rounded-3 p-3 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <h3 class="h6 mb-0">Produits</h3>
+                  <span class="badge text-bg-light">${document.querySelectorAll(".line-row").length} ligne(s)</span>
+                </div>
+                <div class="table-responsive">
+                  <table class="table table-sm align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th>Produit</th>
+                        <th class="text-end">Qté</th>
+                        <th class="text-end">Montant</th>
+                      </tr>
+                    </thead>
+                    <tbody>${lignesMiniHtml}</tbody>
+                  </table>
+                </div>
+                ${pro ? "" : `
+                  <hr class="my-3">
+                  <h3 class="h6 mb-2">Dépenses saisies</h3>
+                  <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                      <thead>
+                        <tr>
+                          <th>Type</th>
+                          <th>Description</th>
+                          <th class="text-end">Montant</th>
+                        </tr>
+                      </thead>
+                      <tbody>${depensesMiniHtml}</tbody>
+                    </table>
+                  </div>
+                `}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      if (chk) {
+        chk.addEventListener("change", syncProformaMode);
+        syncProformaMode();
+      }
+
+      function fillAdresseFromClient() {
+        if (!clientSelect || !adresseTa) return;
+        const opt = clientSelect.options[clientSelect.selectedIndex];
+        const adr = opt ? (opt.getAttribute("data-adresse") || "") : "";
+        if (adr && !adresseTa.value.trim()) adresseTa.value = adr;
+      }
+
+      function updateLivraisonSummary() {
+        if (livraisonSummaryDate && dateLivraison) {
+          livraisonSummaryDate.textContent = dateLivraison.value || "—";
+        }
+        if (livraisonSummaryLivreur) {
+          const txt = (livreurInput && livreurInput.value || "").trim();
+          livraisonSummaryLivreur.textContent = txt || "—";
+        }
+        if (livraisonSummaryAdresse) {
+          const txt = (adresseTa && adresseTa.value || "").trim();
+          livraisonSummaryAdresse.textContent = txt || "—";
+        }
+        if (livraisonSummaryNotes) {
+          const txt = (notesBlInput && notesBlInput.value || "").trim();
+          livraisonSummaryNotes.textContent = txt || "—";
+        }
+      }
+
+      if (clientSelect) {
+        clientSelect.addEventListener("change", function () {
+          adresseTa.value = "";
+          fillAdresseFromClient();
+          updateLivraisonSummary();
+        });
+        fillAdresseFromClient();
+        updateLivraisonSummary();
+      }
+
+      if (dateEmission && dateLivraison) {
+        dateEmission.addEventListener("change", function () {
+          if (!dateLivraison.dataset.touched) dateLivraison.value = dateEmission.value;
+          updateLivraisonSummary();
+        });
+        dateLivraison.addEventListener("input", function () {
+          dateLivraison.dataset.touched = "1";
+          updateLivraisonSummary();
+        });
+      }
+      if (livreurInput) livreurInput.addEventListener("input", updateLivraisonSummary);
+      if (notesBlInput) notesBlInput.addEventListener("input", updateLivraisonSummary);
+      if (adresseTa) adresseTa.addEventListener("input", updateLivraisonSummary);
+
+      function formatFcfa(n) {
+        const x = Number(n || 0);
+        return Number.isFinite(x)
+          ? x.toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + " FCFA"
+          : "0 FCFA";
+      }
+
+      function findCartRow(produitId) {
+        return linesBody
+          ? linesBody.querySelector(`.line-row[data-produit-id="${produitId}"]`)
+          : null;
+      }
+
+      function updateCartTotals() {
+        let total = 0;
+        let count = 0;
+        if (linesBody) {
+          linesBody.querySelectorAll(".line-row").forEach((row) => {
+            const q = Number((row.querySelector("input[name='quantite[]']") || {}).value || 0);
+            const pu = Number((row.querySelector("input[name='prix_unitaire_ht[]']") || {}).value || 0);
+            const lineTotal = q * pu;
+            total += lineTotal;
+            count += 1;
+            const cell = row.querySelector(".line-total-cell");
+            if (cell) cell.textContent = formatFcfa(lineTotal);
+          });
+        }
+        if (cartTotalHt) cartTotalHt.textContent = formatFcfa(total);
+        if (cartLineCount) cartLineCount.textContent = `${count} ligne(s)`;
+        if (cartEmptyMsg) cartEmptyMsg.classList.toggle("d-none", count > 0);
+        updateProductListColors();
+      }
+
+      function updateProductListColors() {
+        if (!venteProductList) return;
+        const ids = new Set();
+        if (linesBody) {
+          linesBody.querySelectorAll(".line-row").forEach((row) => {
+            ids.add(row.getAttribute("data-produit-id"));
+          });
+        }
+        venteProductList.querySelectorAll(".vente-product-item").forEach((btn) => {
+          const id = btn.getAttribute("data-id");
+          btn.classList.toggle("in-cart", ids.has(id));
+        });
+      }
+
+      function bindCartRow(row) {
+        const qtyInput = row.querySelector("input[name='quantite[]']");
+        const priceInput = row.querySelector("input[name='prix_unitaire_ht[]']");
+        if (qtyInput) qtyInput.addEventListener("input", updateCartTotals);
+        if (priceInput) priceInput.addEventListener("input", updateCartTotals);
+        const removeBtn = row.querySelector(".removeLine");
+        if (removeBtn) {
+          removeBtn.addEventListener("click", function () {
+            row.remove();
+            updateCartTotals();
+          });
+        }
+      }
+
+      function addProductToCart(produit) {
+        if (!linesBody || !produit || !produit.id) return;
+        const existing = findCartRow(produit.id);
+        if (existing) {
+          const qtyInput = existing.querySelector("input[name='quantite[]']");
+          if (qtyInput) qtyInput.value = String(Number(qtyInput.value || 0) + 1);
+          updateCartTotals();
+          return;
+        }
+
+        const row = document.createElement("tr");
+        row.className = "line-row";
+        row.setAttribute("data-produit-id", produit.id);
+        row.innerHTML = `
+          <td>
+            <span class="cart-prod-label fw-medium">${esc(produit.ref)} — ${esc(produit.name)}</span>
+            <input type="hidden" name="produit_id[]" value="${esc(produit.id)}">
+          </td>
+          <td>
+            <input class="form-control form-control-sm" type="number" min="1" name="quantite[]" value="1" required>
+          </td>
+          <td>
+            <input class="form-control form-control-sm" type="number" step="0.01" min="0" name="prix_unitaire_ht[]" value="${esc(produit.price)}" required>
+          </td>
+          <td class="text-end line-total-cell small fw-semibold text-nowrap">${formatFcfa(produit.price)}</td>
+          <td class="text-end">
+            <button type="button" class="btn btn-sm btn-outline-danger removeLine" title="Retirer">
+              <i class="bi bi-x"></i>
+            </button>
+          </td>
+        `;
+        linesBody.appendChild(row);
+        bindCartRow(row);
+        updateCartTotals();
+      }
+
+      if (venteProductList) {
+        venteProductList.querySelectorAll(".vente-product-item").forEach((btn) => {
+          btn.addEventListener("click", function () {
+            addProductToCart({
+              id: btn.getAttribute("data-id"),
+              ref: btn.getAttribute("data-ref") || "",
+              name: btn.getAttribute("data-name") || "",
+              price: btn.getAttribute("data-price") || "0",
+              stock: btn.getAttribute("data-stock") || "0",
+            });
+          });
+        });
+      }
+
+      if (venteProductSearch && venteProductList) {
+        venteProductSearch.addEventListener("input", function () {
+          const q = (venteProductSearch.value || "").trim().toLowerCase();
+          venteProductList.querySelectorAll(".vente-product-item").forEach((btn) => {
+            const hay = btn.getAttribute("data-search") || "";
+            btn.classList.toggle("d-none", q && !hay.includes(q));
+          });
+        });
+      }
+
+      updateCartTotals();
+
+      function bindDepenseRemove(btn) {
+        btn.addEventListener("click", function () {
+          const row = this.closest(".depense-row");
+          if (!row) return;
+          const all = depensesBody.querySelectorAll(".depense-row");
+          if (all.length <= 1) {
+            row.querySelector("input[name='depense_description[]']").value = "";
+            const libHidden = row.querySelector("input[name='depense_libelle[]']");
+            if (libHidden) libHidden.value = "";
+            row.querySelector("input[name='depense_montant[]']").value = "0";
+            row.querySelector("select[name='depense_mode[]']").value = "espece";
+            const justif = row.querySelector("input[name='depense_justificatif[]']");
+            if (justif) justif.value = "";
+            return;
+          }
+          row.remove();
+        });
+      }
+
+      depensesBody.querySelectorAll(".removeDepenseLine").forEach(bindDepenseRemove);
+
+      if (addDepenseBtn && depensesBody) {
+        addDepenseBtn.addEventListener("click", function () {
+          const first = depensesBody.querySelector(".depense-row");
+          if (!first) return;
+          const newRow = first.cloneNode(true);
+          newRow.querySelector("input[name='depense_description[]']").value = "";
+          const libHidden = newRow.querySelector("input[name='depense_libelle[]']");
+          if (libHidden) libHidden.value = "";
+          newRow.querySelector("input[name='depense_montant[]']").value = "0";
+          newRow.querySelector("select[name='depense_mode[]']").value = "espece";
+          const justifNew = newRow.querySelector("input[name='depense_justificatif[]']");
+          if (justifNew) justifNew.value = "";
+          depensesBody.appendChild(newRow);
+          const rm = newRow.querySelector(".removeDepenseLine");
+          if (rm) bindDepenseRemove(rm);
+        });
+      }
+
+      if (btnPrevStep) {
+        btnPrevStep.addEventListener("click", function () {
+          if (currentStep > 1) {
+            currentStep -= 1;
+            updateWizardUi();
+          }
+        });
+      }
+
+      if (btnNextStep) {
+        btnNextStep.addEventListener("click", function () {
+          const max = maxStep();
+          if (currentStep === 2) {
+            const nbLines = linesBody ? linesBody.querySelectorAll(".line-row").length : 0;
+            if (!nbLines) {
+              alert("Ajoutez au moins un produit au panier avant de continuer.");
+              return;
+            }
+          }
+          if (currentStep < max) {
+            currentStep += 1;
+            updateWizardUi();
+          }
+        });
+      }
+      updateWizardUi();
+      updateLivraisonSummary();
+
+      document.getElementById("venteForm").addEventListener("input", function () {
+        if (currentStep === 5) renderRecap();
+      });
+      document.getElementById("venteForm").addEventListener("change", function () {
+        if (currentStep === 5) renderRecap();
+      });
+
+      document.getElementById("venteForm").addEventListener("submit", function (e) {
+        const pro = chk && chk.checked;
+        if (pro) return;
+        let err = "";
+        document.querySelectorAll(".depense-row").forEach((row, idx) => {
+          const mt = Number((row.querySelector("input[name='depense_montant[]']") || {}).value || 0);
+          const desc = ((row.querySelector("input[name='depense_description[]']") || {}).value || "").trim();
+          const justif = row.querySelector("input[name='depense_justificatif[]']");
+          const hasJustif = justif && justif.files && justif.files.length > 0;
+          if (mt > 0 || desc) {
+            if (mt <= 0) err = "Chaque dépense doit avoir un montant HT supérieur à 0.";
+          }
+        });
+        if (err) {
+          e.preventDefault();
+          alert(err);
+        }
+      });
+    })();
+  </script>
+{% endblock %}

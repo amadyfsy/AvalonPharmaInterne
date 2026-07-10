@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERP Medical - Approvisionnement</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="css/styles.css" rel="stylesheet">
+    <link href="css/approvisionnement.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <i class="bi bi-hospital"></i>
+                <span>Avalon Pharma</span>
+            </div>
+            <button class="btn-close-sidebar d-lg-none" id="closeSidebar">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <div class="nav-section">
+                <span class="nav-section-title">Principal</span>
+                <a href="index.html" class="nav-link">
+                    <i class="bi bi-grid-1x2"></i>
+                    <span>Tableau de bord</span>
+                </a>
+            </div>
+            
+            <div class="nav-section">
+                <span class="nav-section-title">Ventes</span>
+                <a href="#" class="nav-link">
+                    <i class="bi bi-receipt"></i>
+                    <span>Facturation</span>
+                </a>
+                <a href="#" class="nav-link">
+                    <i class="bi bi-people"></i>
+                    <span>Clients</span>
+                </a>
+            </div>
+            
+            <div class="nav-section">
+                <span class="nav-section-title">Stock</span>
+                <a href="#" class="nav-link">
+                    <i class="bi bi-box-seam"></i>
+                    <span>Produits</span>
+                </a>
+                <a href="approvisionnement.html" class="nav-link active">
+                    <i class="bi bi-cart-plus"></i>
+                    <span>Approvisionnement</span>
+                </a>
+                <a href="#" class="nav-link">
+                    <i class="bi bi-truck"></i>
+                    <span>Fournisseurs</span>
+                </a>
+                <a href="#" class="nav-link">
+                    <i class="bi bi-clipboard-check"></i>
+                    <span>Inventaire</span>
+                </a>
+            </div>
+            
+            <div class="nav-section">
+                <span class="nav-section-title">Finances</span>
+                <a href="#" class="nav-link">
+                    <i class="bi bi-wallet2"></i>
+                    <span>Trésorerie</span>
+                </a>
+                <a href="#" class="nav-link">
+                    <i class="bi bi-graph-up"></i>
+                    <span>Dépenses</span>
+                </a>
+            </div>
+            
+            <div class="nav-section">
+                <span class="nav-section-title">Administration</span>
+                <a href="#" class="nav-link">
+                    <i class="bi bi-gear"></i>
+                    <span>Paramètres</span>
+                </a>
+            </div>
+        </nav>
+    </aside>
+    
+    <!-- Overlay mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Header -->
+        <header class="main-header">
+            <div class="header-left">
+                <button class="btn-menu d-lg-none" id="openSidebar">
+                    <i class="bi bi-list"></i>
+                </button>
+                <div class="search-box">
+                    <i class="bi bi-search"></i>
+                    <input type="text" placeholder="Rechercher...">
+                </div>
+            </div>
+            
+            <div class="header-right">
+                <button class="header-btn" title="Notifications">
+                    <i class="bi bi-bell"></i>
+                    <span class="badge-notification">5</span>
+                </button>
+                <div class="user-menu">
+                    <img src="https://ui-avatars.com/api/?name=Admin&background=0d6efd&color=fff" alt="Admin" class="user-avatar">
+                    <div class="user-info">
+                        <span class="user-name">Administrateur</span>
+                        <span class="user-role">Super Admin</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Page Content -->
+        <div class="page-content">
+            <!-- Page Header -->
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Commande Fournisseur</h1>
+                    <p class="page-subtitle">Créer une commande fournisseur — montants en FCFA (Côte d’Ivoire)</p>
+                </div>
+                <div class="page-actions">
+                    <a href="index.html" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-2"></i>Retour
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Stepper -->
+            <div class="stepper-container mb-4">
+                <div class="stepper">
+                    <div class="step active" data-step="1">
+                        <div class="step-icon">
+                            <i class="bi bi-truck"></i>
+                        </div>
+                        <div class="step-content">
+                            <span class="step-number">Étape 1</span>
+                            <span class="step-title">Fournisseur</span>
+                        </div>
+                    </div>
+                    <div class="step-line"></div>
+                    <div class="step" data-step="2">
+                        <div class="step-icon">
+                            <i class="bi bi-box-seam"></i>
+                        </div>
+                        <div class="step-content">
+                            <span class="step-number">Étape 2</span>
+                            <span class="step-title">Produits</span>
+                        </div>
+                    </div>
+                    <div class="step-line"></div>
+                    <div class="step" data-step="3">
+                        <div class="step-icon">
+                            <i class="bi bi-cash-stack"></i>
+                        </div>
+                        <div class="step-content">
+                            <span class="step-number">Étape 3</span>
+                            <span class="step-title">Dépenses</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step 1: Fournisseur -->
+            <div class="step-content-panel active" id="step1">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title">
+                            <i class="bi bi-truck me-2"></i>Sélection du fournisseur
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-4">
+                            <!-- Search Supplier -->
+                            <div class="col-12">
+                                <div class="search-supplier-box">
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                        <input type="text" class="form-control" id="searchSupplier" placeholder="Rechercher un fournisseur par nom, telephone ou email...">
+                                        <button class="btn btn-primary" type="button" id="btnNewSupplier">
+                                            <i class="bi bi-plus-lg me-2"></i>Nouveau Fournisseur
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Supplier List -->
+                            <div class="col-12">
+                                <div class="supplier-list" id="supplierList">
+                                    <div class="supplier-item" data-id="1">
+                                        <div class="supplier-avatar">
+                                            <i class="bi bi-building"></i>
+                                        </div>
+                                        <div class="supplier-info">
+                                            <span class="supplier-name">Pharma Distribution SARL</span>
+                                            <span class="supplier-details">Tel: +225 07 00 00 00 | Abidjan, Cocody</span>
+                                        </div>
+                                        <div class="supplier-stats">
+                                            <span class="stat-label">Commandes</span>
+                                            <span class="stat-value">45</span>
+                                        </div>
+                                        <button class="btn btn-outline-primary btn-select-supplier">Selectionner</button>
+                                    </div>
+                                    <div class="supplier-item" data-id="2">
+                                        <div class="supplier-avatar">
+                                            <i class="bi bi-building"></i>
+                                        </div>
+                                        <div class="supplier-info">
+                                            <span class="supplier-name">MedSupply International</span>
+                                            <span class="supplier-details">Tel: +225 05 00 00 00 | Abidjan, Plateau</span>
+                                        </div>
+                                        <div class="supplier-stats">
+                                            <span class="stat-label">Commandes</span>
+                                            <span class="stat-value">32</span>
+                                        </div>
+                                        <button class="btn btn-outline-primary btn-select-supplier">Selectionner</button>
+                                    </div>
+                                    <div class="supplier-item" data-id="3">
+                                        <div class="supplier-avatar">
+                                            <i class="bi bi-building"></i>
+                                        </div>
+                                        <div class="supplier-info">
+                                            <span class="supplier-name">Labo Pharmaceutique SA</span>
+                                            <span class="supplier-details">Tel: +225 01 00 00 00 | Bouake</span>
+                                        </div>
+                                        <div class="supplier-stats">
+                                            <span class="stat-label">Commandes</span>
+                                            <span class="stat-value">18</span>
+                                        </div>
+                                        <button class="btn btn-outline-primary btn-select-supplier">Selectionner</button>
+                                    </div>
+                                    <div class="supplier-item" data-id="4">
+                                        <div class="supplier-avatar">
+                                            <i class="bi bi-building"></i>
+                                        </div>
+                                        <div class="supplier-info">
+                                            <span class="supplier-name">Global Health Supplies</span>
+                                            <span class="supplier-details">Tel: +225 27 00 00 00 | Yamoussoukro</span>
+                                        </div>
+                                        <div class="supplier-stats">
+                                            <span class="stat-label">Commandes</span>
+                                            <span class="stat-value">27</span>
+                                        </div>
+                                        <button class="btn btn-outline-primary btn-select-supplier">Selectionner</button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Selected Supplier Card (Hidden initially) -->
+                            <div class="col-12" id="selectedSupplierContainer" style="display: none;">
+                                <div class="selected-supplier-card">
+                                    <div class="selected-badge">
+                                        <i class="bi bi-check-circle-fill"></i> Fournisseur selectionne
+                                    </div>
+                                    <div class="selected-supplier-content">
+                                        <div class="selected-supplier-avatar">
+                                            <i class="bi bi-building"></i>
+                                        </div>
+                                        <div class="selected-supplier-info">
+                                            <h4 id="selectedSupplierName">-</h4>
+                                            <p id="selectedSupplierDetails">-</p>
+                                        </div>
+                                        <button class="btn btn-outline-danger btn-sm" id="btnChangeSupplier">
+                                            <i class="bi bi-x-lg me-1"></i>Changer
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="d-flex justify-content-between">
+                            <button class="btn btn-success" id="btnSaveSupplier" disabled>
+                                <i class="bi bi-save me-2"></i>Enregistrer Fournisseur
+                            </button>
+                            <button class="btn btn-primary" id="btnNextStep1" disabled>
+                                Suivant <i class="bi bi-arrow-right ms-2"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step 2: Produits -->
+            <div class="step-content-panel" id="step2">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title">
+                            <i class="bi bi-box-seam me-2"></i>Produits de la Commande
+                        </h5>
+                        <button class="btn btn-primary btn-sm" id="btnAddProduct">
+                            <i class="bi bi-plus-lg me-2"></i>Ajouter Produit
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="productsTable">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 30%;">Produit</th>
+                                        <th style="width: 15%;">Prix Achat</th>
+                                        <th style="width: 15%;">Prix Vente</th>
+                                        <th style="width: 12%;">Quantite</th>
+                                        <th style="width: 15%;">Total</th>
+                                        <th style="width: 13%;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="productsList">
+                                    <!-- Products will be added here -->
+                                </tbody>
+                                <tfoot>
+                                    <tr class="table-light">
+                                        <td colspan="4" class="text-end"><strong>Total Commande:</strong></td>
+                                        <td><strong id="totalCommande">0 FCFA</strong></td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                        
+                        <!-- Empty State -->
+                        <div class="empty-state" id="emptyProductsState">
+                            <i class="bi bi-inbox"></i>
+                            <h5>Aucun produit ajoute</h5>
+                            <p>Cliquez sur "Ajouter Produit" pour commencer</p>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="d-flex justify-content-between">
+                            <button class="btn btn-outline-secondary" id="btnPrevStep2">
+                                <i class="bi bi-arrow-left me-2"></i>Précédent
+                            </button>
+                            <div>
+                                <button class="btn btn-success me-2" id="btnSaveProducts" disabled>
+                                    <i class="bi bi-save me-2"></i>Enregistrer Produits
+                                </button>
+                                <button class="btn btn-primary" id="btnNextStep2" disabled>
+                                    Suivant <i class="bi bi-arrow-right ms-2"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step 3 : dépenses (transport + douane) -->
+            <div class="step-content-panel" id="step3">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-primary bg-opacity-10 border-0">
+                        <h5 class="card-title mb-0 text-primary">
+                            <i class="bi bi-cash-stack me-2"></i>Dépenses associées
+                        </h5>
+                        <p class="small text-muted mb-0 mt-2">Étape facultative — alimentation du module <strong>Dépenses</strong> à la finalisation.</p>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info border-0 d-flex gap-2 mb-4" role="status">
+                            <i class="bi bi-geo-alt flex-shrink-0 mt-1"></i>
+                            <div class="small">
+                                <strong>Contexte Côte d’Ivoire (FCFA)</strong> — Les montants sont en francs CFA. Le <strong>transport</strong> et la <strong>douane</strong> sont enregistrés dans les catégories correspondantes du module Dépenses lors de la validation de la commande.
+                            </div>
+                        </div>
+
+                        <h6 class="fw-bold mb-2"><i class="bi bi-truck me-1 text-primary"></i> Transport</h6>
+                        <p class="text-muted small mb-3">Lieu de départ, d’arrivée, transporteur et n° du transporteur. Si vous commencez une saisie, tous les champs marqués <span class="text-danger">*</span> sont requis.</p>
+                        <div class="expense-form border rounded-3 p-3 p-md-4 mb-4 bg-body-tertiary bg-opacity-50">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Lieu de départ</label>
+                                    <input type="text" class="form-control" id="fraisTransportDepart" placeholder="Ex. Abidjan">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Lieu d’arrivée</label>
+                                    <input type="text" class="form-control" id="fraisTransportArrivee" placeholder="Ex. Bouaké">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Transporteur</label>
+                                    <input type="text" class="form-control" id="fraisTransportTransporteur" placeholder="Raison sociale ou nom">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">N° transporteur</label>
+                                    <input type="text" class="form-control" id="fraisTransportNumero" placeholder="Téléphone, immatriculation…">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Montant <span class="text-danger">*</span> <span class="text-muted small">(si saisi)</span></label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="fraisTransportMontant" min="0" step="0.01" placeholder="0">
+                                        <span class="input-group-text">FCFA</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Mode de paiement</label>
+                                    <select class="form-select" id="fraisTransportMode">
+                                        <option value="">—</option>
+                                        <option value="espece">Espèces</option>
+                                        <option value="virement">Virement</option>
+                                        <option value="cheque">Chèque</option>
+                                        <option value="carte">Carte bancaire</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Référence</label>
+                                    <input type="text" class="form-control" id="fraisTransportReference" placeholder="N° BL, facture transport…">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Notes</label>
+                                    <textarea class="form-control" id="fraisTransportNotes" rows="2" placeholder="Informations complémentaires…"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h6 class="fw-bold mb-2"><i class="bi bi-building me-1 text-primary"></i> Douane</h6>
+                        <p class="text-muted small mb-3">Bureau de douane et montant. Catégorie <strong>Douane</strong> ou <strong>Impôt douane</strong> selon votre paramétrage.</p>
+                        <div class="expense-form border rounded-3 p-3 p-md-4 mb-4 bg-body-tertiary bg-opacity-50">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Bureau / lieu</label>
+                                    <input type="text" class="form-control" id="fraisDouaneBureau" placeholder="Ex. Port d’Abidjan">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Montant</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="fraisDouaneMontant" min="0" step="0.01" placeholder="0">
+                                        <span class="input-group-text">FCFA</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Mode de paiement</label>
+                                    <select class="form-select" id="fraisDouaneMode">
+                                        <option value="">—</option>
+                                        <option value="espece">Espèces</option>
+                                        <option value="virement">Virement</option>
+                                        <option value="cheque">Chèque</option>
+                                        <option value="carte">Carte bancaire</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">N° déclaration / référence</label>
+                                    <input type="text" class="form-control" id="fraisDouaneReference" placeholder="Référence douanière">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="expense-summary mt-4 border-top pt-4">
+                            <h6 class="mb-3"><i class="bi bi-calculator me-2"></i>Récapitulatif</h6>
+                            <div class="summary-table">
+                                <div class="summary-row">
+                                    <span>Total produits (fournitures)</span>
+                                    <span id="summaryProduits">0 FCFA</span>
+                                </div>
+                                <div class="summary-row">
+                                    <span>Dépenses (transport + douane)</span>
+                                    <span id="summaryDepense">0 FCFA</span>
+                                </div>
+                                <div class="summary-row total">
+                                    <span>Total général</span>
+                                    <span id="summaryTotal">0 FCFA</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="d-flex justify-content-between">
+                            <button class="btn btn-outline-secondary" id="btnPrevStep3">
+                                <i class="bi bi-arrow-left me-2"></i>Précédent
+                            </button>
+                            <div>
+                                <button class="btn btn-primary" id="btnFinalizeOrder">
+                                    <i class="bi bi-check-circle me-2"></i>Finaliser Commande
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Modal: Nouveau Fournisseur -->
+    <div class="modal fade" id="newSupplierModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Nouveau Fournisseur</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="newSupplierForm">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Nom / Raison Sociale <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="newSupplierName" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Téléphone <span class="text-danger">*</span></label>
+                                <input type="tel" class="form-control" id="newSupplierPhone" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email</label>
+                                <input type="email" class="form-control" id="newSupplierEmail">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Ville <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="newSupplierCity" required>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Adresse</label>
+                                <textarea class="form-control" id="newSupplierAddress" rows="2"></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" id="btnSaveNewSupplier">
+                        <i class="bi bi-save me-2"></i>Enregistrer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal: Ajouter Produit -->
+    <div class="modal fade" id="addProductModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-box-seam me-2"></i>Ajouter un Produit</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Search Product -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Rechercher un produit existant</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control" id="searchProduct" placeholder="Rechercher par nom ou code...">
+                        </div>
+                    </div>
+                    
+                    <!-- Product List -->
+                    <div class="product-search-list mb-4" id="productSearchList">
+                        <div class="product-search-item" data-id="1" data-name="Paracetamol 500mg" data-price="1500">
+                            <div class="product-icon"><i class="bi bi-capsule"></i></div>
+                            <div class="product-search-info">
+                                <span class="product-search-name">Paracetamol 500mg</span>
+                                <span class="product-search-code">PRD-001 | Stock: 250</span>
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary">Selectionner</button>
+                        </div>
+                        <div class="product-search-item" data-id="2" data-name="Amoxicilline 250mg" data-price="2500">
+                            <div class="product-icon"><i class="bi bi-capsule"></i></div>
+                            <div class="product-search-info">
+                                <span class="product-search-name">Amoxicilline 250mg</span>
+                                <span class="product-search-code">PRD-002 | Stock: 120</span>
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary">Selectionner</button>
+                        </div>
+                        <div class="product-search-item" data-id="3" data-name="Ibuprofene 400mg" data-price="1800">
+                            <div class="product-icon"><i class="bi bi-capsule"></i></div>
+                            <div class="product-search-info">
+                                <span class="product-search-name">Ibuprofene 400mg</span>
+                                <span class="product-search-code">PRD-003 | Stock: 85</span>
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary">Selectionner</button>
+                        </div>
+                        <div class="product-search-item" data-id="4" data-name="Vitamine C 1000mg" data-price="3500">
+                            <div class="product-icon"><i class="bi bi-capsule"></i></div>
+                            <div class="product-search-info">
+                                <span class="product-search-name">Vitamine C 1000mg</span>
+                                <span class="product-search-code">PRD-004 | Stock: 200</span>
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary">Selectionner</button>
+                        </div>
+                        <div class="product-search-item" data-id="5" data-name="Doliprane 1000mg" data-price="2000">
+                            <div class="product-icon"><i class="bi bi-capsule"></i></div>
+                            <div class="product-search-info">
+                                <span class="product-search-name">Doliprane 1000mg</span>
+                                <span class="product-search-code">PRD-005 | Stock: 150</span>
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary">Selectionner</button>
+                        </div>
+                    </div>
+                    
+                    <div class="divider">
+                        <span>ou creer un nouveau produit</span>
+                    </div>
+                    
+                    <!-- New Product Form -->
+                    <form id="newProductForm">
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <label class="form-label">Nom du Produit <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="newProductName">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Prix Achat <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="newProductPrixAchat" value="0">
+                                    <span class="input-group-text">FCFA</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Prix Vente (optionnel)</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="newProductPrixVente" value="0">
+                                    <span class="input-group-text">FCFA</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Quantite <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="newProductQuantity" value="1" min="1">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" id="btnConfirmAddProduct">
+                        <i class="bi bi-plus-lg me-2"></i>Ajouter au Panier
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal: Success -->
+    <div class="modal fade" id="successModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center py-5">
+                    <div class="success-icon mb-4">
+                        <i class="bi bi-check-circle-fill"></i>
+                    </div>
+                    <h4>Commande Enregistree!</h4>
+                    <p class="text-muted">La commande fournisseur a ete enregistree avec succes.</p>
+                    <p><strong>Reference:</strong> <span id="orderReference">CMD-2024-0001</span></p>
+                    <div class="mt-4">
+                        <a href="index.html" class="btn btn-outline-secondary me-2">Retour au Dashboard</a>
+                        <button class="btn btn-primary" onclick="location.reload()">Nouvelle Commande</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src="js/main.js"></script>
+    <script src="js/approvisionnement.js"></script>
+</body>
+</html>

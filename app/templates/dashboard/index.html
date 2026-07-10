@@ -1,0 +1,392 @@
+{% extends "base.html" %}
+
+{% macro statut_facture_badge(st) -%}
+  {% if st == 'payee' %}
+    <span class="badge bg-success">Payée</span>
+  {% elif st == 'partiellement_payee' %}
+    <span class="badge bg-info text-dark">Partielle</span>
+  {% elif st == 'emise' %}
+    <span class="badge bg-warning text-dark">Émise</span>
+  {% elif st == 'brouillon' %}
+    <span class="badge bg-secondary">Brouillon</span>
+  {% elif st == 'annulee' %}
+    <span class="badge bg-dark">Annulée</span>
+  {% else %}
+    <span class="badge bg-light text-dark">{{ st }}</span>
+  {% endif %}
+{%- endmacro %}
+
+{% macro montant_fcfa(n, card=false) -%}
+  {%- if card -%}
+    <span class="kpi-amount">{{ format_fcfa(n) }}</span><span class="fcfa-unit">FCFA</span>
+  {%- else -%}
+    {{ format_fcfa(n) }} <span class="fcfa-unit">FCFA</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{% block title %}Tableau de bord - Avalon Pharma{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Tableau de bord</h1>
+      <p class="page-subtitle">Bienvenue, voici un aperçu de votre activité</p>
+    </div>
+    <div class="page-actions">
+      <a href="{{ url_for('dashboard.export_mensuel') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-download me-2"></i>Exporter
+      </a>
+      <a href="{{ url_for('ventes.nouveau_facture') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-2"></i>Nouvelle facture
+      </a>
+    </div>
+  </div>
+
+  {# KPI — même grille que public/index.html #}
+  <div class="row g-4 mb-4">
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="kpi-card kpi-primary">
+        <div class="kpi-icon">
+          <i class="bi bi-currency-dollar"></i>
+        </div>
+        <div class="kpi-content">
+          <span class="kpi-label">CA mensuel</span>
+          <span class="kpi-value" data-kpi-mini-fcfa="true">{{ montant_fcfa(ca_current, card=true) }}</span>
+          {% if ca_variation >= 0 %}
+            <span class="kpi-change positive">
+              <i class="bi bi-arrow-up"></i> {{ "%.1f"|format(ca_variation) }} %
+            </span>
+          {% else %}
+            <span class="kpi-change negative">
+              <i class="bi bi-arrow-down"></i> {{ "%.1f"|format(ca_variation|abs) }} %
+            </span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="kpi-card kpi-danger">
+        <div class="kpi-icon">
+          <i class="bi bi-graph-down"></i>
+        </div>
+        <div class="kpi-content">
+          <span class="kpi-label">Dépenses (mois)</span>
+          <span class="kpi-value" data-kpi-mini-fcfa="true">{{ montant_fcfa(depenses_total, card=true) }}</span>
+          {% if depenses_variation <= 0 %}
+            <span class="kpi-change positive">
+              <i class="bi bi-arrow-down"></i> {{ "%.1f"|format(depenses_variation|abs) }} %
+            </span>
+          {% else %}
+            <span class="kpi-change negative">
+              <i class="bi bi-arrow-up"></i> {{ "%.1f"|format(depenses_variation) }} %
+            </span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="kpi-card kpi-success">
+        <div class="kpi-icon">
+          <i class="bi bi-graph-up-arrow"></i>
+        </div>
+        <div class="kpi-content">
+          <span class="kpi-label">Bénéfice estimé</span>
+          <span class="kpi-value" data-kpi-mini-fcfa="true">{{ montant_fcfa(benefice_net, card=true) }}</span>
+          {% if benefice_variation >= 0 %}
+            <span class="kpi-change positive">
+              <i class="bi bi-arrow-up"></i> {{ "%.1f"|format(benefice_variation) }} %
+            </span>
+          {% else %}
+            <span class="kpi-change negative">
+              <i class="bi bi-arrow-down"></i> {{ "%.1f"|format(benefice_variation|abs) }} %
+            </span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="kpi-card kpi-warning">
+        <div class="kpi-icon">
+          <i class="bi bi-exclamation-triangle"></i>
+        </div>
+        <div class="kpi-content">
+          <span class="kpi-label">Factures impayées</span>
+          <span class="kpi-value" data-kpi-mini-fcfa="true">{{ montant_fcfa(impayes_montant, card=true) }}</span>
+          <span class="kpi-badge">{{ impayes_count }} facture{% if impayes_count > 1 %}s{% endif %}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Graphique barres + alertes — structure identique à la maquette #}
+  <div class="row g-4 mb-4">
+    <div class="col-12 col-lg-8">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="card-title">Évolution du chiffre d'affaires</h5>
+          <div class="card-actions">
+            <span class="badge bg-light text-muted">12 derniers mois</span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="chart-container">
+            <div class="chart-bars">
+              {% for i in range(ca_evolution_labels|length) %}
+                <div class="chart-bar-wrapper">
+                  <div class="chart-bar{% if i == ca_evolution_active_i %} active{% endif %}" style="--height: {{ ca_evolution_pct[i] }}%"></div>
+                  <span class="chart-label">{{ ca_evolution_labels[i] }}</span>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-lg-4">
+      <div class="card h-100">
+        <div class="card-header">
+          <h5 class="card-title">Alertes &amp; indicateurs</h5>
+          {% if alerts_count > 0 %}
+            <span class="badge bg-danger">{{ alerts_count }}</span>
+          {% else %}
+            <span class="badge bg-success">OK</span>
+          {% endif %}
+        </div>
+        <div class="card-body p-0">
+          <div class="alert-list">
+            <div class="alert-item alert-danger">
+              <div class="alert-icon"><i class="bi bi-exclamation-circle"></i></div>
+              <div class="alert-content">
+                <span class="alert-title">Stock critique / alerte</span>
+                <span class="alert-text">{{ alertes_stock }} produit{% if alertes_stock > 1 %}s{% endif %} sous le seuil d'alerte</span>
+              </div>
+            </div>
+            <div class="alert-item alert-warning">
+              <div class="alert-icon"><i class="bi bi-clock"></i></div>
+              <div class="alert-content">
+                <span class="alert-title">Péremption proche</span>
+                <span class="alert-text">{{ alertes_peremption }} lot{% if alertes_peremption > 1 %}s{% endif %} à péremption dans les 90 jours</span>
+              </div>
+            </div>
+            <div class="alert-item alert-info">
+              <div class="alert-icon"><i class="bi bi-receipt"></i></div>
+              <div class="alert-content">
+                <span class="alert-title">Créances clients</span>
+                <span class="alert-text">{{ impayes_count }} facture{% if impayes_count > 1 %}s{% endif %} — {{ montant_fcfa(impayes_montant) }} restants</span>
+              </div>
+            </div>
+            <div class="alert-item alert-success">
+              <div class="alert-icon"><i class="bi bi-pie-chart"></i></div>
+              <div class="alert-content">
+                <span class="alert-title">Dépenses du mois</span>
+                <span class="alert-text">Fixes {{ "%.0f"|format(depenses_fixes) }} F — Variables {{ "%.0f"|format(depenses_variables) }} F</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Factures récentes + Top produits #}
+  <div class="row g-4 mb-4">
+    <div class="col-12 col-xl-8">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="card-title">Factures récentes</h5>
+          <a href="{{ url_for('ventes.factures') }}" class="btn btn-sm btn-outline-primary">Voir tout</a>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>N° facture</th>
+                  <th>Client</th>
+                  <th>Date</th>
+                  <th>Montant</th>
+                  <th>Statut</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for f in factures_recentes %}
+                  <tr>
+                    <td><strong>{{ f.numero }}</strong></td>
+                    <td>{{ f.client.raison_sociale if f.client else '—' }}</td>
+                    <td>{{ f.date_emission.strftime('%d/%m/%Y') if f.date_emission else '' }}</td>
+                    <td>{{ montant_fcfa(f.total_ttc) }}</td>
+                    <td>{{ statut_facture_badge(f.statut) }}</td>
+                    <td>
+                      <a href="{{ url_for('ventes.facture_detail', id=f.id) }}" class="btn btn-sm btn-icon" title="Voir"><i class="bi bi-eye"></i></a>
+                      <a href="{{ url_for('ventes.facture_imprimer', id=f.id) }}"
+                         class="btn btn-sm btn-icon js-facture-print"
+                         data-print-url="{{ url_for('ventes.facture_imprimer', id=f.id) }}"
+                         data-has-bl="{{ '1' if bl_par_facture.get(f.id) else '0' }}"
+                         {% if bl_par_facture.get(f.id) %}data-bl-num="{{ bl_par_facture[f.id].numero }}"{% endif %}
+                         title="Imprimer"><i class="bi bi-printer"></i></a>
+                    </td>
+                  </tr>
+                {% else %}
+                  <tr>
+                    <td colspan="6" class="text-center text-muted py-4">Aucune facture pour le moment</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-xl-4">
+      <div class="card h-100">
+        <div class="card-header">
+          <h5 class="card-title">Top 5 produits vendus ({{ today.year }})</h5>
+        </div>
+        <div class="card-body">
+          <div class="product-list">
+            {% for p in top_produits %}
+              <div class="product-item">
+                <div class="product-rank">{{ loop.index }}</div>
+                <div class="product-info">
+                  <span class="product-name">{{ p.designation }}</span>
+                  <span class="product-sales">{{ p.qty|int }} unités · {{ p.reference }}</span>
+                </div>
+                <div class="product-amount">{{ montant_fcfa(p.montant_ht) }}</div>
+              </div>
+            {% else %}
+              <p class="text-muted small mb-0">Pas encore de ventes enregistrées cette année.</p>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Actions rapides + répartition dépenses + commande fournisseur en attente #}
+  <div class="row g-4">
+    <div class="col-12 col-md-6 col-xl-4">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="card-title">Actions rapides</h5>
+        </div>
+        <div class="card-body">
+          <div class="quick-actions">
+            <a href="{{ url_for('ventes.nouveau_facture') }}" class="quick-action-btn">
+              <i class="bi bi-plus-circle"></i><span>Nouvelle facture</span>
+            </a>
+            <a href="{{ url_for('stock.nouveau_mouvement', type='entree') }}" class="quick-action-btn">
+              <i class="bi bi-box-arrow-in-down"></i><span>Entrée stock</span>
+            </a>
+            <a href="{{ url_for('clients.index') }}" class="quick-action-btn">
+              <i class="bi bi-person-plus"></i><span>Clients</span>
+            </a>
+            <a href="{{ url_for('ventes.nouveau_proforma') }}" class="quick-action-btn">
+              <i class="bi bi-file-earmark-plus"></i><span>Nouveau devis</span>
+            </a>
+            <a href="{{ url_for('tresorerie.index') }}" class="quick-action-btn">
+              <i class="bi bi-cash"></i><span>Trésorerie</span>
+            </a>
+            <a href="{{ url_for('rapports.index') }}" class="quick-action-btn">
+              <i class="bi bi-printer"></i><span>Rapports</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-md-6 col-xl-4">
+      <div class="card h-100">
+        <div class="card-header">
+          <h5 class="card-title">Répartition dépenses (mois)</h5>
+        </div>
+        <div class="card-body">
+          <div class="donut-chart">
+            <div class="donut-ring"></div>
+            <div class="donut-center">
+              {% if depenses_total >= 1000000 %}
+                <span class="donut-value">{{ "%.1f"|format(depenses_total / 1000000) }}M</span>
+              {% elif depenses_total >= 1000 %}
+                <span class="donut-value">{{ "%.0f"|format(depenses_total / 1000) }}K</span>
+              {% else %}
+                <span class="donut-value">{{ "%.0f"|format(depenses_total) }}</span>
+              {% endif %}
+              <span class="donut-label fcfa-unit">FCFA</span>
+            </div>
+          </div>
+          <div class="chart-legend">
+            <div class="legend-item">
+              <span class="legend-color" style="background: #0d6efd;"></span>
+              <span class="legend-text">Dépenses fixes ({{ "%.0f"|format(pct_depenses_fixe) }}%)</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-color" style="background: #198754;"></span>
+              <span class="legend-text">Dépenses variables ({{ "%.0f"|format(pct_depenses_variable) }}%)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-xl-4">
+      <div class="card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <h5 class="card-title mb-0">Commandes fournisseur en attente</h5>
+          <a href="{{ url_for('achats.index') }}" class="btn btn-sm btn-outline-primary">Toutes les commandes</a>
+        </div>
+        <div class="card-body">
+          {% if commandes_fournisseur_attente %}
+            <div class="dashboard-commandes-attente d-flex flex-column gap-2" style="max-height: 28rem; overflow-y: auto;">
+              {% for item in commandes_fournisseur_attente %}
+                {% set c = item.commande %}
+                <div class="border rounded-3 p-3 bg-body-secondary bg-opacity-25 shadow-sm">
+                  <div class="hr-stat-item align-items-start mb-0">
+                    <div class="hr-stat-icon bg-primary flex-shrink-0">
+                      <i class="bi bi-cart-check"></i>
+                    </div>
+                    <div class="hr-stat-info min-w-0">
+                      <span class="hr-stat-value text-start text-break" style="font-size: 1.02rem;">{{ c.numero }}</span>
+                      <span class="hr-stat-label text-start text-break">{{ c.fournisseur.raison_sociale if c.fournisseur else '—' }}</span>
+                    </div>
+                  </div>
+                  <div class="small mt-2 pt-2 border-top border-light-subtle">
+                    <span class="text-muted">Livraison prévue :</span>
+                    {% if c.date_livraison_prevue %}
+                      <strong class="ms-1">{{ c.date_livraison_prevue.strftime('%d/%m/%Y') }}</strong>
+                    {% else %}
+                      <span class="text-muted ms-1">Non renseignée</span>
+                    {% endif %}
+                  </div>
+                  {% if item.lignes %}
+                    <ul class="list-unstyled small mb-0 mt-2 lh-lg ps-1">
+                      {% for ligne in item.lignes %}
+                        <li><span class="fw-medium">{{ ligne.quantite }}</span> {{ ligne.nom }}(s)</li>
+                      {% endfor %}
+                    </ul>
+                  {% else %}
+                    <p class="text-muted small mb-0 mt-2">Aucune ligne produit.</p>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p class="text-muted small mb-2">Aucune commande fournisseur en attente de réception.</p>
+            <a href="{{ url_for('achats.approvisionnement') }}" class="btn btn-primary btn-sm">
+              <i class="bi bi-cart-plus me-1"></i> Nouvelle commande
+            </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% include 'ventes/_modal_imprimer_facture.html' %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='public/js/facture-print.js') }}"></script>
+{% endblock %}
+
+{# Pas de Chart.js : le graphique utilise les barres CSS comme public/index.html + main.js #}

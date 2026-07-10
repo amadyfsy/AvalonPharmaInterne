@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+
+{% block title %}Paies — Avalon Pharma{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h1 class="h4 mb-0">Paies</h1>
+      <p class="small text-muted mb-0">Le paiement crée automatiquement une dépense dans la catégorie <strong>Salaires</strong>.</p>
+    </div>
+    <a href="{{ url_for('rh.generer_paie') }}" class="btn btn-primary btn-sm">
+      <i class="bi bi-plus-lg me-1"></i> Générer paie
+    </a>
+  </div>
+
+  <div class="card shadow-sm border-0 mb-3">
+    <div class="card-body py-3">
+      <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label small mb-1">Recherche</label>
+          <input type="search" name="q" class="form-control form-control-sm" value="{{ q }}" placeholder="Nom, prénom, matricule…">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small mb-1">Employé</label>
+          <select name="employe_id" class="form-select form-select-sm">
+            <option value="">Tous</option>
+            {% for e in employes %}
+              <option value="{{ e.id }}" {% if employe_filtre == e.id %}selected{% endif %}>
+                {{ e.matricule }} — {{ e.nom }} {{ e.prenom }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small mb-1">Statut</label>
+          <select name="statut" class="form-select form-select-sm">
+            <option value="">Tous</option>
+            <option value="genere" {% if statut_filtre == 'genere' %}selected{% endif %}>À régler</option>
+            <option value="paye" {% if statut_filtre == 'paye' %}selected{% endif %}>Payé</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small mb-1">Mois</label>
+          <select name="mois" class="form-select form-select-sm">
+            <option value="">Tous</option>
+            {% set mois_labels = [
+              (1, 'Janvier'), (2, 'Février'), (3, 'Mars'), (4, 'Avril'),
+              (5, 'Mai'), (6, 'Juin'), (7, 'Juillet'), (8, 'Août'),
+              (9, 'Septembre'), (10, 'Octobre'), (11, 'Novembre'), (12, 'Décembre')
+            ] %}
+            {% for val, label in mois_labels %}
+              <option value="{{ val }}" {% if mois_filtre == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small mb-1">Année</label>
+          <select name="annee" class="form-select form-select-sm">
+            <option value="">Toutes</option>
+            {% for a in annees_disponibles %}
+              <option value="{{ a }}" {% if annee_filtre == a %}selected{% endif %}>{{ a }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-1 d-flex gap-2">
+          <button type="submit" class="btn btn-primary btn-sm w-100" title="Filtrer"><i class="bi bi-funnel"></i></button>
+          <a href="{{ url_for('rh.paies') }}" class="btn btn-outline-secondary btn-sm" title="Réinitialiser"><i class="bi bi-x-lg"></i></a>
+        </div>
+      </form>
+      <p class="small text-muted mb-0 mt-2">
+        {% if pagination.total %}
+          <strong>{{ pagination.total }}</strong> bulletin(s)
+          {% if q %} pour « {{ q }} »{% endif %}
+          {% if pagination.pages > 1 %} · page {{ pagination.page }}/{{ pagination.pages }}{% endif %}
+        {% else %}
+          Aucun bulletin ne correspond aux critères.
+        {% endif %}
+      </p>
+    </div>
+  </div>
+
+  <div class="card shadow-sm border-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Employé</th>
+            <th>Période</th>
+            <th class="text-end">Brut</th>
+            <th class="text-end">Charges pat.</th>
+            <th class="text-end">Net à payer</th>
+            <th>Statut</th>
+            <th>Dépense</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in paies %}
+            <tr>
+              <td>{{ p.employe.nom }} {{ p.employe.prenom }}</td>
+              <td class="text-nowrap">{{ '%02d'|format(p.mois) }}/{{ p.annee }}</td>
+              <td class="text-end">{{ "{:,.0f}".format(p.brut).replace(",", "\u202f") }}</td>
+              <td class="text-end text-muted small">{{ "{:,.0f}".format(p.charges_patronales_calc).replace(",", "\u202f") }}</td>
+              <td class="text-end fw-semibold">{{ "{:,.0f}".format(p.net_a_payer|float).replace(",", "\u202f") }} FCFA</td>
+              <td>
+                {% if p.statut == 'paye' %}
+                  <span class="badge bg-success">Payé</span>
+                  {% if p.date_paiement %}
+                    <div class="small text-muted">{{ p.date_paiement.strftime('%d/%m/%Y') }}</div>
+                  {% endif %}
+                {% else %}
+                  <span class="badge bg-warning text-dark">Généré</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if p.depense %}
+                  <a href="{{ url_for('depenses.index', q=p.depense.reference) }}" class="small text-decoration-none">
+                    <code>{{ p.depense.reference }}</code>
+                  </a>
+                {% else %}
+                  <span class="text-muted small">—</span>
+                {% endif %}
+              </td>
+                <td class="text-end text-nowrap">
+                  <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('rh.paie_detail', id=p.id) }}" title="Voir le bulletin">
+                    <i class="bi bi-eye"></i>
+                  </a>
+                  <a class="btn btn-sm btn-outline-primary" href="{{ url_for('rh.paie_pdf', id=p.id) }}" title="PDF">
+                    <i class="bi bi-printer"></i>
+                  </a>
+                {% if peut_payer and p.statut != 'paye' %}
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-success btn-payer-paie"
+                    title="Enregistrer le paiement"
+                    data-bs-toggle="modal"
+                    data-bs-target="#modalPayerPaie"
+                    data-id="{{ p.id }}"
+                    data-employe="{{ p.employe.nom }} {{ p.employe.prenom }}"
+                    data-periode="{{ '%02d'|format(p.mois) }}/{{ p.annee }}"
+                    data-montant="{{ "{:,.0f}".format(p.net_a_payer|float).replace(",", " ") }}"
+                  >
+                    <i class="bi bi-cash-coin"></i>
+                  </button>
+                {% endif %}
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="8" class="text-center text-muted py-4">Aucune paie</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if pagination.pages > 1 %}
+      <div class="card-footer bg-transparent border-0 d-flex flex-wrap justify-content-between align-items-center gap-2 py-3">
+        <span class="small text-muted">
+          Affichage {{ ((pagination.page - 1) * pagination.per_page) + 1 }}
+          – {{ [pagination.page * pagination.per_page, pagination.total]|min }}
+          sur {{ pagination.total }}
+        </span>
+        <ul class="pagination pagination-sm mb-0">
+          <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('rh.paies', page=pagination.prev_num, **filtres_url) if pagination.has_prev else '#' }}" aria-label="Page précédente">
+              <i class="bi bi-chevron-left"></i>
+            </a>
+          </li>
+          {% for pnum in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+            {% if pnum %}
+              <li class="page-item {% if pnum == pagination.page %}active{% endif %}">
+                <a class="page-link" href="{{ url_for('rh.paies', page=pnum, **filtres_url) }}">{{ pnum }}</a>
+              </li>
+            {% else %}
+              <li class="page-item disabled"><span class="page-link">…</span></li>
+            {% endif %}
+          {% endfor %}
+          <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('rh.paies', page=pagination.next_num, **filtres_url) if pagination.has_next else '#' }}" aria-label="Page suivante">
+              <i class="bi bi-chevron-right"></i>
+            </a>
+          </li>
+        </ul>
+      </div>
+    {% endif %}
+  </div>
+
+  {% if peut_payer %}
+  <div class="modal fade" id="modalPayerPaie" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form method="post" id="formPayerPaie" action="">
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-cash-coin me-2"></i>Enregistrer le paiement</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+          </div>
+          <div class="modal-body">
+            <p class="small text-muted mb-3" id="payerPaieResume"></p>
+            <div class="alert alert-info small py-2">
+              Une dépense sera créée dans la catégorie <strong>Salaires</strong> (en attente de validation comptable).
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="datePaiementPaie">Date de paiement</label>
+              <input type="date" class="form-control" name="date_paiement" id="datePaiementPaie" value="{{ today.strftime('%Y-%m-%d') }}" required>
+            </div>
+            <div class="mb-0">
+              <label class="form-label" for="modePaiementPaie">Mode de paiement</label>
+              <select class="form-select" name="mode_paiement" id="modePaiementPaie" required>
+                <option value="virement" selected>Virement</option>
+                <option value="cheque">Chèque</option>
+                <option value="espece">Espèces</option>
+                <option value="carte">Carte</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+            <button type="submit" class="btn btn-success">Confirmer le paiement</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    (function () {
+      const form = document.getElementById("formPayerPaie");
+      const resume = document.getElementById("payerPaieResume");
+      document.querySelectorAll(".btn-payer-paie").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          const id = btn.getAttribute("data-id");
+          if (form) form.action = "/rh/paies/" + id + "/payer";
+          if (resume) {
+            resume.textContent =
+              (btn.getAttribute("data-employe") || "") +
+              " — " +
+              (btn.getAttribute("data-periode") || "") +
+              " — " +
+              (btn.getAttribute("data-montant") || "") +
+              " FCFA";
+          }
+        });
+      });
+    })();
+  </script>
+{% endblock %}

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <title>Fiche de paie</title>
+    <style>
+      body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 12px; }
+      .header { display:flex; justify-content: space-between; margin-bottom: 12px; }
+      h1 { font-size: 18px; margin: 0 0 8px 0; }
+      table { width:100%; border-collapse: collapse; margin-top: 10px; }
+      th, td { border:1px solid #ddd; padding: 6px; vertical-align: top; }
+      th { background:#f5f5f5; }
+      .row { display:flex; gap: 12px; }
+      .box { flex:1; }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div>
+        <div style="font-weight:700;">{{ company_name }}</div>
+        <h1>Fiche de paie</h1>
+      </div>
+      <div style="text-align:right;">
+        <div>Date: {{ date_jour.strftime('%d/%m/%Y') if date_jour else '' }}</div>
+        <div>Période: {{ paie.mois }}/{{ paie.annee }}</div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="box">
+        <div style="font-weight:700; margin-bottom:4px;">Employé</div>
+        <div>{{ paie.employe.nom }} {{ paie.employe.prenom }}</div>
+        <div>Matricule: {{ paie.employe.matricule }}</div>
+      </div>
+      <div class="box">
+        <div style="font-weight:700; margin-bottom:4px;">Détails</div>
+        <div>Statut: {{ paie.statut }}</div>
+        <div>Mode paiement: {{ paie.mode_paiement or '' }}</div>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Libellé</th>
+          <th>Montant</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Salaire de base</td><td>{{ "%.2f"|format(paie.salaire_base) if paie.salaire_base is not none else '' }}</td></tr>
+        <tr><td>Primes</td><td>{{ "%.2f"|format(paie.primes) if paie.primes is not none else '' }}</td></tr>
+        <tr><td>Heures supplémentaires</td><td>{{ "%.2f"|format(paie.heures_sup) if paie.heures_sup is not none else '' }}</td></tr>
+        <tr><td>Cotisations sociales</td><td>{{ "%.2f"|format(paie.cotisations_sociales) if paie.cotisations_sociales is not none else '' }}</td></tr>
+        <tr><td>IRPP</td><td>{{ "%.2f"|format(paie.irpp) if paie.irpp is not none else '' }}</td></tr>
+        <tr><td>Deductions</td><td>{{ "%.2f"|format(paie.deductions) if paie.deductions is not none else '' }}</td></tr>
+        <tr><td style="font-weight:700;">Net à payer</td><td style="font-weight:700;">{{ "%.2f"|format(paie.net_a_payer) if paie.net_a_payer is not none else '' }}</td></tr>
+      </tbody>
+    </table>
+  </body>
+</html>
+

@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block title %}Rapports - Medical ERP{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h1 class="h4 mb-0">Rapports pertinents</h1>
+      <div class="small text-muted">Vue synthétique des ventes, du stock, de la RH et de la trésorerie.</div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-3 border-0">
+    <div class="card-body">
+      <form method="get" class="row g-2 align-items-end" id="rapportFiltersForm">
+        <div class="col-12 col-md-4">
+          <label class="form-label mb-1">Mois</label>
+          <select class="form-select" name="mois">
+            {% set mois_options = [
+              (0, 'Tous les mois'),
+              (1, 'Janvier'), (2, 'Février'), (3, 'Mars'), (4, 'Avril'),
+              (5, 'Mai'), (6, 'Juin'), (7, 'Juillet'), (8, 'Août'),
+              (9, 'Septembre'), (10, 'Octobre'), (11, 'Novembre'), (12, 'Décembre')
+            ] %}
+            {% for m, label in mois_options %}
+              <option value="{{ m }}" {% if m == selected_mois %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-md-4">
+          <label class="form-label mb-1">Année</label>
+          <select class="form-select" name="annee">
+            {% for y in annees_disponibles %}
+              <option value="{{ y }}" {% if y == selected_annee %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-md-4 d-flex gap-2">
+          <button class="btn btn-primary flex-grow-1" type="submit">
+            <i class="bi bi-funnel me-1"></i> Actualiser
+          </button>
+          <a href="{{ url_for('rapports.index') }}" class="btn btn-light border">Réinitialiser</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <div class="text-muted small">CA du mois ({{ mois_label }})</div>
+          <div class="h5 mb-0">{{ "{:,.0f}".format(ca_mois).replace(",", " ") }} FCFA</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <div class="text-muted small">Reste à encaisser</div>
+          <div class="h5 mb-0">{{ "{:,.0f}".format(reste_a_encaisser).replace(",", " ") }} FCFA</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <div class="text-muted small">Factures impayées</div>
+          <div class="h5 mb-0">{{ factures_impayees }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <div class="text-muted small">Produits en stock critique</div>
+          <div class="h5 mb-0">{{ produits_stock_critique }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-12 col-md-6">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <div class="text-muted small">Congés en attente</div>
+          <div class="h5 mb-0">{{ conges_en_attente }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <div class="text-muted small">Employés actifs</div>
+          <div class="h5 mb-0">{{ employes_actifs }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-xl-6">
+      <div class="card shadow-sm h-100">
+        <div class="card-header"><strong>Dernières factures</strong></div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-sm mb-0 align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Numéro</th>
+                  <th>Date</th>
+                  <th class="text-end">Total TTC</th>
+                  <th>Statut</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for f in top_ventes %}
+                  <tr>
+                    <td>{{ f.numero }}</td>
+                    <td>{{ f.date_emission.strftime('%d/%m/%Y') if f.date_emission else '—' }}</td>
+                    <td class="text-end">{{ "{:,.0f}".format(f.total_ttc or 0).replace(",", " ") }}</td>
+                    <td><span class="badge text-bg-light border">{{ f.statut }}</span></td>
+                  </tr>
+                {% else %}
+                  <tr><td colspan="4" class="text-center text-muted py-3">Aucune facture.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-xl-6">
+      <div class="card shadow-sm h-100">
+        <div class="card-header"><strong>Stocks critiques</strong></div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-sm mb-0 align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Produit</th>
+                  <th class="text-end">Disponible</th>
+                  <th class="text-end">Seuil</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for s in stocks_critiques %}
+                  <tr>
+                    <td>{{ s.produit_parent.designation if s.produit_parent else '—' }}</td>
+                    <td class="text-end">{{ s.quantite_disponible or 0 }}</td>
+                    <td class="text-end">{{ s.produit_parent.seuil_alerte_stock if s.produit_parent else 0 }}</td>
+                  </tr>
+                {% else %}
+                  <tr><td colspan="3" class="text-center text-muted py-3">Aucun stock critique.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-xl-6">
+      <div class="card shadow-sm h-100">
+        <div class="card-header"><strong>Mouvements de stock récents</strong></div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-sm mb-0 align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Date</th>
+                  <th>Produit</th>
+                  <th>Type</th>
+                  <th class="text-end">Qté</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for m in mouvements_recents %}
+                  <tr>
+                    <td>{{ m.created_at.strftime('%d/%m/%Y') if m.created_at else '—' }}</td>
+                    <td>{{ m.produit.designation if m.produit else '—' }}</td>
+                    <td class="text-capitalize">{{ m.type_mouvement }}</td>
+                    <td class="text-end">{{ m.quantite }}</td>
+                  </tr>
+                {% else %}
+                  <tr><td colspan="4" class="text-center text-muted py-3">Aucun mouvement.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-xl-6">
+      <div class="card shadow-sm h-100">
+        <div class="card-header"><strong>Dernières opérations de trésorerie</strong></div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-sm mb-0 align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Date</th>
+                  <th>Libellé</th>
+                  <th>Type</th>
+                  <th class="text-end">Montant</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for op in tresorerie_recente %}
+                  <tr>
+                    <td>{{ op.date_operation.strftime('%d/%m/%Y') if op.date_operation else '—' }}</td>
+                    <td>{{ op.libelle }}</td>
+                    <td class="text-capitalize">{{ op.type_operation }}</td>
+                    <td class="text-end">{{ "{:,.0f}".format(op.montant or 0).replace(",", " ") }}</td>
+                  </tr>
+                {% else %}
+                  <tr><td colspan="4" class="text-center text-muted py-3">Aucune opération.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script>
+    (function () {
+      const form = document.getElementById('rapportFiltersForm');
+      if (!form) return;
+      const selects = form.querySelectorAll('select[name="mois"], select[name="annee"]');
+      selects.forEach((el) => {
+        el.addEventListener('change', () => form.submit());
+      });
+    })();
+  </script>
+{% endblock %}

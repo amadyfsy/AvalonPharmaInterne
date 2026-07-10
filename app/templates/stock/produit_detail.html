@@ -1,0 +1,385 @@
+{% extends "base.html" %}
+
+{% block title %}{{ produit.reference }} — {{ produit.designation }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .produit-photo-main {
+    max-height: 280px;
+    object-fit: contain;
+    width: 100%;
+    background: #f8f9fa;
+    border-radius: 0.5rem;
+  }
+  .produit-galerie-thumb {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 0.375rem;
+    border: 1px solid var(--bs-border-color);
+  }
+  .produit-galerie-item { position: relative; }
+  .produit-galerie-item .btn-suppr-photo {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    padding: 0.15rem 0.35rem;
+    line-height: 1;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+  {% set formes_labels = {
+    'comprime': 'Comprimé',
+    'sirop': 'Sirop',
+    'injectable': 'Injectable',
+    'dispositif': 'Dispositif',
+    'autre': 'Autre'
+  } %}
+  {% set statuts_cmd = {
+    'brouillon': 'Brouillon',
+    'envoyee': 'Envoyée',
+    'partiellement_recue': 'Part. reçue',
+    'recue': 'Reçue',
+    'annulee': 'Annulée'
+  } %}
+
+  <div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-1 small">
+          <li class="breadcrumb-item"><a href="{{ url_for('stock.index') }}">Produits</a></li>
+          <li class="breadcrumb-item active" aria-current="page">{{ produit.reference }}</li>
+        </ol>
+      </nav>
+      <h1 class="page-title h4 mb-0">{{ produit.designation }}</h1>
+      <p class="text-muted small mb-0">Réf. <strong>{{ produit.reference }}</strong></p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{{ url_for('stock.modifier_produit', id=produit.id) }}" class="btn btn-primary btn-sm">
+        <i class="bi bi-pencil-square me-1"></i> Modifier
+      </a>
+      <a href="{{ url_for('stock.index') }}" class="btn btn-outline-secondary btn-sm">Retour à la liste</a>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <div class="card shadow-sm h-100 border-primary border-opacity-25">
+        <div class="card-body">
+          <h2 class="h6 text-muted mb-2">Stock par lot</h2>
+          <p class="display-6 mb-1">{{ stock_dispo_total or 0 }}</p>
+          <p class="small text-muted mb-2">Total disponible (somme des lots)</p>
+          {% if lots %}
+            <div class="small">
+              {% for lot in lots %}
+                <div class="d-flex justify-content-between align-items-center border rounded px-2 py-1 mb-1">
+                  <div>
+                    <div class="fw-semibold">{{ lot.numero_lot }}</div>
+                    <div class="text-muted">
+                      Péremption :
+                      {{ lot.date_peremption.strftime('%d/%m/%Y') if lot.date_peremption else '—' }}
+                    </div>
+                  </div>
+                  <span class="badge bg-primary-subtle text-primary-emphasis">{{ lot.quantite_disponible or 0 }}</span>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p class="small text-muted mb-2">Aucun lot enregistré.</p>
+          {% endif %}
+          {% if produit.seuil_alerte_stock %}
+            <p class="small mb-0 mt-2">
+              Seuil d’alerte : <strong>{{ produit.seuil_alerte_stock }}</strong>
+              {% if (stock_dispo_total or 0) <= produit.seuil_alerte_stock %}
+                <span class="badge bg-warning text-dark ms-1">Stock bas</span>
+              {% endif %}
+            </p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="col-md-8">
+      <div class="card shadow-sm h-100">
+        <div class="card-header">
+          <h2 class="h6 mb-0">Informations produit</h2>
+        </div>
+        <div class="card-body">
+          <div class="row small g-2">
+            <div class="col-sm-6 col-lg-4">
+              <div class="text-muted">Catégorie</div>
+              <div>{{ produit.categorie.nom if produit.categorie else '—' }}</div>
+            </div>
+            <div class="col-sm-6 col-lg-4">
+              <div class="text-muted">Forme</div>
+              <div>{{ formes_labels.get(produit.forme, produit.forme) }}</div>
+            </div>
+            <div class="col-sm-6 col-lg-4">
+              <div class="text-muted">Unité</div>
+              <div>{{ produit.unite }}</div>
+            </div>
+            <div class="col-sm-6 col-lg-4">
+              <div class="text-muted">Prix achat HT</div>
+              <div>{{ produit.prix_achat_ht }} FCFA</div>
+            </div>
+            <div class="col-sm-6 col-lg-4">
+              <div class="text-muted">Prix vente HT</div>
+              <div>{{ produit.prix_vente_ht }} FCFA</div>
+            </div>
+            <div class="col-sm-6 col-lg-4">
+              <div class="text-muted">TVA</div>
+              <div>
+                {% if (produit.tva | float) == 0 %}
+                  <span class="badge bg-secondary">Sans TVA (0 %)</span>
+                {% else %}
+                  {{ produit.tva }} %
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-sm-6 col-lg-4">
+              <div class="text-muted">Prix vente TTC</div>
+              <div>{{ produit.prix_vente_ttc }} FCFA</div>
+            </div>
+            <div class="col-sm-6 col-lg-4">
+              <div class="text-muted">Statut</div>
+              <div>
+                {% if produit.est_actif %}
+                  <span class="badge bg-success">Actif</span>
+                {% else %}
+                  <span class="badge bg-secondary">Inactif</span>
+                {% endif %}
+              </div>
+            </div>
+            {% if produit.description %}
+              <div class="col-12 mt-2">
+                <div class="text-muted">Description</div>
+                <div class="border rounded p-2 bg-light mt-1">{{ produit.description }}</div>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mb-4">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <div>
+        <h2 class="h6 mb-0"><i class="bi bi-images me-2"></i>Photos catalogue</h2>
+        <p class="small text-muted mb-0">Photo principale et galerie pour le futur site public (max. {{ max_galerie_photos }} images secondaires).</p>
+      </div>
+      {% if peut_gerer_photos %}
+        <a href="{{ url_for('stock.api_produit_json', id=produit.id) }}" class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener" title="JSON pour synchronisation site public">
+          <i class="bi bi-braces me-1"></i> API JSON
+        </a>
+      {% endif %}
+    </div>
+    <div class="card-body">
+      <div class="row g-4">
+        <div class="col-md-5 col-lg-4">
+          <h3 class="h6 text-muted mb-2">Photo principale</h3>
+          {% if produit.photo_principale %}
+            <img src="{{ url_for('stock.produit_photo_fichier', stored_name=produit.photo_principale) }}"
+                 alt="Photo principale — {{ produit.designation }}"
+                 class="produit-photo-main mb-2 border">
+          {% else %}
+            <div class="produit-photo-main d-flex align-items-center justify-content-center border text-muted mb-2" style="min-height:180px;">
+              <div class="text-center small p-3">
+                <i class="bi bi-image display-6 d-block mb-2 opacity-50"></i>
+                Aucune photo principale
+              </div>
+            </div>
+          {% endif %}
+          {% if peut_gerer_photos %}
+            <form method="post" action="{{ url_for('stock.produit_photo_principale', id=produit.id) }}" enctype="multipart/form-data" class="mb-2">
+              <input type="file" class="form-control form-control-sm mb-2" name="photo_principale" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+              <button type="submit" class="btn btn-sm btn-primary w-100">
+                <i class="bi bi-upload me-1"></i> {% if produit.photo_principale %}Remplacer{% else %}Ajouter{% endif %}
+              </button>
+            </form>
+            {% if produit.photo_principale %}
+              <form method="post" action="{{ url_for('stock.produit_photo_principale', id=produit.id) }}" onsubmit="return confirm('Supprimer la photo principale ?');">
+                <input type="hidden" name="supprimer_photo_principale" value="1">
+                <button type="submit" class="btn btn-sm btn-outline-danger w-100">Supprimer</button>
+              </form>
+            {% endif %}
+          {% endif %}
+        </div>
+        <div class="col-md-7 col-lg-8">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+            <h3 class="h6 text-muted mb-0">Galerie ({{ photos_galerie|length }} / {{ max_galerie_photos }})</h3>
+          </div>
+          {% if photos_galerie %}
+            <div class="row g-2 mb-3">
+              {% for photo in photos_galerie %}
+                <div class="col-4 col-sm-3 col-md-2 produit-galerie-item">
+                  <a href="{{ url_for('stock.produit_photo_fichier', stored_name=photo.fichier) }}" target="_blank" rel="noopener">
+                    <img src="{{ url_for('stock.produit_photo_fichier', stored_name=photo.fichier) }}"
+                         alt="{{ photo.legende or produit.designation }}"
+                         class="produit-galerie-thumb">
+                  </a>
+                  {% if peut_gerer_photos %}
+                    <form method="post" action="{{ url_for('stock.produit_galerie_supprimer', id=produit.id, photo_id=photo.id) }}"
+                          onsubmit="return confirm('Retirer cette photo de la galerie ?');">
+                      <button type="submit" class="btn btn-danger btn-sm btn-suppr-photo" title="Supprimer">
+                        <i class="bi bi-x"></i>
+                      </button>
+                    </form>
+                  {% endif %}
+                  {% if photo.legende %}
+                    <div class="small text-muted text-truncate mt-1" title="{{ photo.legende }}">{{ photo.legende }}</div>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p class="text-muted small mb-3">Aucune photo secondaire pour le moment.</p>
+          {% endif %}
+          {% if peut_gerer_photos and photos_galerie|length < max_galerie_photos %}
+            <form method="post" action="{{ url_for('stock.produit_galerie_ajouter', id=produit.id) }}" enctype="multipart/form-data" class="border rounded p-3 bg-body-tertiary">
+              <label class="form-label small fw-medium">Ajouter à la galerie</label>
+              <input type="file" class="form-control form-control-sm mb-2" name="photos_galerie" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" multiple>
+              <input type="text" class="form-control form-control-sm mb-2" name="legende_galerie" maxlength="255" placeholder="Légende commune (optionnel)">
+              <div class="form-text mb-2">JPEG, PNG ou WebP — plusieurs fichiers possibles.</div>
+              <button type="submit" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-plus-lg me-1"></i> Ajouter à la galerie
+              </button>
+            </form>
+          {% elif peut_gerer_photos %}
+            <p class="small text-warning mb-0">Galerie pleine ({{ max_galerie_photos }} photos max.). Supprimez une image pour en ajouter.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% set code_meta = (metier_code_effectif|default('') or '')|lower %}
+  {% set dm = produit.donnees_metier %}
+  {% if dm and code_meta %}
+    <div class="card shadow-sm mb-4 border-start border-4
+      {% if code_meta == 'medicaments' %}border-primary{% elif code_meta == 'dispositifs' %}border-success{% else %}border-warning{% endif %}">
+      <div class="card-header">
+        <h2 class="h6 mb-0">
+          <i class="bi bi-clipboard2-pulse me-2"></i>Fiche métier
+          <span class="badge bg-secondary ms-2">{{ produit.categorie.nom if produit.categorie else '' }}</span>
+        </h2>
+      </div>
+      <div class="card-body">
+        <div class="row small g-3">
+          {% if code_meta == 'medicaments' %}
+            <div class="col-sm-6 col-lg-4"><div class="text-muted">Spécialité</div><div>{{ dm.get('specialite') or '—' }}</div></div>
+            <div class="col-sm-6 col-lg-4"><div class="text-muted">Nom commercial &amp; DCI</div><div>{{ dm.get('nom_commercial_dci') or '—' }}</div></div>
+            <div class="col-sm-6 col-lg-4"><div class="text-muted">Indication thérapeutique</div><div>{{ dm.get('indication_therapeutique') or '—' }}</div></div>
+            <div class="col-sm-6 col-lg-4"><div class="text-muted">Code UCD / CIP</div><div>{{ dm.get('code_ucd_cip') or '—' }}</div></div>
+            <div class="col-12"><div class="text-muted">Mode d’administration</div><div>{{ dm.get('mode_administration') or '—' }}</div></div>
+          {% elif code_meta == 'dispositifs' %}
+            <div class="col-sm-6 col-lg-4"><div class="text-muted">Spécialité</div><div>{{ dm.get('specialite') or '—' }}</div></div>
+            <div class="col-sm-6 col-lg-4"><div class="text-muted">Type de dispositif</div><div>{{ dm.get('type_dispositif') or '—' }}</div></div>
+            <div class="col-sm-6 col-lg-4"><div class="text-muted">Référence (SKU)</div><div>{{ dm.get('reference_sku') or '—' }}</div></div>
+            <div class="col-sm-6 col-lg-4"><div class="text-muted">Taille / caractéristique</div><div>{{ dm.get('taille_caracteristique') or '—' }}</div></div>
+            <div class="col-12"><div class="text-muted">Conditionnement</div><div>{{ dm.get('conditionnement') or '—' }}</div></div>
+          {% elif code_meta == 'equipement' %}
+            <div class="col-sm-6 col-lg-4"><div class="text-muted">Spécialité</div><div>{{ dm.get('specialite') or '—' }}</div></div>
+            <div class="col-sm-6 col-lg-4"><div class="text-muted">Fonction principale</div><div>{{ dm.get('fonction_principale') or '—' }}</div></div>
+            <div class="col-sm-6 col-lg-4"><div class="text-muted">Garantie &amp; maintenance</div><div>{{ dm.get('garantie_maintenance') or '—' }}</div></div>
+            <div class="col-12"><div class="text-muted">Formation requise</div><div>{{ dm.get('formation_requise') or '—' }}</div></div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="card shadow-sm mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <h2 class="h6 mb-0"><i class="bi bi-layers me-2 text-info"></i>Lots &amp; dates</h2>
+      <a href="{{ url_for('stock.lots') }}" class="btn btn-sm btn-outline-secondary">Tous les lots</a>
+    </div>
+    <div class="card-body p-0">
+      {% if lots %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0 small">
+            <thead class="table-light">
+              <tr>
+                <th>N° lot</th>
+                <th>Date production</th>
+                <th>Date péremption</th>
+                <th>Fournisseur</th>
+                <th class="text-end">Stock lot</th>
+                <th class="text-end">Qté initiale</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for lot in lots %}
+                <tr>
+                  <td><strong>{{ lot.numero_lot }}</strong></td>
+                  <td>{{ lot.date_fabrication.strftime('%d/%m/%Y') if lot.date_fabrication else '—' }}</td>
+                  <td>{{ lot.date_peremption.strftime('%d/%m/%Y') if lot.date_peremption else '—' }}</td>
+                  <td>{{ lot.fournisseur.raison_sociale if lot.fournisseur else '—' }}</td>
+                  <td class="text-end fw-semibold">{{ lot.quantite_disponible or 0 }}</td>
+                  <td class="text-end">{{ lot.quantite_initiale }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="text-muted small mb-0 p-4">Aucun lot enregistré pour ce produit.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <h2 class="h6 mb-0">Historique des achats (commandes fournisseur)</h2>
+      <a href="{{ url_for('achats.index') }}" class="btn btn-sm btn-outline-primary">Toutes les commandes</a>
+    </div>
+    <div class="card-body p-0">
+      {% if lignes_achats %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Date commande</th>
+                <th>N° commande</th>
+                <th>Fournisseur</th>
+                <th class="text-end">Prix d’achat HT</th>
+                <th class="text-end">Quantité</th>
+                <th class="text-end">Qté reçue</th>
+                <th>Statut</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for ligne in lignes_achats %}
+                {% set cmd = ligne.commande %}
+                <tr>
+                  <td>{{ cmd.date_commande.strftime('%d/%m/%Y') if cmd and cmd.date_commande else '—' }}</td>
+                  <td>
+                    {% if cmd %}
+                      <a href="{{ url_for('achats.detail_commande', id=cmd.id) }}">{{ cmd.numero }}</a>
+                    {% else %}
+                      —
+                    {% endif %}
+                  </td>
+                  <td>{{ cmd.fournisseur.raison_sociale if cmd and cmd.fournisseur else '—' }}</td>
+                  <td class="text-end">{{ ligne.prix_achat_ht }} FCFA</td>
+                  <td class="text-end">{{ ligne.quantite_commandee }}</td>
+                  <td class="text-end">{{ ligne.quantite_recue or 0 }}</td>
+                  <td>
+                    {% if cmd %}
+                      <span class="badge bg-secondary">{{ statuts_cmd.get(cmd.statut, cmd.statut) }}</span>
+                    {% else %}
+                      —
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="text-muted small mb-0 p-4">Aucun achat enregistré pour ce produit (aucune ligne sur une commande fournisseur).</p>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

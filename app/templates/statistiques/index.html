@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+
+{% block title %}Statistiques — Avalon Pharma{% endblock %}
+
+{% block extra_css %}
+<link href="{{ url_for('static', filename='public/css/statistiques.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+  <div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+      <h1 class="page-title">Statistiques</h1>
+      <p class="page-subtitle mb-0">
+        Vue analytique — ventes, achats, stock et finances · <strong>{{ periode.label }}</strong>
+        <span class="text-muted">({{ periode.debut.strftime('%d/%m/%Y') }} → {{ periode.fin.strftime('%d/%m/%Y') }})</span>
+      </p>
+    </div>
+    <div class="d-flex flex-wrap align-items-end gap-2">
+      <form method="get" action="{{ url_for('statistiques.index') }}" id="statsFiltersForm" class="d-flex flex-wrap align-items-end gap-2">
+        <div>
+          <label class="form-label mb-0 small text-muted" for="filtreGranularite">Vue</label>
+          <select class="form-select form-select-sm" id="filtreGranularite" name="granularite" style="width:auto;min-width:110px;">
+            <option value="annee" {% if periode.granularite == 'annee' %}selected{% endif %}>Année</option>
+            <option value="trimestre" {% if periode.granularite == 'trimestre' %}selected{% endif %}>Trimestre</option>
+            <option value="mois" {% if periode.granularite == 'mois' %}selected{% endif %}>Mois</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label mb-0 small text-muted" for="filtreAnnee">Année</label>
+          <select class="form-select form-select-sm" id="filtreAnnee" name="annee" style="width:auto;min-width:100px;">
+            {% for a in annees %}
+              <option value="{{ a }}" {% if a == annee %}selected{% endif %}>{{ a }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div id="wrapTrimestre" class="{% if periode.granularite != 'trimestre' %}d-none{% endif %}">
+          <label class="form-label mb-0 small text-muted" for="filtreTrimestre">Trimestre</label>
+          <select class="form-select form-select-sm" id="filtreTrimestre" name="trimestre" style="width:auto;min-width:90px;">
+            {% for t in range(1, 5) %}
+              <option value="{{ t }}" {% if periode.trimestre == t %}selected{% endif %}>T{{ t }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div id="wrapMois" class="{% if periode.granularite != 'mois' %}d-none{% endif %}">
+          <label class="form-label mb-0 small text-muted" for="filtreMois">Mois</label>
+          <select class="form-select form-select-sm" id="filtreMois" name="mois" style="width:auto;min-width:120px;">
+            {% set mois_noms = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'] %}
+            {% for m in range(1, 13) %}
+              <option value="{{ m }}" {% if periode.mois == m %}selected{% endif %}>{{ mois_noms[m-1] }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <button type="submit" class="btn btn-sm btn-primary">Appliquer</button>
+      </form>
+      <div class="btn-group">
+        <a href="{{ url_for('statistiques.export_excel', **filtres_query) }}" class="btn btn-sm btn-outline-success" title="Export Excel">
+          <i class="bi bi-file-earmark-excel me-1"></i> Excel
+        </a>
+        <a href="{{ url_for('statistiques.export_pdf', **filtres_query) }}" class="btn btn-sm btn-outline-danger" title="Export PDF">
+          <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+        </a>
+      </div>
+    </div>
+  </div>
+
+  {# KPI principaux #}
+  <div class="row g-4 mb-4">
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="kpi-card kpi-primary">
+        <div class="kpi-icon"><i class="bi bi-graph-up"></i></div>
+        <div class="kpi-content">
+          <span class="kpi-label">CA TTC ({{ periode.label }})</span>
+          <span class="kpi-value"><span class="kpi-amount">{{ format_fcfa(kpi.ca_ttc) }}</span><span class="fcfa-unit">FCFA</span></span>
+          {% if kpi.ca_variation >= 0 %}
+            <span class="kpi-change positive"><i class="bi bi-arrow-up"></i> {{ '%.1f'|format(kpi.ca_variation) }} % {{ kpi.variation_label }}</span>
+          {% else %}
+            <span class="kpi-change negative"><i class="bi bi-arrow-down"></i> {{ '%.1f'|format(kpi.ca_variation|abs) }} % {{ kpi.variation_label }}</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="kpi-card kpi-success">
+        <div class="kpi-icon"><i class="bi bi-percent"></i></div>
+        <div class="kpi-content">
+          <span class="kpi-label">Marge brute estimée</span>
+          <span class="kpi-value"><span class="kpi-amount">{{ format_fcfa(kpi.marge_brute) }}</span><span class="fcfa-unit">FCFA</span></span>
+          <span class="kpi-badge">{{ '%.1f'|format(kpi.taux_marge) }} % du CA HT</span>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="kpi-card kpi-danger">
+        <div class="kpi-icon"><i class="bi bi-cash-stack"></i></div>
+        <div class="kpi-content">
+          <span class="kpi-label">Dépenses validées</span>
+          <span class="kpi-value"><span class="kpi-amount">{{ format_fcfa(kpi.depenses_ttc) }}</span><span class="fcfa-unit">FCFA</span></span>
+          <span class="kpi-badge">Achats : {{ format_fcfa(kpi.achats_ttc) }} FCFA</span>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="kpi-card kpi-warning">
+        <div class="kpi-icon"><i class="bi bi-hourglass-split"></i></div>
+        <div class="kpi-content">
+          <span class="kpi-label">Créances clients</span>
+          <span class="kpi-value"><span class="kpi-amount">{{ format_fcfa(kpi.creances_total) }}</span><span class="fcfa-unit">FCFA</span></span>
+          <span class="kpi-badge">Stock : {{ format_fcfa(kpi.valeur_stock) }} FCFA</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# KPI secondaires #}
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="stat-mini-card">
+        <span class="stat-mini-label">Bénéfice net estimé</span>
+        <strong class="stat-mini-value {% if kpi.benefice_net >= 0 %}text-success{% else %}text-danger{% endif %}">
+          {{ format_fcfa(kpi.benefice_net) }} FCFA
+        </strong>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-mini-card">
+        <span class="stat-mini-label">Factures émises</span>
+        <strong class="stat-mini-value">{{ kpi.nb_factures }}</strong>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-mini-card">
+        <span class="stat-mini-label">Commandes fournisseur</span>
+        <strong class="stat-mini-value">{{ kpi.nb_commandes }}</strong>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-mini-card">
+        <span class="stat-mini-label">Alertes stock / péremption</span>
+        <strong class="stat-mini-value text-danger">
+          {{ alertes.sous_seuil }} / {{ alertes.peremption_90 }}
+        </strong>
+        <span class="stat-mini-hint">{{ alertes.peremption_30 }} lot(s) &lt; 30 j</span>
+      </div>
+    </div>
+  </div>
+
+  {# Graphiques principaux #}
+  <div class="row g-4 mb-4">
+    <div class="col-12 col-xl-8">
+      <div class="card shadow-sm stat-chart-card h-100">
+        <div class="card-header bg-white border-0 pt-3 pb-0">
+          <h2 class="h6 mb-1">Évolution — {{ periode.label }}</h2>
+          <p class="small text-muted mb-0">CA, achats fournisseurs, dépenses et marge brute</p>
+        </div>
+        <div class="card-body">
+          <div class="stat-chart-wrap">
+            <canvas id="chartEvolution" aria-label="Évolution mensuelle"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-xl-4">
+      <div class="card shadow-sm stat-chart-card h-100">
+        <div class="card-header bg-white border-0 pt-3 pb-0">
+          <h2 class="h6 mb-1">CA par type de client</h2>
+          <p class="small text-muted mb-0">Répartition hôpitaux, pharmacies, grossistes…</p>
+        </div>
+        <div class="card-body d-flex align-items-center justify-content-center">
+          <div class="stat-chart-wrap stat-chart-donut">
+            <canvas id="chartCaTypeClient" aria-label="CA par type client"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4 mb-4">
+    <div class="col-12 col-lg-6">
+      <div class="card shadow-sm stat-chart-card h-100">
+        <div class="card-header bg-white border-0 pt-3 pb-0">
+          <h2 class="h6 mb-1">Top produits vendus</h2>
+          <p class="small text-muted mb-0">Quantités sur {{ periode.label }}</p>
+        </div>
+        <div class="card-body">
+          <div class="stat-chart-wrap stat-chart-bar-h">
+            <canvas id="chartTopProduits" aria-label="Top produits"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-6">
+      <div class="card shadow-sm stat-chart-card h-100">
+        <div class="card-header bg-white border-0 pt-3 pb-0">
+          <h2 class="h6 mb-1">Dépenses par catégorie</h2>
+          <p class="small text-muted mb-0">Top catégories validées</p>
+        </div>
+        <div class="card-body">
+          <div class="stat-chart-wrap stat-chart-donut">
+            <canvas id="chartDepenses" aria-label="Dépenses par catégorie"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4 mb-4">
+    <div class="col-12 col-lg-5">
+      <div class="card shadow-sm stat-chart-card h-100">
+        <div class="card-header bg-white border-0 pt-3 pb-0">
+          <h2 class="h6 mb-1">Créances par ancienneté</h2>
+          <p class="small text-muted mb-0">Factures impayées — montant et nombre</p>
+        </div>
+        <div class="card-body">
+          <div class="stat-chart-wrap">
+            <canvas id="chartCreances" aria-label="Créances par ancienneté"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-7">
+      <div class="card shadow-sm h-100">
+        <div class="card-header bg-white border-0 pt-3 pb-0">
+          <h2 class="h6 mb-1">Top clients ({{ periode.label }})</h2>
+          <p class="small text-muted mb-0">Par chiffre d'affaires TTC</p>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Client</th>
+                  <th>Type</th>
+                  <th class="text-end">Factures</th>
+                  <th class="text-end">CA TTC</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for c in top_clients %}
+                  <tr>
+                    <td>{{ c.nom }}</td>
+                    <td><span class="badge bg-light text-dark">{{ c.type }}</span></td>
+                    <td class="text-end">{{ c.nb_factures }}</td>
+                    <td class="text-end fw-medium">{{ format_fcfa(c.montant) }} FCFA</td>
+                  </tr>
+                {% else %}
+                  <tr>
+                    <td colspan="4" class="text-center text-muted py-4">Aucune vente sur cette période.</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-12 col-md-6">
+      <div class="card shadow-sm stat-chart-card">
+        <div class="card-header bg-white border-0 pt-3 pb-0">
+          <h2 class="h6 mb-1">Commandes fournisseur ({{ periode.label }})</h2>
+          <p class="small text-muted mb-0">Répartition par statut</p>
+        </div>
+        <div class="card-body">
+          <div class="stat-chart-wrap stat-chart-sm">
+            <canvas id="chartCommandes" aria-label="Commandes par statut"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-md-6">
+      <div class="card shadow-sm border-0 bg-body-tertiary">
+        <div class="card-body">
+          <h2 class="h6 mb-3"><i class="bi bi-lightbulb me-2 text-warning"></i>Lecture rapide</h2>
+          <ul class="small mb-0 ps-3 stat-insights">
+            <li>
+              <strong>Marge brute</strong> = CA HT − coût d'achat des produits vendus (estimation catalogue).
+            </li>
+            <li>
+              <strong>Bénéfice net</strong> = CA TTC − dépenses validées (hors coût marchandises déjà dans la marge).
+            </li>
+            <li>
+              <strong>Valeur stock</strong> = quantités disponibles × prix d'achat HT.
+            </li>
+            <li>
+              Surveillez les créances <strong>90+ jours</strong> et les lots à péremption &lt; 30 jours.
+            </li>
+          </ul>
+          <div class="d-flex flex-wrap gap-2 mt-3">
+            <a href="{{ url_for('ventes.factures') }}" class="btn btn-sm btn-outline-primary">Factures</a>
+            <a href="{{ url_for('achats.index') }}" class="btn btn-sm btn-outline-primary">Commandes</a>
+            <a href="{{ url_for('depenses.index') }}" class="btn btn-sm btn-outline-primary">Dépenses</a>
+            <a href="{{ url_for('stock.index') }}" class="btn btn-sm btn-outline-primary">Stock</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    window.STATISTIQUES_DATA = {{ chart_data | tojson }};
+    window.STATISTIQUES_PERIODE = {{ periode.label | tojson }};
+  </script>
+  <script src="{{ url_for('static', filename='public/js/statistiques.js') }}"></script>
+  <script>
+    (function () {
+      const g = document.getElementById('filtreGranularite');
+      const wrapT = document.getElementById('wrapTrimestre');
+      const wrapM = document.getElementById('wrapMois');
+      if (!g) return;
+      function sync() {
+        const v = g.value;
+        if (wrapT) wrapT.classList.toggle('d-none', v !== 'trimestre');
+        if (wrapM) wrapM.classList.toggle('d-none', v !== 'mois');
+      }
+      g.addEventListener('change', sync);
+      sync();
+    })();
+  </script>
+{% endblock %}

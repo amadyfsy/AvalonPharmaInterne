@@ -1,0 +1,922 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title if title else 'Nouveau Produit' }} - Avalon Pharma{% endblock %}
+
+{% set max_wizard_step = 5 if not edit_mode else 4 %}
+
+{% block extra_css %}
+<style>
+  .form-produit-hero {
+    background: linear-gradient(135deg, var(--brand-burgundy, #721818) 0%, var(--brand-burgundy-dark, #5a1218) 100%);
+    border-radius: 0.75rem;
+    color: #fff;
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 0.5rem 1.25rem rgba(114, 24, 24, 0.22);
+  }
+  .form-produit-hero .lead {
+    opacity: 0.92;
+    font-size: 0.95rem;
+  }
+  .form-produit-card .card-header {
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  .form-produit-card .form-label {
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: var(--bs-secondary-color);
+  }
+  .wizard-step-shell {
+    border: 1px solid var(--border-color, #e5eef0);
+    border-radius: 14px;
+    background: linear-gradient(180deg, var(--card-bg, #fff) 0%, var(--body-bg, #f8fafb) 100%);
+    padding: 14px 14px 4px;
+    margin-bottom: 14px;
+  }
+  .wizard-step-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--brand-mint-muted, rgba(176, 219, 221, 0.18));
+    border: 1px solid var(--border-color, #e5eef0);
+  }
+  .wizard-step-head h2 {
+    font-size: 1rem;
+    margin: 0;
+    font-weight: 700;
+    color: var(--brand-burgundy, #721818);
+  }
+  .wizard-step-head p {
+    margin: 0;
+    font-size: .85rem;
+    color: var(--text-secondary, #6c757d);
+  }
+  .wizard-step-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(145deg, var(--brand-burgundy, #721818) 0%, var(--brand-burgundy-dark, #5a1218) 100%);
+    color: #fff;
+    font-size: .95rem;
+    flex: 0 0 auto;
+    box-shadow: 0 2px 6px rgba(114, 24, 24, 0.2);
+  }
+  .wizard-progress-wrap {
+    position: relative;
+    border-radius: 999px;
+    padding: 2px;
+    background: var(--brand-mint-muted, rgba(176, 219, 221, 0.25));
+  }
+  #wizardProgressProduit {
+    background: linear-gradient(90deg, var(--brand-burgundy, #721818) 0%, #4a7577 55%, var(--brand-mint, #b0dbdd) 100%) !important;
+    box-shadow: 0 0 0.45rem rgba(114, 24, 24, 0.25);
+    transition: width .25s ease;
+  }
+  /* Fiches métier : teintes proches de la charte (plus de vert / jaune Bootstrap) */
+  .form-produit-metier-med .card-header {
+    background: var(--brand-mint-muted, rgba(176, 219, 221, 0.18)) !important;
+    border-bottom: 1px solid var(--border-color, #e5eef0) !important;
+  }
+  .form-produit-metier-dm {
+    border-left-color: #5a7d80 !important;
+  }
+  .form-produit-metier-dm .card-header {
+    background: rgba(90, 125, 128, 0.12) !important;
+    border-bottom: 1px solid var(--border-color, #e5eef0) !important;
+  }
+  .form-produit-metier-dm .card-header > i.bi {
+    color: #3d5c5e !important;
+  }
+  .form-produit-metier-dm .badge-metier {
+    background: #5a7d80 !important;
+    color: #fff !important;
+  }
+  .form-produit-metier-eq {
+    border-left-color: var(--brand-mint, #b0dbdd) !important;
+  }
+  .form-produit-metier-eq .card-header {
+    background: var(--brand-mint-muted, rgba(176, 219, 221, 0.22)) !important;
+    border-bottom: 1px solid var(--border-color, #e5eef0) !important;
+  }
+  .form-produit-metier-eq .card-header > i.bi {
+    color: #2d686b !important;
+  }
+  .form-produit-metier-eq .badge-metier {
+    background: #3d7a7d !important;
+    color: #fff !important;
+  }
+  .lot-card-produit {
+    border-left-color: rgba(176, 219, 221, 0.95) !important;
+  }
+  .lot-card-produit .card-header > i.bi {
+    color: var(--brand-burgundy, #721818) !important;
+  }
+  .form-produit-sidebar .card-rappels-produit {
+    background: linear-gradient(135deg, var(--brand-burgundy, #721818) 0%, var(--brand-burgundy-dark, #5a1218) 100%) !important;
+    border: none !important;
+    color: #fff !important;
+    box-shadow: 0 0.4rem 1rem rgba(114, 24, 24, 0.28) !important;
+  }
+  .form-produit-sidebar .card-rappels-produit h3,
+  .form-produit-sidebar .card-rappels-produit ul,
+  .form-produit-sidebar .card-rappels-produit li,
+  .form-produit-sidebar .card-rappels-produit strong {
+    color: #fff !important;
+  }
+  .form-produit-sidebar .card-rappels-produit h3 .bi {
+    opacity: 0.95;
+  }
+  /* Sélecteurs spécialité : lisibles, charte Avalon */
+  .specialite-picker {
+    padding: 1rem 1.1rem;
+    border-radius: 12px;
+    border: 1px solid var(--border-color, #e5eef0);
+    background: linear-gradient(180deg, rgba(176, 219, 221, 0.12) 0%, var(--card-bg, #fff) 55%);
+    margin-bottom: 0.25rem;
+  }
+  .specialite-picker .specialite-input-group .input-group-text {
+    background: var(--brand-mint-muted, rgba(176, 219, 221, 0.35));
+    border-color: var(--border-color, #dee2e6);
+    color: var(--brand-burgundy, #721818);
+    font-size: 1.1rem;
+  }
+  .specialite-picker .form-select.specialite-select {
+    border-color: var(--border-color, #dee2e6);
+    font-size: 1.05rem;
+    min-height: 3rem;
+    padding-top: 0.65rem;
+    padding-bottom: 0.65rem;
+  }
+  .specialite-picker:focus-within {
+    border-color: var(--brand-mint, #b0dbdd);
+    box-shadow: 0 0 0 0.2rem rgba(176, 219, 221, 0.35);
+  }
+  .specialite-picker:focus-within .specialite-input-group .input-group-text {
+    border-color: var(--brand-mint, #b0dbdd);
+  }
+  .specialite-picker .form-text {
+    color: var(--text-secondary, #6c757d);
+    font-size: 0.8125rem;
+  }
+  @media (min-width: 992px) {
+    .form-produit-sidebar {
+      position: sticky;
+      top: 1rem;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+  {% set categories_metier_map = categories_metier_map|default({}) %}
+  {% set categorie_produit_hints = categorie_produit_hints|default({}) %}
+  <form method="post" class="form-produit-page" id="formProduitWizard" novalidate>
+    {{ form.hidden_tag() }}
+
+    <div class="form-produit-hero d-flex flex-wrap justify-content-between align-items-start gap-3">
+      <div class="d-flex gap-3 align-items-start">
+        <div class="rounded-3 bg-white bg-opacity-25 p-3 d-none d-sm-flex">
+          <i class="bi bi-capsule-pill fs-2"></i>
+        </div>
+        <div>
+          {% if edit_mode and produit %}
+            <nav aria-label="breadcrumb" class="mb-2">
+              <ol class="breadcrumb mb-0 small">
+                <li class="breadcrumb-item"><a href="{{ url_for('stock.index') }}" class="text-white text-decoration-underline">Produits</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('stock.detail_produit', id=produit.id) }}" class="text-white text-decoration-underline">{{ produit.reference }}</a></li>
+                <li class="breadcrumb-item text-white active" aria-current="page">Modifier</li>
+              </ol>
+            </nav>
+          {% else %}
+            <nav aria-label="breadcrumb" class="mb-2">
+              <ol class="breadcrumb mb-0 small">
+                <li class="breadcrumb-item"><a href="{{ url_for('stock.index') }}" class="text-white text-decoration-underline">Produits</a></li>
+                <li class="breadcrumb-item text-white active">Nouveau</li>
+              </ol>
+            </nav>
+          {% endif %}
+          <h1 class="h4 mb-1 fw-semibold text-white">{{ title if title else 'Nouveau produit' }}</h1>
+          <p class="lead mb-0 text-white">
+            Assistant par étapes : identification, fiche métier (selon catégorie), tarifs, {% if not edit_mode %}lot optionnel, {% endif %}puis récapitulatif.
+          </p>
+        </div>
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        {% if edit_mode and produit %}
+          <a href="{{ url_for('stock.detail_produit', id=produit.id) }}" class="btn btn-light btn-sm">
+            <i class="bi bi-x-lg me-1"></i> Annuler
+          </a>
+        {% endif %}
+        <a href="{{ url_for('stock.index') }}" class="btn btn-outline-light btn-sm">
+          <i class="bi bi-list-ul me-1"></i> Liste
+        </a>
+      </div>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-lg-8">
+        <div class="card shadow-sm mb-3">
+          <div class="card-body py-3">
+            <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+              <div class="d-flex align-items-center gap-2">
+                <strong>Progression</strong>
+                <span class="badge rounded-pill {% if edit_mode %}text-bg-secondary{% else %}text-bg-primary{% endif %}" id="wizardModeBadgeProduit">
+                  {% if edit_mode %}Modification{% else %}Nouveau produit{% endif %}
+                </span>
+              </div>
+              <span class="small text-muted" id="wizardStepLabelProduit">Étape 1 / {{ max_wizard_step }}</span>
+            </div>
+            <div class="wizard-progress-wrap">
+              <div class="progress" style="height: 10px; border-radius: 999px; overflow: hidden;">
+                <div id="wizardProgressProduit" class="progress-bar" role="progressbar" style="width: {{ (100 / max_wizard_step)|round(2) }}%;"></div>
+              </div>
+            </div>
+            <div class="d-flex flex-wrap gap-2 mt-3" id="wizardStepPillsProduit">
+              <span class="badge rounded-pill text-bg-primary" data-step-pill="1">1. Base</span>
+              <span class="badge rounded-pill text-bg-light text-dark border" data-step-pill="2">2. Fiche métier</span>
+              <span class="badge rounded-pill text-bg-light text-dark border" data-step-pill="3">3. Tarifs &amp; stock</span>
+              {% if not edit_mode %}
+              <span class="badge rounded-pill text-bg-light text-dark border" data-step-pill="4">4. Lot</span>
+              <span class="badge rounded-pill text-bg-light text-dark border" data-step-pill="5">5. Récapitulatif</span>
+              {% else %}
+              <span class="badge rounded-pill text-bg-light text-dark border" data-step-pill="4">4. Récapitulatif</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        {# ——— Étape 1 ——— #}
+        <div class="wizard-step wizard-step-shell" data-step="1">
+          <div class="wizard-step-head">
+            <div>
+              <h2>Étape 1 — Base</h2>
+              <p>L’identité générale du produit : référence auto, nom commercial, catégorie.</p>
+            </div>
+            <span class="wizard-step-icon"><i class="bi bi-box-seam"></i></span>
+          </div>
+          <div class="card form-produit-card shadow-sm border-0 mb-0">
+            <div class="card-body row g-3">
+              <div class="col-md-6">
+                {{ form.reference.label(class="form-label") }}
+                <span class="text-danger">*</span>
+                {{ form.reference(class=("form-control" ~ (" is-invalid" if form.reference.errors else "")), id="reference", readonly=true, autocomplete="off") }}
+                <div class="form-text">Référence générée automatiquement.</div>
+                {% for e in form.reference.errors %}<div class="invalid-feedback d-block small">{{ e }}</div>{% endfor %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Nom commercial</label>
+                <span class="text-danger">*</span>
+                {{ form.designation(class=("form-control" ~ (" is-invalid" if form.designation.errors else "")), id="designation", placeholder="Ex. Paracétamol IV") }}
+                {% for e in form.designation.errors %}<div class="invalid-feedback d-block small">{{ e }}</div>{% endfor %}
+              </div>
+              <div class="col-md-6">
+                {{ form.conditionnement_general.label(class="form-label") }}
+                {{ form.conditionnement_general(class="form-control", id="conditionnement_general", placeholder="Ex. Boîte de 10, flacon 100 ml...") }}
+                {% for e in form.conditionnement_general.errors %}<div class="invalid-feedback d-block small">{{ e }}</div>{% endfor %}
+              </div>
+              <div class="col-md-6">
+                {{ form.categorie_id.label(class="form-label") }}
+                <span class="text-danger">*</span>
+                {{ form.categorie_id(class="form-select", id="categorie_id") }}
+                {% for e in form.categorie_id.errors %}<div class="invalid-feedback d-block small">{{ e }}</div>{% endfor %}
+                <div class="form-text small text-muted d-none" id="categorieMetierHint" role="status" aria-live="polite"></div>
+              </div>
+              <div class="col-12">
+                {{ form.description.label(class="form-label") }}
+                {{ form.description(class="form-control", rows="3", placeholder="Description facultative…") }}
+                {% for e in form.description.errors %}<div class="invalid-feedback d-block small">{{ e }}</div>{% endfor %}
+              </div>
+              <div class="col-12">
+                <div class="form-check form-switch mt-1">
+                  {{ form.est_actif(class="form-check-input", role="switch") }}
+                  {{ form.est_actif.label(class="form-check-label fw-medium") }}
+                </div>
+                {% for e in form.est_actif.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+              </div>
+              {# Champs obligatoires conservés mais non saisis dans l'étape Base #}
+              <input type="hidden" name="forme" value="{{ form.forme.data or 'autre' }}">
+              <input type="hidden" name="unite" value="{{ form.unite.data or 'unite' }}">
+            </div>
+          </div>
+        </div>
+
+        {# ——— Étape 2 — Fiche métier ——— #}
+        <div class="wizard-step wizard-step-shell d-none" data-step="2">
+          <div class="wizard-step-head">
+            <div>
+              <h2>Étape 2 — Fiche métier</h2>
+              <p>Champs dédiés selon la catégorie (médicaments, DM, équipement).</p>
+            </div>
+            <span class="wizard-step-icon"><i class="bi bi-clipboard2-pulse"></i></span>
+          </div>
+          <p class="small text-muted mb-3" id="metierStepIntro">Choisissez une catégorie à l’étape 1 pour afficher le bloc adapté.</p>
+
+          <div id="rowSpecialiteUnifiee" class="d-none mb-3">
+            <div class="specialite-picker">
+              {{ form.specialite.label(class="form-label fw-semibold") }}
+              <div class="input-group input-group-lg specialite-input-group">
+                <span class="input-group-text" title="Spécialité (même liste que le filtre catalogue)"><i class="bi bi-tag" aria-hidden="true"></i></span>
+                {{ form.specialite(class="form-select specialite-select", id="specialite") }}
+              </div>
+              <p class="form-text mb-0 mt-2">
+                <i class="bi bi-funnel me-1" aria-hidden="true"></i>
+                Même structure que sur la <strong>liste produits</strong> : groupes par famille si la catégorie n’est pas encore fixée, sinon liste de la catégorie choisie.
+              </p>
+              {% for e in form.specialite.errors %}<div class="invalid-feedback d-block small">{{ e }}</div>{% endfor %}
+            </div>
+          </div>
+
+          <div id="panel-medicaments" class="card form-produit-card form-produit-metier-med shadow-sm border-0 mb-3 d-none border-start border-4 border-primary" data-metier-panel="medicaments">
+            <div class="card-header border-0 py-3 d-flex align-items-center gap-2">
+              <i class="bi bi-capsule text-primary"></i>
+              <span>Médicaments</span>
+              <span class="badge text-bg-primary ms-auto small">Visite hospitalière / chefs de service</span>
+            </div>
+            <div class="card-body row g-3">
+              <div class="col-md-6">
+                {{ form.med_nom_commercial_dci.label(class="form-label") }}
+                {{ form.med_nom_commercial_dci(class="form-control", id="med_nom_commercial_dci", placeholder="Ex. Xalatan · Latanoprost") }}
+                {% for e in form.med_nom_commercial_dci.errors %}<div class="invalid-feedback d-block small">{{ e }}</div>{% endfor %}
+              </div>
+              <div class="col-md-6">
+                {{ form.med_indication_therapeutique.label(class="form-label") }}
+                {{ form.med_indication_therapeutique(class="form-control", id="med_indication_therapeutique", placeholder="Ex. Glaucome à angle ouvert") }}
+                {% for e in form.med_indication_therapeutique.errors %}<div class="invalid-feedback d-block small">{{ e }}</div>{% endfor %}
+              </div>
+              <div class="col-md-6">
+                {{ form.med_code_ucd_cip.label(class="form-label") }}
+                {{ form.med_code_ucd_cip(class="form-control", id="med_code_ucd_cip", placeholder="Commande pharmacie") }}
+                {% for e in form.med_code_ucd_cip.errors %}<div class="invalid-feedback d-block small">{{ e }}</div>{% endfor %}
+              </div>
+              <div class="col-12">
+                {{ form.med_mode_administration.label(class="form-label") }}
+                {{ form.med_mode_administration(class="form-control", id="med_mode_administration", placeholder="Ex. Collyre, IV, injection intra-vitréenne…") }}
+                {% for e in form.med_mode_administration.errors %}<div class="invalid-feedback d-block small">{{ e }}</div>{% endfor %}
+              </div>
+            </div>
+          </div>
+
+          <div id="panel-dispositifs" class="card form-produit-card form-produit-metier-dm shadow-sm border-0 mb-3 d-none border-start border-4" data-metier-panel="dispositifs">
+            <div class="card-header border-0 py-3 d-flex align-items-center gap-2">
+              <i class="bi bi-tools"></i>
+              <span>Dispositifs Médicaux</span>
+              <span class="badge badge-metier ms-auto small">Matériel technique / chirurgical</span>
+            </div>
+            <div class="card-body row g-3">
+              <div class="col-md-6">
+                {{ form.dm_type_dispositif.label(class="form-label") }}
+                {{ form.dm_type_dispositif(class="form-control", id="dm_type_dispositif", placeholder="Ex. Lentille intraoculaire, pince…") }}
+                {% for e in form.dm_type_dispositif.errors %}<div class="invalid-feedback d-block small">{{ e }}</div>{% endfor %}
+              </div>
+              <div class="col-md-6">
+                {{ form.dm_reference_sku.label(class="form-label") }}
+                {{ form.dm_reference_sku(class="form-control", id="dm_reference_sku", placeholder="Code bon de commande") }}
+                {% for e in form.dm_reference_sku.errors %}<div class="invalid-feedback d-block small">{{ e }}</div>{% endfor %}
+              </div>
+              <div class="col-md-6">
+                {{ form.dm_taille_caracteristique.label(class="form-label") }}
+                {{ form.dm_taille_caracteristique(class="form-control", id="dm_taille_caracteristique", placeholder="Ex. diamètre pivot, dioptrie…") }}
+                {% for e in form.dm_taille_caracteristique.errors %}<div class="invalid-feedback d-block small">{{ e }}</div>{% endfor %}
+              </div>
+              <div class="col-12">
+                {{ form.dm_conditionnement.label(class="form-label") }}
+                {{ form.dm_conditionnement(class="form-control", id="dm_conditionnement", placeholder="Ex. Unitaire stérile, lot de 10…") }}
+                {% for e in form.dm_conditionnement.errors %}<div class="invalid-feedback d-block small">{{ e }}</div>{% endfor %}
+              </div>
+            </div>
+          </div>
+
+          <div id="panel-equipement" class="card form-produit-card form-produit-metier-eq shadow-sm border-0 mb-0 d-none border-start border-4" data-metier-panel="equipement">
+            <div class="card-header border-0 py-3 d-flex align-items-center gap-2">
+              <i class="bi bi-hospital"></i>
+              <span>Matériel &amp; Équipement</span>
+              <span class="badge badge-metier ms-auto small">Gros matériel / cliniques</span>
+            </div>
+            <div class="card-body row g-3">
+              <div class="col-md-6">
+                {{ form.eq_fonction_principale.label(class="form-label") }}
+                {{ form.eq_fonction_principale(class="form-control", id="eq_fonction_principale", placeholder="Ex. Lampe à fente, panoramique dentaire…") }}
+                {% for e in form.eq_fonction_principale.errors %}<div class="invalid-feedback d-block small">{{ e }}</div>{% endfor %}
+              </div>
+              <div class="col-md-6">
+                {{ form.eq_garantie_maintenance.label(class="form-label") }}
+                {{ form.eq_garantie_maintenance(class="form-control", id="eq_garantie_maintenance", placeholder="Durée contrat SAV / maintenance") }}
+                {% for e in form.eq_garantie_maintenance.errors %}<div class="invalid-feedback d-block small">{{ e }}</div>{% endfor %}
+              </div>
+              <div class="col-md-6">
+                {{ form.eq_formation_requise.label(class="form-label") }}
+                {{ form.eq_formation_requise(class="form-control", id="eq_formation_requise", placeholder="Temps de formation des praticiens") }}
+                {% for e in form.eq_formation_requise.errors %}<div class="invalid-feedback d-block small">{{ e }}</div>{% endfor %}
+              </div>
+            </div>
+          </div>
+
+          <div id="metierAucunBloc" class="alert alert-light border d-none mb-0">
+            <i class="bi bi-info-circle me-2 text-muted"></i>
+            Aucune fiche métier pour cette catégorie — vous pouvez passer à l’étape suivante.
+          </div>
+        </div>
+
+        {# ——— Étape 3 — Tarifs & seuil ——— #}
+        <div class="wizard-step wizard-step-shell d-none" data-step="3">
+          <div class="wizard-step-head">
+            <div>
+              <h2>Étape 3 — Tarifs &amp; alerte stock</h2>
+              <p>Prix d’achat et de vente HT, TVA et seuil d’alerte.</p>
+            </div>
+            <span class="wizard-step-icon"><i class="bi bi-currency-exchange"></i></span>
+          </div>
+          <div class="card form-produit-card shadow-sm border-0 mb-3">
+            <div class="card-header bg-body-secondary border-0 py-3 d-flex align-items-center gap-2">
+              <i class="bi bi-currency-exchange text-primary"></i>
+              <span>Tarification (FCFA)</span>
+            </div>
+            <div class="card-body row g-3">
+              <div class="col-md-4">
+                {{ form.prix_achat_ht.label(class="form-label") }}
+                <span class="text-danger">*</span>
+                <div class="input-group">
+                  {{ form.prix_achat_ht(class="form-control", id="prix_achat_ht", placeholder="0", inputmode="decimal") }}
+                  <span class="input-group-text">FCFA</span>
+                </div>
+                {% for e in form.prix_achat_ht.errors %}<div class="invalid-feedback d-block small">{{ e }}</div>{% endfor %}
+              </div>
+              <div class="col-md-4">
+                {{ form.prix_vente_ht.label(class="form-label") }}
+                <span class="text-danger">*</span>
+                <div class="input-group">
+                  {{ form.prix_vente_ht(class="form-control", placeholder="0", id="prixVenteHt", inputmode="decimal") }}
+                  <span class="input-group-text">FCFA</span>
+                </div>
+                {% for e in form.prix_vente_ht.errors %}<div class="invalid-feedback d-block small">{{ e }}</div>{% endfor %}
+              </div>
+              <div class="col-md-4">
+                {{ form.tva.label(class="form-label") }}
+                <div class="input-group">
+                  {{ form.tva(class="form-control", placeholder="0", id="tvaPct", inputmode="decimal") }}
+                  <span class="input-group-text">%</span>
+                </div>
+                <div class="form-text">Par défaut <strong>0 %</strong> (produits sans TVA).</div>
+                {% for e in form.tva.errors %}<div class="invalid-feedback d-block small">{{ e }}</div>{% endfor %}
+              </div>
+              <div class="col-12">
+                <div class="rounded-3 bg-light border px-3 py-2 small text-muted d-flex align-items-center gap-2">
+                  <i class="bi bi-info-circle text-primary"></i>
+                  <span>Prix vente TTC enregistré (HT + TVA) : <strong class="text-body" id="previewTtc">—</strong> FCFA</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card form-produit-card shadow-sm border-0 mb-0">
+            <div class="card-header bg-body-secondary border-0 py-3 d-flex align-items-center gap-2">
+              <i class="bi bi-graph-down-arrow text-primary"></i>
+              <span>Alerte stock</span>
+            </div>
+            <div class="card-body row g-3">
+              <div class="col-md-6 col-lg-5">
+                {{ form.seuil_alerte_stock.label(class="form-label") }}
+                <span class="text-danger">*</span>
+                {{ form.seuil_alerte_stock(class="form-control", id="seuil_alerte_stock", placeholder="10", min="0") }}
+                <div class="form-text">En dessous de ce seuil : signal « stock bas ».</div>
+                {% for e in form.seuil_alerte_stock.errors %}<div class="invalid-feedback d-block small">{{ e }}</div>{% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {% if not edit_mode %}
+        {# ——— Étape 4 — Lot (création) ——— #}
+        <div class="wizard-step wizard-step-shell d-none" data-step="4">
+          <div class="wizard-step-head">
+            <div>
+              <h2>Étape 4 — Lot initial &amp; traçabilité</h2>
+              <p>Facultatif : n°, dates, fournisseur et stock initial du lot.</p>
+            </div>
+            <span class="wizard-step-icon"><i class="bi bi-layers"></i></span>
+          </div>
+          <div class="card form-produit-card lot-card-produit shadow-sm border-0 border-start border-4 mb-0">
+            <div class="card-header bg-body-secondary border-0 py-3 d-flex align-items-center gap-2">
+              <i class="bi bi-layers"></i>
+              <span>Lot initial <span class="badge bg-secondary bg-opacity-25 text-secondary fw-normal ms-1">facultatif</span></span>
+            </div>
+            <div class="card-body row g-3">
+              <div class="col-12">
+                <p class="small text-muted mb-3">Si vous renseignez des dates ou un fournisseur, indiquez aussi un <strong>n° de lot</strong>.</p>
+              </div>
+              <div class="col-md-6">
+                {{ form.numero_lot.label(class="form-label") }}
+                {{ form.numero_lot(class="form-control", id="numero_lot", placeholder="Ex. LOT-2026-001 (optionnel)", autocomplete="off") }}
+                {% for e in form.numero_lot.errors %}<div class="invalid-feedback d-block small">{{ e }}</div>{% endfor %}
+              </div>
+              <div class="col-md-6">
+                {{ form.fournisseur_lot_id.label(class="form-label") }}
+                {{ form.fournisseur_lot_id(class="form-select", id="fournisseur_lot_id") }}
+                {% for e in form.fournisseur_lot_id.errors %}<div class="invalid-feedback d-block small">{{ e }}</div>{% endfor %}
+              </div>
+              <div class="col-md-6">
+                {{ form.date_fabrication.label(class="form-label") }}
+                {{ form.date_fabrication(class="form-control", id="date_fabrication", type="date") }}
+                {% for e in form.date_fabrication.errors %}<div class="invalid-feedback d-block small">{{ e }}</div>{% endfor %}
+              </div>
+              <div class="col-md-6">
+                {{ form.date_peremption.label(class="form-label") }}
+                {{ form.date_peremption(class="form-control", id="date_peremption", type="date") }}
+                {% for e in form.date_peremption.errors %}<div class="invalid-feedback d-block small">{{ e }}</div>{% endfor %}
+              </div>
+              <div class="col-md-6">
+                {{ form.quantite_lot_initiale.label(class="form-label") }}
+                {{ form.quantite_lot_initiale(class="form-control", id="quantite_lot_initiale", min="0", placeholder="0") }}
+                <div class="form-text">Stock disponible initial pour ce lot.</div>
+                {% for e in form.quantite_lot_initiale.errors %}<div class="invalid-feedback d-block small">{{ e }}</div>{% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        {# ——— Dernière étape — Récap ——— #}
+        <div class="wizard-step wizard-step-shell d-none" data-step="{{ max_wizard_step }}">
+          <div class="wizard-step-head">
+            <div>
+              <h2>Étape {{ max_wizard_step }} — Récapitulatif</h2>
+              <p>Vérifiez les informations avant enregistrement.</p>
+            </div>
+            <span class="wizard-step-icon"><i class="bi bi-check2-square"></i></span>
+          </div>
+          <div class="card shadow-sm mb-0">
+            <div class="card-body" id="recapProduitContainer">
+              <p class="text-muted small mb-0">Le récapitulatif se met à jour automatiquement.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-3 mt-2">
+          <button type="button" class="btn btn-outline-secondary d-none" id="btnPrevStepProduit">
+            <i class="bi bi-arrow-left me-1"></i> Précédent
+          </button>
+          <button type="button" class="btn btn-primary ms-auto" id="btnNextStepProduit">
+            Suivant <i class="bi bi-arrow-right ms-1"></i>
+          </button>
+        </div>
+
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 pb-4">
+          <div class="text-muted small">
+            {% if edit_mode and produit %}
+              <a href="{{ url_for('stock.detail_produit', id=produit.id) }}" class="text-decoration-none">← Retour fiche produit</a>
+            {% else %}
+              <a href="{{ url_for('stock.index') }}" class="text-decoration-none">← Retour à la liste</a>
+            {% endif %}
+          </div>
+          <button type="submit" class="btn btn-primary btn-lg px-4 shadow-sm d-none" id="btnSubmitProduit">
+            <i class="bi bi-check-lg me-2"></i>
+            <span id="btnSubmitLabelProduit">{% if edit_mode %}Enregistrer les modifications{% else %}Créer le produit{% endif %}</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="col-lg-4">
+        <div class="form-produit-sidebar">
+          <div class="card border-0 shadow-sm card-rappels-produit mb-4">
+            <div class="card-body">
+              <h3 class="h6 mb-3 text-white"><i class="bi bi-lightbulb me-2"></i>Rappels</h3>
+              <ul class="small text-white mb-0 ps-3">
+                <li class="mb-2">La <strong>référence</strong> doit être unique.</li>
+                {% if not edit_mode %}
+                <li class="mb-2">Le <strong>lot initial</strong> est facultatif.</li>
+                {% endif %}
+                <li class="mb-2">Les prix sont en <strong>HT</strong> ; TTC = HT si TVA à <strong>0 %</strong>.</li>
+                <li>Les <strong>quantités</strong> se gèrent via mouvements ou réceptions.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card border-0 shadow-sm">
+            <div class="card-body text-center py-4">
+              <i class="bi bi-check2-circle text-primary display-6 d-block mb-2"></i>
+              <p class="small text-muted mb-0">Utilisez <strong>Suivant</strong> pour avancer ; l’enregistrement n’est proposé qu’au dernier écran.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var MAX = {{ max_wizard_step }};
+  var map = {{ categories_metier_map|tojson }};
+  var catalog = {{ specialite_catalog|default({})|tojson }};
+  var catHints = {{ categorie_produit_hints|tojson }};
+  var form = document.getElementById('formProduitWizard');
+  var sel = document.getElementById('categorie_id');
+  var formeSel = document.getElementById('forme_id');
+  var panels = {
+    medicaments: document.getElementById('panel-medicaments'),
+    dispositifs: document.getElementById('panel-dispositifs'),
+    equipement: document.getElementById('panel-equipement')
+  };
+  var metierAucun = document.getElementById('metierAucunBloc');
+  var rowSpec = document.getElementById('rowSpecialiteUnifiee');
+  var wizardSteps = Array.from(document.querySelectorAll('#formProduitWizard .wizard-step'));
+  var wizardProgress = document.getElementById('wizardProgressProduit');
+  var wizardStepLabel = document.getElementById('wizardStepLabelProduit');
+  var stepPills = Array.from(document.querySelectorAll('#wizardStepPillsProduit [data-step-pill]'));
+  var btnPrev = document.getElementById('btnPrevStepProduit');
+  var btnNext = document.getElementById('btnNextStepProduit');
+  var btnSubmit = document.getElementById('btnSubmitProduit');
+  var recapEl = document.getElementById('recapProduitContainer');
+  var currentStep = 1;
+  {% if form.errors %}
+  currentStep = 1;
+  {% endif %}
+
+  function codeForSelection() {
+    if (!sel) return '';
+    var id = String(sel.value || '');
+    var raw = (map[id] != null) ? String(map[id]) : '';
+    return raw.trim().toLowerCase();
+  }
+
+  function updateCategorieHint() {
+    var hintEl = document.getElementById('categorieMetierHint');
+    if (!hintEl || !sel) return;
+    var id = String(sel.value || '').trim();
+    if (!id || id === '0') {
+      hintEl.textContent = '';
+      hintEl.classList.add('d-none');
+      return;
+    }
+    var t = (catHints && catHints[id]) ? String(catHints[id]) : '';
+    hintEl.textContent = t;
+    hintEl.classList.toggle('d-none', !t);
+  }
+
+  function rebuildSpecialiteOptions() {
+    var spec = document.getElementById('specialite');
+    if (!spec || !catalog || !catalog.flat || !catalog.grouped) return;
+    var code = codeForSelection();
+    var cur = spec.value;
+    spec.innerHTML = '';
+    function addOpt(v, t) {
+      var o = document.createElement('option');
+      o.value = v;
+      o.appendChild(document.createTextNode(t));
+      spec.appendChild(o);
+    }
+    if (!code) {
+      addOpt('', '— Choisir une spécialité —');
+      catalog.grouped.forEach(function (g) {
+        var og = document.createElement('optgroup');
+        og.label = g[0];
+        (g[1] || []).forEach(function (s) {
+          var o = document.createElement('option');
+          o.value = s;
+          o.appendChild(document.createTextNode(s));
+          og.appendChild(o);
+        });
+        spec.appendChild(og);
+      });
+    } else {
+      addOpt('', '— Choisir une spécialité —');
+      (catalog.flat[code] || []).forEach(function (s) {
+        addOpt(s, s);
+      });
+    }
+    if (cur) {
+      spec.value = cur;
+      if (spec.value !== cur) spec.value = '';
+    }
+  }
+
+  function updateMetierPanels() {
+    var code = codeForSelection();
+    var any = false;
+    Object.keys(panels).forEach(function (key) {
+      var el = panels[key];
+      if (!el) return;
+      var show = code === key;
+      el.classList.toggle('d-none', !show);
+      if (show) any = true;
+    });
+    if (metierAucun) {
+      metierAucun.classList.toggle('d-none', any || !!code);
+    }
+    if (rowSpec) {
+      var showSpec = code === 'medicaments' || code === 'dispositifs' || code === 'equipement';
+      rowSpec.classList.toggle('d-none', !showSpec);
+    }
+    rebuildSpecialiteOptions();
+  }
+
+  if (sel) {
+    sel.addEventListener('change', function () {
+      updateMetierPanels();
+      updateCategorieHint();
+    });
+    updateMetierPanels();
+    updateCategorieHint();
+  }
+
+  function setFieldsDisabledInStep(stepEl, disabled) {
+    if (!stepEl) return;
+    stepEl.querySelectorAll('input, select, textarea').forEach(function (inp) {
+      if (inp.type === 'hidden') return;
+      inp.disabled = !!disabled;
+    });
+  }
+
+  function updateWizardUi() {
+    if (currentStep > MAX) currentStep = MAX;
+    wizardSteps.forEach(function (stepEl) {
+      var stepN = Number(stepEl.getAttribute('data-step'));
+      var active = stepN === currentStep;
+      stepEl.classList.toggle('d-none', !active);
+      setFieldsDisabledInStep(stepEl, !active);
+    });
+    stepPills.forEach(function (pill) {
+      var stepN = Number(pill.getAttribute('data-step-pill'));
+      var active = stepN === currentStep;
+      pill.classList.toggle('text-bg-primary', active);
+      pill.classList.toggle('text-bg-light', !active);
+      pill.classList.toggle('text-dark', !active);
+      pill.classList.toggle('border', !active);
+    });
+    var pct = Math.round((currentStep / MAX) * 100);
+    if (wizardProgress) wizardProgress.style.width = pct + '%';
+    if (wizardStepLabel) wizardStepLabel.textContent = 'Étape ' + currentStep + ' / ' + MAX;
+    if (btnPrev) btnPrev.classList.toggle('d-none', currentStep === 1);
+    if (btnNext) btnNext.classList.toggle('d-none', currentStep >= MAX);
+    if (btnSubmit) btnSubmit.classList.toggle('d-none', currentStep < MAX);
+    if (currentStep === MAX) renderRecapProduit();
+  }
+
+  function esc(s) {
+    return String(s ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;');
+  }
+
+  function valOf(id) {
+    var el = document.getElementById(id);
+    return el ? String(el.value || '').trim() : '';
+  }
+
+  function txtSelect(id) {
+    var el = document.getElementById(id);
+    if (!el || !el.selectedOptions[0]) return '—';
+    var t = el.selectedOptions[0].textContent.trim();
+    return t || '—';
+  }
+
+  function renderRecapProduit() {
+    if (!recapEl) return;
+    var ref = valOf('reference');
+    var des = valOf('designation');
+    var cond = valOf('conditionnement_general');
+    var catTxt = txtSelect('categorie_id');
+    var formeTxt = formeSel && formeSel.selectedOptions[0] ? formeSel.selectedOptions[0].textContent.trim() : '—';
+    var unite = valOf('unite');
+    var pa = valOf('prix_achat_ht') || '—';
+    var pv = valOf('prix_vente_ht') || '—';
+    var tva = valOf('tvaPct') || '0';
+    var seuil = valOf('seuil_alerte_stock') || '—';
+    var actif = document.querySelector('#formProduitWizard input[name="est_actif"]');
+    var actifTxt = actif && actif.checked ? 'Oui' : 'Non';
+
+    var code = codeForSelection();
+    var specTxt = txtSelect('specialite');
+    var metierHtml = '';
+    if (code === 'medicaments') {
+      metierHtml = '<h3 class="h6 mt-3">Fiche métier — Médicaments</h3><dl class="row small mb-0">' +
+        '<dt class="col-5 text-muted">Spécialité</dt><dd class="col-7">' + esc(specTxt) + '</dd>' +
+        '<dt class="col-5 text-muted">Nom &amp; DCI</dt><dd class="col-7">' + esc(valOf('med_nom_commercial_dci') || '—') + '</dd>' +
+        '<dt class="col-5 text-muted">Indication</dt><dd class="col-7">' + esc(valOf('med_indication_therapeutique') || '—') + '</dd>' +
+        '<dt class="col-5 text-muted">UCD / CIP</dt><dd class="col-7">' + esc(valOf('med_code_ucd_cip') || '—') + '</dd>' +
+        '<dt class="col-5 text-muted">Mode adm.</dt><dd class="col-7">' + esc(valOf('med_mode_administration') || '—') + '</dd></dl>';
+    } else if (code === 'dispositifs') {
+      metierHtml = '<h3 class="h6 mt-3">Fiche métier — Dispositifs Médicaux</h3><dl class="row small mb-0">' +
+        '<dt class="col-5 text-muted">Spécialité</dt><dd class="col-7">' + esc(specTxt) + '</dd>' +
+        '<dt class="col-5 text-muted">Type</dt><dd class="col-7">' + esc(valOf('dm_type_dispositif') || '—') + '</dd>' +
+        '<dt class="col-5 text-muted">SKU</dt><dd class="col-7">' + esc(valOf('dm_reference_sku') || '—') + '</dd>' +
+        '<dt class="col-5 text-muted">Taille / caract.</dt><dd class="col-7">' + esc(valOf('dm_taille_caracteristique') || '—') + '</dd>' +
+        '<dt class="col-5 text-muted">Conditionnement</dt><dd class="col-7">' + esc(valOf('dm_conditionnement') || '—') + '</dd></dl>';
+    } else if (code === 'equipement') {
+      metierHtml = '<h3 class="h6 mt-3">Fiche métier — Matériel &amp; Équipement</h3><dl class="row small mb-0">' +
+        '<dt class="col-5 text-muted">Spécialité</dt><dd class="col-7">' + esc(specTxt) + '</dd>' +
+        '<dt class="col-5 text-muted">Fonction</dt><dd class="col-7">' + esc(valOf('eq_fonction_principale') || '—') + '</dd>' +
+        '<dt class="col-5 text-muted">Garantie / SAV</dt><dd class="col-7">' + esc(valOf('eq_garantie_maintenance') || '—') + '</dd>' +
+        '<dt class="col-5 text-muted">Formation</dt><dd class="col-7">' + esc(valOf('eq_formation_requise') || '—') + '</dd></dl>';
+    } else {
+      metierHtml = '<p class="small text-muted mb-0 mt-2">Pas de fiche métier pour cette catégorie.</p>';
+    }
+
+    var lotHtml = '';
+    {% if not edit_mode %}
+    var nl = valOf('numero_lot');
+    var df = valOf('date_fabrication');
+    var dp = valOf('date_peremption');
+    var ql = valOf('quantite_lot_initiale');
+    var fv = txtSelect('fournisseur_lot_id');
+    if (nl || df || dp || (fv && fv !== '—') || Number(ql || 0) > 0) {
+      lotHtml = '<h3 class="h6 mt-3">Lot initial</h3><dl class="row small mb-0">' +
+        '<dt class="col-5 text-muted">N° lot</dt><dd class="col-7">' + esc(nl || '—') + '</dd>' +
+        '<dt class="col-5 text-muted">Fournisseur</dt><dd class="col-7">' + esc(fv) + '</dd>' +
+        '<dt class="col-5 text-muted">Production</dt><dd class="col-7">' + esc(df || '—') + '</dd>' +
+        '<dt class="col-5 text-muted">Péremption</dt><dd class="col-7">' + esc(dp || '—') + '</dd>' +
+        '<dt class="col-5 text-muted">Stock lot initial</dt><dd class="col-7">' + esc(ql || '0') + '</dd></dl>';
+    } else {
+      lotHtml = '<p class="small text-muted mb-0 mt-2">Aucun lot initial saisi.</p>';
+    }
+    {% endif %}
+
+    recapEl.innerHTML =
+      '<div class="row g-3">' +
+      '<div class="col-12">' +
+      '<h3 class="h6">Identification</h3>' +
+      '<dl class="row small mb-0">' +
+      '<dt class="col-sm-4 text-muted">Référence</dt><dd class="col-sm-8 fw-semibold">' + esc(ref || '—') + '</dd>' +
+      '<dt class="col-sm-4 text-muted">Désignation</dt><dd class="col-sm-8">' + esc(des || '—') + '</dd>' +
+      '<dt class="col-sm-4 text-muted">Conditionnement</dt><dd class="col-sm-8">' + esc(cond || '—') + '</dd>' +
+      '<dt class="col-sm-4 text-muted">Catégorie</dt><dd class="col-sm-8">' + esc(catTxt) + '</dd>' +
+      '<dt class="col-sm-4 text-muted">Forme</dt><dd class="col-sm-8">' + esc(formeTxt) + '</dd>' +
+      '<dt class="col-sm-4 text-muted">Unité</dt><dd class="col-sm-8">' + esc(unite || '—') + '</dd>' +
+      '<dt class="col-sm-4 text-muted">Actif</dt><dd class="col-sm-8">' + esc(actifTxt) + '</dd>' +
+      '</dl>' +
+      metierHtml +
+      '<h3 class="h6 mt-3">Tarifs &amp; stock</h3>' +
+      '<dl class="row small mb-0">' +
+      '<dt class="col-sm-4 text-muted">Prix achat HT</dt><dd class="col-sm-8">' + esc(pa) + ' FCFA</dd>' +
+      '<dt class="col-sm-4 text-muted">Prix vente HT</dt><dd class="col-sm-8">' + esc(pv) + ' FCFA</dd>' +
+      '<dt class="col-sm-4 text-muted">TVA</dt><dd class="col-sm-8">' + esc(tva) + ' %</dd>' +
+      '<dt class="col-sm-4 text-muted">Seuil alerte</dt><dd class="col-sm-8">' + esc(seuil) + '</dd>' +
+      '</dl>' +
+      lotHtml +
+      '</div></div>';
+  }
+
+  if (btnPrev) {
+    btnPrev.addEventListener('click', function () {
+      if (currentStep > 1) {
+        currentStep -= 1;
+        updateWizardUi();
+      }
+    });
+  }
+  if (btnNext) {
+    btnNext.addEventListener('click', function () {
+      if (currentStep < MAX) {
+        currentStep += 1;
+        updateWizardUi();
+      }
+    });
+  }
+
+  if (form) {
+    form.addEventListener('submit', function () {
+      form.querySelectorAll('.wizard-step input, .wizard-step select, .wizard-step textarea').forEach(function (el) {
+        if (el.type === 'hidden') return;
+        el.disabled = false;
+      });
+    });
+  }
+
+  (function () {
+    var ht = document.getElementById('prixVenteHt');
+    var tva = document.getElementById('tvaPct');
+    var out = document.getElementById('previewTtc');
+    if (!ht || !tva || !out) return;
+    function fmt(n) {
+      if (isNaN(n) || !isFinite(n)) return '—';
+      return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+    }
+    function update() {
+      var a = parseFloat(String(ht.value).replace(',', '.'));
+      var b = parseFloat(String(tva.value).replace(',', '.'));
+      if (isNaN(a) || isNaN(b)) { out.textContent = '—'; return; }
+      out.textContent = fmt(a * (1 + b / 100));
+    }
+    ht.addEventListener('input', update);
+    tva.addEventListener('input', update);
+    update();
+  })();
+
+  updateWizardUi();
+  form.addEventListener('input', function () {
+    if (currentStep === MAX) renderRecapProduit();
+  });
+  form.addEventListener('change', function () {
+    if (currentStep === MAX) renderRecapProduit();
+  });
+})();
+</script>
+{% endblock %}

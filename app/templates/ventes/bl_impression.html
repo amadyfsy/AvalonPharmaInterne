@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BL {{ bl.numero }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="{{ url_for('static', filename='public/css/facture.css') }}" rel="stylesheet">
+</head>
+<body class="invoice-body">
+
+  <div class="invoice-toolbar no-print">
+    <span class="invoice-toolbar__title">Aperçu — Bon de livraison {{ bl.numero }}</span>
+    <div class="invoice-toolbar__actions">
+      <button type="button" class="invoice-btn invoice-btn--primary" onclick="window.print()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Imprimer
+      </button>
+      <button type="button" class="invoice-btn invoice-btn--ghost" onclick="window.close()">Fermer</button>
+    </div>
+  </div>
+
+  <div id="app">
+    <div class="invoice-shell">
+      {% include 'ventes/_bl_impression_pages.html' %}
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script>
+    function initInvoiceQr() {
+      if (typeof QRCode === "undefined") return;
+      document.querySelectorAll(".invoice-header-qr__canvas").forEach(function (el) {
+        const url = el.getAttribute("data-qr-url");
+        if (!url) return;
+        el.innerHTML = "";
+        new QRCode(el, {
+          text: url,
+          width: 38,
+          height: 38,
+          colorDark: "#0f172a",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.H
+        });
+      });
+    }
+    window.addEventListener("load", initInvoiceQr);
+  </script>
+</body>
+</html>

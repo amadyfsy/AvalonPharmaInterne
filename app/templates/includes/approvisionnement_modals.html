@@ -1,0 +1,148 @@
+    <!-- Modal: Nouveau Fournisseur -->
+    <div class="modal fade" id="newSupplierModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Nouveau Fournisseur</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="newSupplierForm">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Nom / Raison Sociale <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="newSupplierName" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Telephone <span class="text-danger">*</span></label>
+                                <input type="tel" class="form-control" id="newSupplierPhone" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email</label>
+                                <input type="email" class="form-control" id="newSupplierEmail">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Ville <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="newSupplierCity" required>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Adresse</label>
+                                <textarea class="form-control" id="newSupplierAddress" rows="2"></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" id="btnSaveNewSupplier">
+                        <i class="bi bi-save me-2"></i>Enregistrer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal: Ajouter Produit -->
+    <div class="modal fade" id="addProductModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-box-seam me-2"></i>Ajouter un Produit</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="selectedCatalogProductId" value="">
+                    <!-- Search Product -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Rechercher un produit existant</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control" id="searchProduct" placeholder="Rechercher par nom ou code...">
+                        </div>
+                    </div>
+                    
+                    <!-- Product List -->
+                    <div class="product-search-list mb-4" id="productSearchList">
+                        {% if produits_data %}
+                            {% for pd in produits_data %}
+                            {% set p = pd.obj %}
+                            <div class="product-search-item"
+                                 data-id="{{ p.id }}"
+                                 data-name="{{ p.designation|e }}"
+                                 data-price="{{ '%.2f'|format(pd.prix_achat) }}"
+                                 data-prix-vente="{{ '%.2f'|format(pd.prix_vente) }}">
+                                <div class="product-icon"><i class="bi bi-capsule"></i></div>
+                                <div class="product-search-info">
+                                    <span class="product-search-name">{{ p.designation }}</span>
+                                    <span class="product-search-code">{{ p.reference }} | Stock: {{ pd.stock_dispo }}</span>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary btn-select-catalog-product">Selectionner</button>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted small mb-0">Aucun produit actif en base.</p>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="divider">
+                        <span>nouveau produit</span>
+                    </div>
+                    <p class="text-muted small">Les commandes utilisent des produits déjà enregistrés. <a href="{{ url_for('stock.nouveau_produit') }}" target="_blank" rel="noopener noreferrer">Créer un produit (stock)</a> puis revenez sur cette page.</p>
+                    
+                    <!-- New Product Form -->
+                    <form id="newProductForm">
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <label class="form-label">Nom du Produit <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="newProductName">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Prix Achat <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="newProductPrixAchat" value="0">
+                                    <span class="input-group-text">FCFA</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Prix Vente (optionnel)</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="newProductPrixVente" value="0">
+                                    <span class="input-group-text">FCFA</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Quantite <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="newProductQuantity" value="1" min="1">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-primary" id="btnConfirmAddProduct">
+                        <i class="bi bi-plus-lg me-2"></i>Ajouter au Panier
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal: Success -->
+    <div class="modal fade" id="successModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center py-5">
+                    <div class="success-icon mb-4">
+                        <i class="bi bi-check-circle-fill"></i>
+                    </div>
+                    <h4>Commande Enregistree!</h4>
+                    <p class="text-muted">La commande fournisseur a ete enregistree avec succes.</p>
+                    <p><strong>Reference:</strong> <span id="orderReference">CMD-2024-0001</span></p>
+                    <div class="mt-4">
+                        <a href="{{ url_for('achats.index') }}" class="btn btn-outline-secondary me-2">Liste des commandes</a>
+                        <button type="button" class="btn btn-primary" onclick="location.reload()">Nouvelle Commande</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>

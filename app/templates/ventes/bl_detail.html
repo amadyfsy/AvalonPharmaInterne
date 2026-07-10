@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% macro badge_statut_bl(st) -%}
+  {% if st == 'livre' %}
+    <span class="badge bg-success">Livré</span>
+  {% elif st == 'prepare' %}
+    <span class="badge bg-warning text-dark">Préparé</span>
+  {% else %}
+    <span class="badge bg-light text-dark">{{ st }}</span>
+  {% endif %}
+{%- endmacro %}
+
+{% block title %}BL {{ bl.numero }} — Avalon Pharma{% endblock %}
+
+{% block content %}
+  <div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+      <nav aria-label="fil d'ariane">
+        <ol class="breadcrumb mb-2">
+          <li class="breadcrumb-item"><a href="{{ url_for('ventes.bons_livraison') }}">Bons de livraison</a></li>
+          <li class="breadcrumb-item active" aria-current="page">{{ bl.numero }}</li>
+        </ol>
+      </nav>
+      <h1 class="page-title mb-1">Bon de livraison {{ bl.numero }}</h1>
+      <p class="page-subtitle mb-0">{{ badge_statut_bl(bl.statut) }}</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{{ url_for('ventes.bl_imprimer', id=bl.id) }}" class="btn btn-outline-primary" target="_blank" rel="noopener">
+        <i class="bi bi-printer me-1"></i> Aperçu / Imprimer
+      </a>
+      <a href="{{ url_for('ventes.bl_pdf', id=bl.id) }}" class="btn btn-outline-secondary" target="_blank" rel="noopener">
+        <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+      </a>
+      {% if bl.statut != 'livre' %}
+        <form method="post" action="{{ url_for('ventes.valider_bl', id=bl.id) }}" class="d-inline"
+              onsubmit="return confirm('Marquer ce bon de livraison comme livré ?');">
+          <button class="btn btn-success" type="submit">
+            <i class="bi bi-check2-circle me-1"></i> Livrer
+          </button>
+        </form>
+      {% endif %}
+      <a href="{{ url_for('ventes.bons_livraison') }}" class="btn btn-outline-secondary">Liste</a>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-header fw-semibold">Client & livraison</div>
+        <div class="card-body">
+          <p class="mb-2"><strong>{{ bl.client.raison_sociale if bl.client else '—' }}</strong></p>
+          {% if bl.client and bl.client.telephone %}
+            <p class="small text-muted mb-1"><i class="bi bi-telephone me-1"></i>{{ bl.client.telephone }}</p>
+          {% endif %}
+          {% if bl.client and bl.client.email %}
+            <p class="small text-muted mb-3"><i class="bi bi-envelope me-1"></i>{{ bl.client.email }}</p>
+          {% endif %}
+          <hr>
+          <dl class="row small mb-0">
+            <dt class="col-5">Date</dt>
+            <dd class="col-7">{{ bl.date_livraison.strftime('%d/%m/%Y') if bl.date_livraison else '—' }}</dd>
+            <dt class="col-5">Livreur</dt>
+            <dd class="col-7">{{ bl.livreur or '—' }}</dd>
+            <dt class="col-5">Statut</dt>
+            <dd class="col-7">{{ badge_statut_bl(bl.statut) }}</dd>
+          </dl>
+          {% if bl.adresse_livraison %}
+            <hr>
+            <div class="small text-muted">Adresse de livraison</div>
+            <div class="small">{{ bl.adresse_livraison }}</div>
+          {% endif %}
+          {% if bl.notes %}
+            <hr>
+            <div class="small text-muted">Notes</div>
+            <div class="small">{{ bl.notes }}</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-8">
+      <div class="card shadow-sm">
+        <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+          <span>Lignes</span>
+          <span class="small text-muted">{{ bl.lignes|length }} ligne(s)</span>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Produit</th>
+                  <th class="text-end" style="width:90px;">Quantité</th>
+                  <th class="text-end" style="width:90px;">Livrée</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for l in bl.lignes|sort(attribute='id') %}
+                  <tr>
+                    <td>
+                      {% if l.produit %}
+                        <span class="text-muted small">{{ l.produit.reference }}</span><br>
+                        {{ l.produit.designation }}
+                      {% else %}
+                        —
+                      {% endif %}
+                      {% if l.lot %}
+                        <div class="small text-muted">Lot : {{ l.lot.numero_lot }}</div>
+                      {% endif %}
+                    </td>
+                    <td class="text-end">{{ l.quantite_commandee }}</td>
+                    <td class="text-end fw-medium text-muted">{{ l.quantite_livree if bl.statut != 'prepare' else '—' }}</td>
+                  </tr>
+                {% else %}
+                  <tr><td colspan="3" class="text-center text-muted py-4">Aucune ligne</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+

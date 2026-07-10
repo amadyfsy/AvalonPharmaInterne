@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Paramètres documents PDF — Avalon Pharma{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Paramètres documents (factures, BL, proformas)</h1>
+      <p class="page-subtitle">Logo d’en-tête, coordonnées et pied de page pour les PDF (mise en page type document papier).</p>
+      <p class="small text-muted mb-0">Exemple d’adresse : <code>Sénégal : Cité SAED Ngalléle Saint Louis.</code> — ligne suivante : Tel, RC, NINEA, Email (remplis dans les champs ci-dessous). Pour un numéro comme <code>2026/01/01</code>, utilisez ce libellé dans le <strong>numéro de facture</strong> à la création (ou modifiez la génération automatique dans le code).</p>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <form method="post" enctype="multipart/form-data" novalidate>
+        {{ form.hidden_tag() }}
+
+        <div class="row g-3">
+          <div class="col-md-6">
+            {{ form.raison_sociale.label(class="form-label") }}
+            {{ form.raison_sociale(class="form-control") }}
+          </div>
+          <div class="col-md-6">
+            {{ form.lieu_signature.label(class="form-label") }}
+            {{ form.lieu_signature(class="form-control", placeholder="ex. St Louis") }}
+          </div>
+          <div class="col-12">
+            {{ form.adresse_ligne.label(class="form-label") }}
+            {{ form.adresse_ligne(class="form-control", placeholder="ex. Sénégal : Cité SAED Ngalléle Saint Louis") }}
+          </div>
+          <div class="col-md-4">
+            {{ form.telephone.label(class="form-label") }}
+            {{ form.telephone(class="form-control", placeholder="77 444 14 01 - 77 764 87 28") }}
+          </div>
+          <div class="col-md-4">
+            {{ form.rc.label(class="form-label") }}
+            {{ form.rc(class="form-control") }}
+          </div>
+          <div class="col-md-4">
+            {{ form.ninea.label(class="form-label") }}
+            {{ form.ninea(class="form-control") }}
+          </div>
+          <div class="col-md-6">
+            {{ form.email.label(class="form-label") }}
+            {{ form.email(class="form-control", placeholder="avalonpharmasenegal@gmail.com") }}
+          </div>
+          <div class="col-md-6">
+            {{ form.compte_bancaire.label(class="form-label") }}
+            {{ form.compte_bancaire(class="form-control", placeholder="ex. Compte CBAO : SN012 …") }}
+          </div>
+          <div class="col-md-6">
+            {{ form.devise_libelle.label(class="form-label") }}
+            {{ form.devise_libelle(class="form-control") }}
+            <div class="form-text">Utilisé pour la phrase « arrêtée à la somme de … » (ex. francs, F CFA).</div>
+          </div>
+          <div class="col-md-6">
+            {{ form.slogan.label(class="form-label") }}
+            {{ form.slogan(class="form-control", placeholder="Serving those who care for others") }}
+          </div>
+          <div class="col-md-6">
+            {{ form.site_web.label(class="form-label") }}
+            {{ form.site_web(class="form-control", placeholder="https://avalonpharmasenegal.com") }}
+            <div class="form-text">URL encodée dans le QR code des factures.</div>
+          </div>
+          <div class="col-12">
+            {{ form.pied_de_page.label(class="form-label") }}
+            {{ form.pied_de_page(class="form-control", rows=4) }}
+          </div>
+          <div class="col-12">
+            {{ form.logo.label(class="form-label") }}
+            {{ form.logo(class="form-control") }}
+            {% if row.logo_filename %}
+              <div class="mt-2 d-flex align-items-center gap-3 flex-wrap">
+                <img src="{{ url_for('parametres.logo_file', filename=row.logo_filename) }}" alt="Logo" style="max-height:72px;max-width:220px;object-fit:contain;">
+                <div class="form-check">
+                  {{ form.supprimer_logo(class="form-check-input") }}
+                  {{ form.supprimer_logo.label(class="form-check-label") }}
+                </div>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="mt-4">
+          {{ form.submit(class="btn btn-primary") }}
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}

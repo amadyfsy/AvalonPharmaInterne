@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+
+{% block title %}Dépenses — Avalon Pharma{% endblock %}
+
+{% block extra_css %}
+<style>
+  .dep-page-hero {
+    background: linear-gradient(135deg, var(--brand-burgundy, #721818) 0%, var(--brand-burgundy-dark, #5a1218) 100%);
+    border-radius: 0.75rem;
+    color: #fff;
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 0.5rem 1.25rem rgba(114, 24, 24, 0.22);
+  }
+  .dep-page-hero .breadcrumb-item + .breadcrumb-item::before { color: rgba(255,255,255,.65); }
+  .dep-stat-card {
+    border-radius: 0.65rem;
+    border: 1px solid var(--bs-border-color);
+    background: var(--bs-body-bg);
+    padding: 1rem 1.15rem;
+    height: 100%;
+  }
+  .dep-stat-card .dep-stat-value {
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .dep-stat-card .dep-stat-sub {
+    font-size: 0.78rem;
+    color: var(--bs-secondary-color);
+    margin-top: 0.35rem;
+    line-height: 1.35;
+  }
+  .dep-table-card .table thead th {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--bs-secondary-color);
+    border-bottom-width: 1px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+  <div class="dep-page-hero d-flex flex-wrap justify-content-between align-items-start gap-3">
+    <div class="d-flex gap-3 align-items-start">
+      <div class="rounded-3 bg-white bg-opacity-25 p-3 d-none d-sm-flex">
+        <i class="bi bi-cash-stack fs-2"></i>
+      </div>
+      <div>
+        <nav aria-label="breadcrumb" class="mb-2">
+          <ol class="breadcrumb mb-0 small">
+            <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}" class="text-white text-decoration-underline">Tableau de bord</a></li>
+            <li class="breadcrumb-item text-white active" aria-current="page">Dépenses</li>
+          </ol>
+        </nav>
+        <h1 class="h4 mb-1 fw-semibold text-white">Dépenses</h1>
+        <p class="lead mb-0 text-white small" style="opacity: .92;">
+          Suivi des charges <strong>fixes</strong> et <strong>variables</strong> (FCFA) — totaux <strong>{{ libelle_mois_cours }}</strong>. Validation comptable et impact trésorerie.
+        </p>
+      </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{{ url_for('depenses.categories_depenses_index') }}" class="btn btn-outline-light btn-sm">
+        <i class="bi bi-folder2 me-1"></i> Catégories
+      </a>
+      <a href="{{ url_for('depenses.nouvelle_depense') }}" class="btn btn-light btn-sm">
+        <i class="bi bi-plus-lg me-1"></i> Saisir une dépense
+      </a>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+      <div class="dep-stat-card shadow-sm border-start border-4 border-primary">
+        <div class="text-muted small text-uppercase fw-semibold mb-1">Dépenses fixes (validées)</div>
+        <div class="dep-stat-value text-primary">{{ "{:,.0f}".format(total_fixe_mois).replace(",", "\u202f") }} <span class="fs-6 fw-normal text-muted">FCFA</span></div>
+        <div class="dep-stat-sub">{{ libelle_mois_cours }} · <span class="text-muted">Mois préc. ({{ libelle_mois_prec }}) :</span> {{ "{:,.0f}".format(total_fixe_prev).replace(",", "\u202f") }} FCFA</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+      <div class="dep-stat-card shadow-sm border-start border-4 border-info">
+        <div class="text-muted small text-uppercase fw-semibold mb-1">Dépenses variables (validées)</div>
+        <div class="dep-stat-value text-info">{{ "{:,.0f}".format(total_variable_mois).replace(",", "\u202f") }} <span class="fs-6 fw-normal text-muted">FCFA</span></div>
+        <div class="dep-stat-sub">{{ libelle_mois_cours }} · <span class="text-muted">Mois préc. ({{ libelle_mois_prec }}) :</span> {{ "{:,.0f}".format(total_variable_prev).replace(",", "\u202f") }} FCFA</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+      <div class="dep-stat-card shadow-sm">
+        <div class="text-muted small text-uppercase fw-semibold mb-1">Total validé (mois en cours)</div>
+        <div class="dep-stat-value text-success">{{ "{:,.0f}".format(total_valide_mois).replace(",", "\u202f") }} <span class="fs-6 fw-normal text-muted">FCFA</span></div>
+        <div class="dep-stat-sub">Fixe + variable · {{ libelle_mois_cours }}</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+      <div class="dep-stat-card shadow-sm border-warning border-opacity-50">
+        <div class="text-muted small text-uppercase fw-semibold mb-1">En attente de validation</div>
+        <div class="dep-stat-value text-warning">{{ nb_en_attente }}</div>
+        <div class="dep-stat-sub">Nombre de lignes à traiter</div>
+      </div>
+    </div>
+  </div>
+  <p class="small text-muted mb-4"><i class="bi bi-info-circle me-1"></i> Les montants des cartes concernent uniquement les dépenses au statut <strong>validé</strong> (date de dépense dans le mois).</p>
+
+  <div class="card shadow-sm border-0 mb-3">
+    <div class="card-body py-3">
+      <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label small mb-1">Recherche</label>
+          <input type="search" name="q" class="form-control form-control-sm" value="{{ q }}" placeholder="Réf., libellé…">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small mb-1">Statut</label>
+          <select name="statut" class="form-select form-select-sm">
+            <option value="">Tous</option>
+            <option value="en_attente" {% if statut_filtre == 'en_attente' %}selected{% endif %}>En attente</option>
+            <option value="valide" {% if statut_filtre == 'valide' %}selected{% endif %}>Validées</option>
+            <option value="rejete" {% if statut_filtre == 'rejete' %}selected{% endif %}>Rejetées</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small mb-1">Catégorie</label>
+          <select name="categorie_id" class="form-select form-select-sm">
+            <option value="">Toutes</option>
+            {% for c in categories %}
+              <option value="{{ c.id }}" {% if categorie_filtre == c.id %}selected{% endif %}>{{ c.nom }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small mb-1">Type</label>
+          <select name="type" class="form-select form-select-sm">
+            <option value="">Tous</option>
+            <option value="fixe" {% if type_filtre == 'fixe' %}selected{% endif %}>Fixe</option>
+            <option value="variable" {% if type_filtre == 'variable' %}selected{% endif %}>Variable</option>
+          </select>
+        </div>
+        <div class="col-md-1 d-flex gap-2">
+          <button type="submit" class="btn btn-primary btn-sm w-100" title="Filtrer"><i class="bi bi-funnel"></i></button>
+          <a href="{{ url_for('depenses.index') }}" class="btn btn-outline-secondary btn-sm" title="Réinitialiser"><i class="bi bi-x-lg"></i></a>
+        </div>
+      </form>
+      <p class="small text-muted mb-0 mt-2">
+        {% if pagination.total %}
+          <strong>{{ pagination.total }}</strong> dépense(s)
+          {% if q %} pour « {{ q }} »{% endif %}
+          {% if pagination.pages > 1 %} · page {{ pagination.page }}/{{ pagination.pages }}{% endif %}
+        {% else %}
+          Aucune dépense ne correspond aux critères.
+        {% endif %}
+      </p>
+    </div>
+  </div>
+
+  <div class="card dep-table-card shadow-sm border-0">
+    <div class="card-header bg-transparent border-0 pt-3 pb-0 d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <h2 class="h6 mb-0"><i class="bi bi-list-ul me-2 text-primary"></i>Historique</h2>
+      <span class="small text-muted">
+        {% if pagination.total %}
+          {{ pagination.total }} dépense(s)
+          {% if pagination.pages > 1 %} · page {{ pagination.page }}/{{ pagination.pages }}{% endif %}
+        {% else %}
+          0 dépense
+        {% endif %}
+      </span>
+    </div>
+    <div class="card-body p-0 pt-2">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Réf.</th>
+              <th>Libellé</th>
+              <th>Catégorie</th>
+              <th>Type</th>
+              <th>Date</th>
+              <th>Justificatif</th>
+              <th class="text-end">TTC (FCFA)</th>
+              <th>Statut</th>
+              {% if peut_valider %}<th class="text-end">Actions</th>{% endif %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for d in depenses %}
+              <tr>
+                <td><code class="small">{{ d.reference }}</code></td>
+                <td>
+                  <span class="fw-medium">{{ d.libelle }}</span>
+                  {% if d.fournisseur %}
+                    <div class="small text-muted">Fourn. : {{ d.fournisseur.raison_sociale }}</div>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if d.categorie %}
+                    <span class="d-inline-flex align-items-center gap-1">
+                      <i class="bi {{ d.categorie.icone or 'bi-tag' }} text-primary"></i>
+                      {{ d.categorie.nom }}
+                    </span>
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+                <td>
+                  {% if d.type_depense == 'fixe' %}
+                    <span class="badge rounded-pill bg-primary">Fixe</span>
+                  {% else %}
+                    <span class="badge rounded-pill bg-info text-dark">Variable</span>
+                  {% endif %}
+                </td>
+                <td class="text-nowrap">{{ d.date_depense.strftime('%d/%m/%Y') if d.date_depense else '—' }}</td>
+                <td>
+                  {% if d.justificatif %}
+                    <a href="{{ url_for('depenses.justificatif_fichier', stored_name=d.justificatif) }}" class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener" title="Voir le justificatif">
+                      <i class="bi bi-paperclip"></i>
+                    </a>
+                  {% else %}
+                    <span class="text-muted small">—</span>
+                  {% endif %}
+                </td>
+                <td class="text-end fw-semibold text-nowrap">{{ "{:,.2f}".format(d.montant_ttc|float).replace(",", "\u202f").replace(".", ",") }}</td>
+                <td>
+                  {% if d.statut == 'en_attente' %}
+                    <span class="badge bg-warning text-dark">En attente</span>
+                  {% elif d.statut == 'valide' %}
+                    <span class="badge bg-success">Validée</span>
+                  {% else %}
+                    <span class="badge bg-secondary">Rejetée</span>
+                  {% endif %}
+                </td>
+                {% if peut_valider %}
+                  <td class="text-end text-nowrap">
+                    {% if d.statut == 'en_attente' %}
+                      <form method="post" action="{{ url_for('depenses.valider_depense', id=d.id) }}" class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-success" title="Valider">
+                          <i class="bi bi-check-lg"></i>
+                        </button>
+                      </form>
+                      <form method="post" action="{{ url_for('depenses.rejeter_depense', id=d.id) }}" class="d-inline" onsubmit="return confirm('Rejeter cette dépense ?');">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Rejeter">
+                          <i class="bi bi-x-lg"></i>
+                        </button>
+                      </form>
+                    {% else %}
+                      <span class="text-muted small">—</span>
+                    {% endif %}
+                  </td>
+                {% endif %}
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="{{ 9 if peut_valider else 8 }}" class="text-center text-muted py-5">
+                  <i class="bi bi-inbox display-6 d-block mb-2 opacity-50"></i>
+                  Aucune dépense enregistrée.
+                  <div class="mt-2">
+                    <a href="{{ url_for('depenses.nouvelle_depense') }}" class="btn btn-primary btn-sm">Saisir une dépense</a>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if pagination.total %}
+        <div class="card-footer bg-transparent border-0 d-flex flex-wrap justify-content-between align-items-center gap-2 py-3 border-top">
+          <span class="small text-muted mb-0">
+            Affichage {{ ((pagination.page - 1) * pagination.per_page) + 1 }}
+            – {{ [pagination.page * pagination.per_page, pagination.total]|min }}
+            sur {{ pagination.total }}
+          </span>
+          {% if pagination.pages > 1 %}
+          <ul class="pagination pagination-sm mb-0">
+            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+              <a class="page-link" href="{{ url_for('depenses.index', page=pagination.prev_num, **filtres_url) if pagination.has_prev else '#' }}" aria-label="Page précédente">
+                <i class="bi bi-chevron-left"></i>
+              </a>
+            </li>
+            {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+              {% if p %}
+                <li class="page-item {% if p == pagination.page %}active{% endif %}">
+                  <a class="page-link" href="{{ url_for('depenses.index', page=p, **filtres_url) }}">{{ p }}</a>
+                </li>
+              {% else %}
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+              {% endif %}
+            {% endfor %}
+            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+              <a class="page-link" href="{{ url_for('depenses.index', page=pagination.next_num, **filtres_url) if pagination.has_next else '#' }}" aria-label="Page suivante">
+                <i class="bi bi-chevron-right"></i>
+              </a>
+            </li>
+          </ul>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

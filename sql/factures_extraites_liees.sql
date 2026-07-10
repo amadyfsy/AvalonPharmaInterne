@@ -1,0 +1,29 @@
+-- ============================================================================
+-- Import « factures extraites » vers GestAvalon (MySQL)
+-- ============================================================================
+-- Ancien contenu : dump SQLite (PRAGMA, CREATE TABLE, INSERT) non exécutable
+-- tel quel sous MySQL. La copie complète est conservée dans :
+--   factures_extraites_liees_archive.sqlite.sql
+--
+-- Le schéma GestAvalon (clients, produits, categories_produits, factures,
+-- lignes_facture, proformas, lignes_proforma, enums, TVA) est rempli par le
+-- script Python qui parse les INSERT SQLite et applique la même logique métier
+-- que les écrans de vente (totaux HT / TVA / TTC par ligne produit).
+--
+-- Étapes :
+--   1. Sauvegarder la base (mysqldump ou export).
+--   2. Depuis la racine du projet Flask (répertoire contenant config.py) :
+--        PYTHONPATH=. python GestAvalon/sql/import_factures_extraites.py
+--
+-- Options :
+--   --dry-run       Compte les lignes parsées sans écrire en base.
+--   --no-purge      N’efface pas les données avant import (risque de doublons).
+--   --sqlite-file   Chemin vers un autre fichier dump INSERT (défaut : archive).
+--
+-- Connexion : variable d’environnement DATABASE_URL ou valeur par défaut dans
+-- config.py (SQLALCHEMY_DATABASE_URI).
+--
+-- Purge par défaut : ventes (factures, proformas, BL), stocks (lots, stocks,
+-- mouvements), achats (commandes fournisseurs + lignes), puis produits et
+-- clients — pour laisser intactes users, fournisseurs (sans commandes), etc.
+-- ============================================================================

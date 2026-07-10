@@ -1,0 +1,109 @@
+<header class="main-header">
+  <div class="header-left">
+    <button type="button" class="btn-menu d-lg-none" id="openSidebar" aria-label="Ouvrir le menu">
+      <i class="bi bi-list"></i>
+    </button>
+    <form class="search-box header-search-form" method="get" action="{{ url_for('recherche.index') }}" role="search">
+      <button type="submit" aria-label="Lancer la recherche">
+        <i class="bi bi-search" aria-hidden="true"></i>
+      </button>
+      <input type="search" name="q" value="{{ request.args.get('q', '') }}" placeholder="Clients, produits, factures, BL, proformas…" autocomplete="off" aria-label="Recherche globale">
+    </form>
+  </div>
+
+  <div class="header-right">
+    <div class="dropdown">
+      <button
+        type="button"
+        class="header-btn"
+        title="Notifications"
+        data-bs-toggle="dropdown"
+        aria-expanded="false"
+      >
+        <i class="bi bi-bell"></i>
+        {% if header_notifications_count %}
+          <span class="badge-notification">{{ header_notifications_count }}</span>
+        {% endif %}
+      </button>
+      <div class="dropdown-menu dropdown-menu-end shadow header-dropdown-menu p-0">
+        <div class="dropdown-header fw-semibold d-flex justify-content-between align-items-center">
+          <span>Notifications</span>
+          <a
+            href="{{ url_for('auth.read_all_notifications', kind='notification', next=request.full_path) }}"
+            class="small text-decoration-none"
+          >
+            Tout lire
+          </a>
+        </div>
+        {% if header_notifications %}
+          {% for n in header_notifications %}
+            <a class="dropdown-item d-flex gap-2 py-2 {% if not n.is_read %}header-item-unread{% endif %}" href="{{ url_for('auth.open_notification', notification_id=n.id) }}">
+              <i class="bi {{ n.icon }} text-primary"></i>
+              <span class="small">
+                <strong class="d-block">{{ n.title }}</strong>
+                <span class="text-muted">{{ n.text }}</span>
+              </span>
+            </a>
+          {% endfor %}
+        {% else %}
+          <div class="dropdown-item-text small text-muted py-2">Aucune notification.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="dropdown">
+      <button
+        type="button"
+        class="header-btn"
+        title="Messages"
+        data-bs-toggle="dropdown"
+        aria-expanded="false"
+      >
+        <i class="bi bi-envelope"></i>
+        {% if header_messages_count %}
+          <span class="badge-notification">{{ header_messages_count }}</span>
+        {% endif %}
+      </button>
+      <div class="dropdown-menu dropdown-menu-end shadow header-dropdown-menu p-0">
+        <div class="dropdown-header fw-semibold d-flex justify-content-between align-items-center">
+          <span>Messages</span>
+          <a
+            href="{{ url_for('auth.read_all_notifications', kind='message', next=request.full_path) }}"
+            class="small text-decoration-none"
+          >
+            Tout lire
+          </a>
+        </div>
+        {% if header_messages %}
+          {% for m in header_messages %}
+            <a class="dropdown-item d-flex gap-2 py-2 {% if not m.is_read %}header-item-unread{% endif %}" href="{{ url_for('auth.open_notification', notification_id=m.id) }}">
+              <i class="bi {{ m.icon }} text-secondary"></i>
+              <span class="small">
+                <strong class="d-block">{{ m.title }}</strong>
+                <span class="text-muted">{{ m.text }}</span>
+              </span>
+            </a>
+          {% endfor %}
+        {% else %}
+          <div class="dropdown-item-text small text-muted py-2">Aucun message.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="dropdown">
+      <button class="user-menu btn btn-link text-decoration-none text-dark dropdown-toggle d-flex align-items-center gap-2 border-0 p-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+        <img src="https://ui-avatars.com/api/?name={{ (current_user.full_name or current_user.email or 'User')|replace('@', ' ')|urlencode }}&background=B0DBDD&color=721818" alt="" class="user-avatar" width="40" height="40">
+        <div class="user-info text-start d-none d-sm-block">
+          <span class="user-name d-block">{{ current_user.full_name or current_user.email or 'Utilisateur' }}</span>
+          <span class="user-role d-block">{{ current_user.role or '' }}</span>
+        </div>
+        <i class="bi bi-chevron-down small"></i>
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end shadow">
+        <li><a class="dropdown-item" href="{{ url_for('auth.profil') }}"><i class="bi bi-person-gear me-2"></i>Profil</a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item text-danger" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right me-2"></i>Déconnexion</a></li>
+      </ul>
+    </div>
+  </div>
+</header>

@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}Client {{ client.raison_sociale }} — Avalon Pharma{% endblock %}
+
+{% block content %}
+  <div class="clients-detail-hero d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+    <div>
+      <nav aria-label="breadcrumb" class="mb-2">
+        <ol class="breadcrumb mb-0 small">
+          <li class="breadcrumb-item"><a href="{{ url_for('clients.index') }}" class="text-white text-decoration-underline">Clients</a></li>
+          <li class="breadcrumb-item text-white active" aria-current="page">Fiche client</li>
+        </ol>
+      </nav>
+      <h1 class="h4 mb-1 fw-semibold text-white">{{ client.raison_sociale }}</h1>
+      <p class="mb-0 small" style="opacity:.92;">
+        Code {{ client.code }} · {{ client.type_client|capitalize }} ·
+        {% if client.est_actif %}Actif{% else %}Inactif{% endif %}
+      </p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{{ url_for('clients.paiements', id=client.id) }}" class="btn btn-light btn-sm">
+        <i class="bi bi-list-ul me-1"></i> Voir les paiements
+      </a>
+      <a href="{{ url_for('clients.index') }}" class="btn btn-outline-light btn-sm">Retour liste</a>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12">
+      <div class="card shadow-sm clients-card-accent">
+        <div class="card-header"><strong>Informations du client</strong></div>
+        <div class="card-body">
+          <div class="row g-3 small">
+            <div class="col-md-3">
+              <div class="text-muted">Raison sociale</div>
+              <div class="fw-semibold">{{ client.raison_sociale }}</div>
+            </div>
+            <div class="col-md-2">
+              <div class="text-muted">Code</div>
+              <div><code>{{ client.code }}</code></div>
+            </div>
+            <div class="col-md-2">
+              <div class="text-muted">Type</div>
+              <div class="text-capitalize">{{ client.type_client }}</div>
+            </div>
+            <div class="col-md-2">
+              <div class="text-muted">Téléphone</div>
+              <div>{{ client.telephone or '—' }}</div>
+            </div>
+            <div class="col-md-3">
+              <div class="text-muted">Email</div>
+              <div>{{ client.email or '—' }}</div>
+            </div>
+
+            <div class="col-md-3">
+              <div class="text-muted">Contact</div>
+              <div>{{ client.contact or '—' }}</div>
+            </div>
+            <div class="col-md-2">
+              <div class="text-muted">Ville</div>
+              <div>{{ client.ville or '—' }}</div>
+            </div>
+            <div class="col-md-7">
+              <div class="text-muted">Adresse</div>
+              <div>{{ client.adresse or '—' }}</div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-xl-4">
+      <div class="card shadow-sm mb-3 clients-card-accent" id="encaisser">
+        <div class="card-header"><strong>Encaisser un paiement</strong></div>
+        <div class="card-body">
+          <div class="alert clients-alert-mint small mb-3">
+            Solde impayé actuel: <strong>{{ "{:,.0f}".format(solde_impaye).replace(",", " ") }} FCFA</strong>
+          </div>
+          <p class="small mb-3">
+            <a href="{{ url_for('clients.paiements', id=client.id) }}">Voir l'historique des paiements</a>
+          </p>
+          <form method="post" action="{{ url_for('clients.encaisser', id=client.id) }}" class="row g-2">
+            <div class="col-12">
+              <label class="form-label mb-1">Montant (FCFA)</label>
+              <input type="number" step="0.01" min="0.01" name="montant" class="form-control" required>
+            </div>
+            <div class="col-12">
+              <label class="form-label mb-1">Mode de paiement</label>
+              <select name="mode_paiement" class="form-select" required>
+                <option value="cheque">Chèque</option>
+                <option value="virement">Virement</option>
+                <option value="orange_money">Orange Money</option>
+                <option value="wave">Wave</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label mb-1">Date de paiement</label>
+              <input type="date" name="date_paiement" value="{{ today.isoformat() }}" class="form-control" required>
+            </div>
+            <div class="col-12 d-grid mt-2">
+              <button type="submit" class="btn btn-primary">Encaisser</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="card shadow-sm clients-card-accent">
+        <div class="card-header"><strong>Factures impayées (ordre de répartition)</strong></div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-sm mb-0 align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>N°</th>
+                  <th>Date</th>
+                  <th class="text-end">Reste</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for f in factures_impayees %}
+                  <tr>
+                    <td>{{ f.numero }}</td>
+                    <td>{{ f.date_emission.strftime('%d/%m/%Y') if f.date_emission else '—' }}</td>
+                    <td class="text-end">{{ "{:,.0f}".format(f.reste_a_payer or 0).replace(",", " ") }}</td>
+                  </tr>
+                {% else %}
+                  <tr><td colspan="3" class="text-center text-muted py-3">Aucune facture impayée.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-xl-8">
+      <div class="card shadow-sm clients-card-accent">
+        <div class="card-header"><strong>Dernières factures du client</strong></div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Numéro</th>
+                  <th>Date</th>
+                  <th class="text-end">Total TTC</th>
+                  <th class="text-end">Payé</th>
+                  <th class="text-end">Reste à payer</th>
+                  <th>Statut</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for f in factures %}
+                  <tr>
+                    <td>{{ f.numero }}</td>
+                    <td>{{ f.date_emission.strftime('%d/%m/%Y') if f.date_emission else '—' }}</td>
+                    <td class="text-end">{{ "{:,.0f}".format(f.total_ttc or 0).replace(",", " ") }}</td>
+                    <td class="text-end">{{ "{:,.0f}".format(f.montant_paye or 0).replace(",", " ") }}</td>
+                    <td class="text-end fw-semibold">{{ "{:,.0f}".format(f.reste_a_payer or 0).replace(",", " ") }}</td>
+                    <td><span class="badge text-bg-light border">{{ f.statut }}</span></td>
+                    <td>
+                      <a class="btn btn-sm btn-outline-primary" href="{{ url_for('ventes.facture_detail', id=f.id) }}">Voir</a>
+                    </td>
+                  </tr>
+                {% else %}
+                  <tr>
+                    <td colspan="7" class="text-center text-muted py-4">Aucune facture pour ce client.</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

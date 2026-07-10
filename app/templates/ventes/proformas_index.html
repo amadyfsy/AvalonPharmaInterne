@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% macro badge_statut_proforma(st) -%}
+  {% if st == 'converti' %}
+    <span class="badge bg-success">Convertie</span>
+  {% elif st == 'accepte' %}
+    <span class="badge bg-primary">Acceptée</span>
+  {% elif st == 'envoye' %}
+    <span class="badge bg-info text-dark">Envoyée</span>
+  {% elif st == 'brouillon' %}
+    <span class="badge bg-secondary">Brouillon</span>
+  {% elif st == 'refuse' %}
+    <span class="badge bg-dark">Refusée</span>
+  {% else %}
+    <span class="badge bg-light text-dark">{{ st }}</span>
+  {% endif %}
+{%- endmacro %}
+
+{% macro libelle_statut_proforma(st) -%}
+  {% if st == 'converti' %}Convertie
+  {% elif st == 'accepte' %}Acceptée
+  {% elif st == 'envoye' %}Envoyée
+  {% elif st == 'brouillon' %}Brouillon
+  {% elif st == 'refuse' %}Refusée
+  {% else %}{{ st }}
+  {% endif %}
+{%- endmacro %}
+
+{% block title %}Proformas — Avalon Pharma{% endblock %}
+
+{% block content %}
+  <div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+      <h1 class="page-title">Proformas</h1>
+      <p class="page-subtitle mb-0">Consultez, convertissez en facture + BL. Les filtres s’appliquent automatiquement.</p>
+    </div>
+    <a href="{{ url_for('ventes.nouvelle_vente', mode='proforma') }}" class="btn btn-primary">
+      <i class="bi bi-file-earmark-plus me-1"></i> Nouvelle proforma
+    </a>
+  </div>
+
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+      <form id="proformasFiltersForm" method="get" action="{{ url_for('ventes.proformas') }}" class="row g-3 align-items-end" role="search">
+        <div class="col-md-5 col-lg-6">
+          <label class="form-label small text-muted mb-1" for="pfQ">Rechercher</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="search" class="form-control" id="pfQ" name="q" value="{{ q }}" placeholder="N° proforma, client…" autocomplete="off">
+          </div>
+        </div>
+        <div class="col-md-4 col-lg-3">
+          <label class="form-label small text-muted mb-1" for="pfStatut">Statut</label>
+          <select class="form-select" id="pfStatut" name="statut" onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()">
+            <option value="" {% if not statut_filtre %}selected{% endif %}>Tous les statuts</option>
+            {% for st in statuts_proforma %}
+              <option value="{{ st }}" {% if statut_filtre == st %}selected{% endif %}>{{ libelle_statut_proforma(st) }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3 col-lg-3 d-flex align-items-end">
+          {% if q or statut_filtre %}
+            <a href="{{ url_for('ventes.proformas') }}" class="btn btn-outline-secondary">Tout afficher</a>
+          {% endif %}
+        </div>
+      </form>
+      <p class="small text-muted mb-0 mt-2">
+        {% if pagination.total %}
+          <strong>{{ pagination.total }}</strong> proforma(s)
+          {% if q %} pour « {{ q }} »{% endif %}
+          {% if statut_filtre %} · statut : {{ libelle_statut_proforma(statut_filtre) }}{% endif %}
+          {% if pagination.pages > 1 %} · page {{ pagination.page }}/{{ pagination.pages }}{% endif %}
+        {% else %}
+          Aucune proforma ne correspond aux critères.
+        {% endif %}
+      </p>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Numéro</th>
+              <th>Client</th>
+              <th>Date</th>
+              <th class="text-end">Total TTC</th>
+              <th>Statut</th>
+              <th class="text-end" style="min-width:220px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in proformas %}
+              <tr>
+                <td>
+                  <a href="{{ url_for('ventes.proforma_detail', id=p.id) }}" class="fw-semibold text-decoration-none">
+                    {{ p.numero }}
+                  </a>
+                </td>
+                <td>{{ p.client.raison_sociale if p.client else '—' }}</td>
+                <td>{{ p.date_emission.strftime('%d/%m/%Y') if p.date_emission else '' }}</td>
+                <td class="text-end">{{ "%.0f"|format(p.total_ttc) if p.total_ttc is not none else '—' }}</td>
+                <td>{{ badge_statut_proforma(p.statut) }}</td>
+                <td class="text-end">
+                  <div class="btn-group btn-group-sm" role="group">
+                    <a class="btn btn-outline-secondary" href="{{ url_for('ventes.proforma_detail', id=p.id) }}" title="Voir">
+                      <i class="bi bi-eye"></i>
+                    </a>
+                    <a class="btn btn-outline-primary" href="{{ url_for('ventes.proforma_imprimer', id=p.id) }}" target="_blank" rel="noopener" title="Imprimer">
+                      <i class="bi bi-printer"></i>
+                    </a>
+                    <a class="btn btn-outline-secondary" href="{{ url_for('ventes.proforma_pdf', id=p.id) }}" target="_blank" rel="noopener" title="PDF">
+                      <i class="bi bi-file-earmark-pdf"></i>
+                    </a>
+                    {% if p.statut != 'converti' %}
+                      <form method="post" action="{{ url_for('ventes.convertir_proforma', id=p.id) }}" class="d-inline" onsubmit="return confirm('Créer la facture (émise) et le bon de livraison à partir de cette proforma ?');">
+                        <button class="btn btn-primary" type="submit" title="Facture + BL">
+                          <i class="bi bi-arrow-repeat"></i>
+                        </button>
+                      </form>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="6" class="text-center text-muted py-5">
+                  <i class="bi bi-inbox d-block fs-2 mb-2 opacity-50"></i>
+                  {% if q or statut_filtre %}
+                    Aucune proforma ne correspond aux filtres.
+                    <div class="mt-2"><a href="{{ url_for('ventes.proformas') }}">Voir toutes les proformas</a></div>
+                  {% else %}
+                    Aucune proforma. <a href="{{ url_for('ventes.nouvelle_vente', mode='proforma') }}">Créer une proforma</a>.
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if pagination.pages > 1 %}
+        <nav class="d-flex flex-wrap justify-content-between align-items-center gap-2 px-3 py-3 border-top" aria-label="Pagination proformas">
+          <span class="small text-muted mb-0">
+            Affichage {{ ((pagination.page - 1) * pagination.per_page) + 1 }}
+            – {{ [pagination.page * pagination.per_page, pagination.total]|min }}
+            sur {{ pagination.total }}
+          </span>
+          <ul class="pagination pagination-sm mb-0">
+            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+              <a class="page-link" href="{{ url_for('ventes.proformas', page=pagination.prev_num, **filtres_url) if pagination.has_prev else '#' }}" aria-label="Page précédente">
+                <i class="bi bi-chevron-left"></i>
+              </a>
+            </li>
+            {% for pnum in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+              {% if pnum %}
+                <li class="page-item {% if pnum == pagination.page %}active{% endif %}">
+                  <a class="page-link" href="{{ url_for('ventes.proformas', page=pnum, **filtres_url) }}">{{ pnum }}</a>
+                </li>
+              {% else %}
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+              {% endif %}
+            {% endfor %}
+            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+              <a class="page-link" href="{{ url_for('ventes.proformas', page=pagination.next_num, **filtres_url) if pagination.has_next else '#' }}" aria-label="Page suivante">
+                <i class="bi bi-chevron-right"></i>
+              </a>
+            </li>
+          </ul>
+        </nav>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    var form = document.getElementById('proformasFiltersForm');
+    var search = document.getElementById('pfQ');
+    if (!form || !search) return;
+    var t;
+    function submitForm() {
+      if (form.requestSubmit) form.requestSubmit();
+      else form.submit();
+    }
+    function scheduleSubmit() {
+      clearTimeout(t);
+      t = setTimeout(submitForm, 400);
+    }
+    search.addEventListener('input', scheduleSubmit);
+    search.addEventListener('search', function () {
+      clearTimeout(t);
+      submitForm();
+    });
+  })();
+</script>
+{% endblock %}

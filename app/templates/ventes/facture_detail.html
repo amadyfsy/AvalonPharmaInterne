@@ -1,0 +1,446 @@
+{% extends "base.html" %}
+
+{% macro badge_statut_facture(st) -%}
+  {% if st == 'payee' %}
+    <span class="badge bg-success">Payée</span>
+  {% elif st == 'partiellement_payee' %}
+    <span class="badge bg-info text-dark">Partielle</span>
+  {% elif st == 'emise' %}
+    <span class="badge bg-primary">Émise</span>
+  {% elif st == 'brouillon' %}
+    <span class="badge bg-secondary">Brouillon</span>
+  {% elif st == 'annulee' %}
+    <span class="badge bg-dark">Annulée</span>
+  {% else %}
+    <span class="badge bg-light text-dark">{{ st }}</span>
+  {% endif %}
+{%- endmacro %}
+
+{% macro badge_statut_bl(st) -%}
+  {% if st == 'livre' %}
+    <span class="badge bg-success">Livré</span>
+  {% elif st == 'prepare' %}
+    <span class="badge bg-warning text-dark">Préparé</span>
+  {% elif st == 'partiellement_livre' %}
+    <span class="badge bg-info text-dark">Partiel</span>
+  {% elif st == 'retourne' %}
+    <span class="badge bg-dark">Retourné</span>
+  {% else %}
+    <span class="badge bg-light text-dark">{{ st }}</span>
+  {% endif %}
+{%- endmacro %}
+
+{% block title %}Facture {{ facture.numero }} — Avalon Pharma{% endblock %}
+
+{% block content %}
+  <div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+      <nav aria-label="fil d'ariane">
+        <ol class="breadcrumb mb-2">
+          <li class="breadcrumb-item"><a href="{{ url_for('ventes.factures') }}">Factures</a></li>
+          <li class="breadcrumb-item active" aria-current="page">{{ facture.numero }}</li>
+        </ol>
+      </nav>
+      <h1 class="page-title mb-1">Facture {{ facture.numero }}</h1>
+      <p class="page-subtitle mb-0">{{ badge_statut_facture(facture.statut) }}</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{{ url_for('ventes.facture_imprimer', id=facture.id) }}"
+         class="btn btn-outline-primary js-facture-print"
+         data-print-url="{{ url_for('ventes.facture_imprimer', id=facture.id) }}"
+         data-has-bl="{{ '1' if bl else '0' }}"
+         {% if bl %}data-bl-num="{{ bl.numero }}"{% endif %}>
+        <i class="bi bi-printer me-1"></i> Aperçu / Imprimer
+      </a>
+      <a href="{{ url_for('ventes.facture_pdf', id=facture.id) }}" class="btn btn-outline-secondary" target="_blank" rel="noopener" title="PDF ReportLab">
+        <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+      </a>
+      {% if facture.statut in ['brouillon', 'emise', 'partiellement_payee'] %}
+        <a href="{{ url_for('ventes.modifier_facture', id=facture.id) }}" class="btn btn-primary">
+          <i class="bi bi-pencil-square me-1"></i> Modifier
+        </a>
+      {% endif %}
+      {% if facture.statut == 'brouillon' %}
+        <form method="post" action="{{ url_for('ventes.emettre_facture', id=facture.id) }}" class="d-inline"
+              onsubmit="return confirm('Passer cette facture au statut « émise » ? Vous pourrez encore la modifier ensuite (lignes, montants) avec confirmation.');">
+          <button type="submit" class="btn btn-success">
+            <i class="bi bi-send me-1"></i> Émettre
+          </button>
+        </form>
+      {% endif %}
+      <a href="{{ url_for('ventes.factures') }}" class="btn btn-outline-secondary">Liste</a>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-header fw-semibold">Client &amp; dates</div>
+        <div class="card-body">
+          <p class="mb-2"><strong>{{ facture.client.raison_sociale if facture.client else '—' }}</strong></p>
+          {% if facture.client and facture.client.telephone %}
+            <p class="small text-muted mb-1"><i class="bi bi-telephone me-1"></i>{{ facture.client.telephone }}</p>
+          {% endif %}
+          {% if facture.client and facture.client.email %}
+            <p class="small text-muted mb-3"><i class="bi bi-envelope me-1"></i>{{ facture.client.email }}</p>
+          {% endif %}
+          <hr>
+          <dl class="row small mb-0">
+            <dt class="col-5">Émission</dt>
+            <dd class="col-7">{{ facture.date_emission.strftime('%d/%m/%Y') if facture.date_emission else '—' }}</dd>
+            <dt class="col-5">Échéance</dt>
+            <dd class="col-7">{{ facture.date_echeance.strftime('%d/%m/%Y') if facture.date_echeance else '—' }}</dd>
+            {% if facture.bc %}
+              <dt class="col-5">BC</dt>
+              <dd class="col-7">{{ facture.bc }}</dd>
+            {% endif %}
+            <dt class="col-5">Remise globale</dt>
+            <dd class="col-7">{{ facture.remise_globale or 0 }} %</dd>
+            <dt class="col-5">Reste à payer</dt>
+            <dd class="col-7 fw-semibold {% if facture.reste_a_payer and facture.reste_a_payer|float > 0 %}text-danger{% else %}text-success{% endif %}">
+              {{ format_fcfa(facture.reste_a_payer) }} FCFA
+            </dd>
+            {% if facture.mode_paiement %}
+              <dt class="col-5">Paiement</dt>
+              <dd class="col-7">{{ facture.mode_paiement }}</dd>
+            {% endif %}
+          </dl>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-8">
+      <div class="card shadow-sm">
+        <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+          <span>Lignes</span>
+          <span class="small text-muted">{{ facture.lignes|length }} ligne(s)</span>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Produit</th>
+                  <th class="text-end" style="width:90px;">Qté</th>
+                  <th class="text-end" style="width:110px;">PU HT</th>
+                  <th class="text-end" style="width:120px;">Montant HT</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for l in facture.lignes|sort(attribute='id') %}
+                  <tr>
+                    <td>
+                      {% if l.produit %}
+                        <span class="text-muted small">{{ l.produit.reference }}</span><br>
+                        {{ l.produit.designation }}
+                      {% else %}
+                        —
+                      {% endif %}
+                    </td>
+                    <td class="text-end">{{ l.quantite }}</td>
+                    <td class="text-end">{{ format_fcfa(l.prix_unitaire_ht) }}</td>
+                    <td class="text-end fw-medium">{{ format_fcfa(l.montant_ht) }}</td>
+                  </tr>
+                {% else %}
+                  <tr><td colspan="4" class="text-center text-muted py-4">Aucune ligne</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card-footer bg-body-tertiary">
+          <div class="d-flex flex-wrap justify-content-end align-items-end gap-4 text-end">
+            <div>
+              <div class="small text-muted">Statut</div>
+              <div class="fs-6 fw-semibold">{{ badge_statut_facture(facture.statut) }}</div>
+            </div>
+              {% if affiche_tva %}
+                <div>
+                  <div class="small text-muted">Total HT</div>
+                  <div class="fs-6 fw-semibold">{{ format_fcfa(facture.total_ht) }} FCFA</div>
+                </div>
+                <div>
+                  <div class="small text-muted">TVA</div>
+                  <div class="fs-6">{{ format_fcfa(facture.tva_montant) }} FCFA</div>
+                </div>
+                <div>
+                  <div class="small text-muted">Total TTC</div>
+                  <div class="fs-5 fw-bold text-primary">{{ format_fcfa(facture.total_ttc) }} FCFA</div>
+                </div>
+              {% else %}
+                <div>
+                  <div class="small text-muted">Total</div>
+                  <div class="fs-5 fw-bold text-primary">{{ format_fcfa(facture.total_ht) }} FCFA</div>
+                </div>
+              {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if bl or proforma_src %}
+    <div class="card shadow-sm mt-4">
+      <div class="card-header fw-semibold">Documents liés</div>
+      <div class="card-body">
+        <ul class="list-unstyled mb-0">
+          {% if proforma_src %}
+            <li class="mb-2">
+              <i class="bi bi-file-earmark-text me-2 text-secondary"></i>
+              Proforma d’origine : <strong>{{ proforma_src.numero }}</strong>
+              <a href="{{ url_for('ventes.proforma_pdf', id=proforma_src.id) }}" class="ms-2" target="_blank" rel="noopener">PDF proforma</a>
+            </li>
+          {% endif %}
+          {% if bl %}
+            <li>
+              <i class="bi bi-truck me-2 text-secondary"></i>
+              Bon de livraison :
+              <a href="{{ url_for('ventes.bl_detail', id=bl.id) }}" class="fw-semibold text-decoration-none">{{ bl.numero }}</a>
+              {{ badge_statut_bl(bl.statut) }}
+              <span class="ms-2">
+                <a href="{{ url_for('ventes.bl_imprimer', id=bl.id) }}" class="btn btn-sm btn-outline-primary py-0" target="_blank" rel="noopener">Imprimer</a>
+                <a href="{{ url_for('ventes.bl_pdf', id=bl.id) }}" class="btn btn-sm btn-outline-secondary py-0" target="_blank" rel="noopener">PDF</a>
+                <a href="{{ url_for('ventes.bons_livraison') }}" class="small text-muted">Liste BL</a>
+              </span>
+            </li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="card shadow-sm mt-4">
+    <div class="card-header fw-semibold d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <span>Dépenses liées à cette vente (hors facture)</span>
+      <span class="badge bg-warning text-dark">Total : {{ format_fcfa(depenses_liees_total) }} FCFA</span>
+    </div>
+    {% if peut_ajouter_depense %}
+      <div class="card-body border-bottom bg-body-tertiary">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <h3 class="h6 mb-0">Ajouter une dépense</h3>
+          <a href="{{ url_for('depenses.nouvelle_depense') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-box-arrow-up-right me-1"></i> Saisir via module Dépenses
+          </a>
+        </div>
+        <form method="post" action="{{ url_for('ventes.facture_ajouter_depense', id=facture.id) }}" enctype="multipart/form-data" class="row g-3 align-items-end">
+          <div class="col-12 col-md-4">
+            <label class="form-label small">Type de dépense</label>
+            <select class="form-select form-select-sm" name="categorie_id" required>
+              {% for c in depense_categories %}
+                <option value="{{ c.id }}">{{ c.nom }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small">Description</label>
+            <input class="form-control form-control-sm" type="text" name="description" placeholder="Ex. Transport livraison" required>
+          </div>
+          <div class="col-6 col-md-2">
+            <label class="form-label small">Montant HT</label>
+            <input class="form-control form-control-sm" type="number" name="montant_ht" min="0.01" step="0.01" required>
+          </div>
+          <div class="col-6 col-md-2">
+            <label class="form-label small">Paiement</label>
+            <select class="form-select form-select-sm" name="mode_paiement">
+              <option value="espece">Espèce</option>
+              <option value="virement">Virement</option>
+              <option value="cheque">Chèque</option>
+              <option value="carte">Carte</option>
+            </select>
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small">Date</label>
+            <input class="form-control form-control-sm" type="date" name="date_depense"
+                   value="{{ facture.date_emission.strftime('%Y-%m-%d') if facture.date_emission else '' }}">
+          </div>
+          <div class="col-12 col-md-5">
+            <label class="form-label small">Justificatif</label>
+            <input class="form-control form-control-sm" type="file" name="justificatif" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg">
+            <div class="form-text">PDF, PNG ou JPEG (facultatif).</div>
+          </div>
+          <div class="col-12 col-md-3">
+            <button type="submit" class="btn btn-primary btn-sm w-100">
+              <i class="bi bi-plus-lg me-1"></i> Enregistrer la dépense
+            </button>
+          </div>
+        </form>
+      </div>
+    {% endif %}
+    {% if depenses_liees %}
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Date</th>
+                <th>Libellé</th>
+                <th>Catégorie</th>
+                <th>Statut</th>
+                <th>Justificatif</th>
+                <th class="text-end">Montant TTC</th>
+                {% if peut_ajouter_depense %}<th class="text-end" style="width:90px;">Actions</th>{% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for d in depenses_liees %}
+                {% set suffix = ' (vente ' ~ facture.numero ~ ')' %}
+                {% set suffix_len = suffix|length %}
+                {% set desc_base = d.libelle[0:(d.libelle|length - suffix_len)] if d.libelle and d.libelle.endswith(suffix) else d.libelle %}
+                <tr>
+                  <td>{{ d.date_depense.strftime('%d/%m/%Y') if d.date_depense else '—' }}</td>
+                  <td>{{ d.libelle }}</td>
+                  <td>{{ d.categorie.nom if d.categorie else '—' }}</td>
+                  <td>
+                    <span class="badge bg-{% if d.statut == 'valide' %}success{% elif d.statut == 'rejete' %}danger{% else %}warning text-dark{% endif %}">
+                      {{ d.statut }}
+                    </span>
+                  </td>
+                  <td>
+                    {% if d.justificatif %}
+                      <a href="{{ url_for('depenses.justificatif_fichier', stored_name=d.justificatif) }}" class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener">
+                        <i class="bi bi-paperclip me-1"></i> Voir
+                      </a>
+                    {% else %}
+                      <span class="text-muted small">—</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-end fw-medium">{{ format_fcfa(d.montant_ttc) }} FCFA</td>
+                  {% if peut_ajouter_depense %}
+                    <td class="text-end">
+                      {% if d.statut == 'en_attente' and facture.statut != 'annulee' %}
+                        <button type="button"
+                                class="btn btn-sm btn-outline-primary btn-edit-depense"
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalEditDepense"
+                                data-depense-id="{{ d.id }}"
+                                data-categorie-id="{{ d.categorie_id }}"
+                                data-description="{{ desc_base }}"
+                                data-montant="{{ d.montant_ht }}"
+                                data-mode="{{ d.mode_paiement }}"
+                                data-date="{{ d.date_depense.strftime('%Y-%m-%d') if d.date_depense else '' }}"
+                                data-has-justificatif="{{ '1' if d.justificatif else '0' }}"
+                                title="Modifier">
+                          <i class="bi bi-pencil"></i>
+                        </button>
+                      {% else %}
+                        <span class="text-muted small">—</span>
+                      {% endif %}
+                    </td>
+                  {% endif %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% elif not peut_ajouter_depense %}
+      <div class="card-body">
+        <p class="text-muted mb-0">Aucune dépense liée à cette vente pour le moment.</p>
+      </div>
+    {% endif %}
+    <div class="card-footer bg-body-tertiary small text-muted">
+      Ces coûts accompagnent la vente (transport, manutention, etc.) et ne sont pas imprimés sur la facture client. Le justificatif est facultatif. Seules les dépenses <strong>en attente</strong> peuvent être modifiées.
+    </div>
+  </div>
+
+  {% if peut_ajouter_depense %}
+    <div class="modal fade" id="modalEditDepense" tabindex="-1" aria-labelledby="modalEditDepenseLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+          <form method="post" id="formEditDepense" action="#" enctype="multipart/form-data">
+            <div class="modal-header">
+              <h5 class="modal-title" id="modalEditDepenseLabel">Modifier la dépense</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+              <div class="row g-3">
+                <div class="col-12 col-md-6">
+                  <label class="form-label">Type de dépense</label>
+                  <select class="form-select" name="categorie_id" id="editDepCategorie" required>
+                    {% for c in depense_categories %}
+                      <option value="{{ c.id }}">{{ c.nom }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-12 col-md-6">
+                  <label class="form-label">Date</label>
+                  <input class="form-control" type="date" name="date_depense" id="editDepDate" required>
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Description</label>
+                  <input class="form-control" type="text" name="description" id="editDepDescription" required>
+                </div>
+                <div class="col-6 col-md-4">
+                  <label class="form-label">Montant HT</label>
+                  <input class="form-control" type="number" name="montant_ht" id="editDepMontant" min="0.01" step="0.01" required>
+                </div>
+                <div class="col-6 col-md-4">
+                  <label class="form-label">Paiement</label>
+                  <select class="form-select" name="mode_paiement" id="editDepMode">
+                    <option value="espece">Espèce</option>
+                    <option value="virement">Virement</option>
+                    <option value="cheque">Chèque</option>
+                    <option value="carte">Carte</option>
+                  </select>
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Justificatif <span class="text-danger" id="editDepJustifRequired">*</span></label>
+                  <input class="form-control" type="file" name="justificatif" id="editDepJustificatif" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg">
+                  <div class="form-text" id="editDepJustifHint">Laissez vide pour conserver le fichier actuel.</div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-lg me-1"></i> Enregistrer
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  {% include 'ventes/_modal_imprimer_facture.html' %}
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='public/js/facture-print.js') }}"></script>
+  {% if peut_ajouter_depense %}
+  <script>
+    (function () {
+      const form = document.getElementById("formEditDepense");
+      const justifInput = document.getElementById("editDepJustificatif");
+      const justifRequired = document.getElementById("editDepJustifRequired");
+      const justifHint = document.getElementById("editDepJustifHint");
+      const modifierUrlTpl = {{ url_for('ventes.facture_modifier_depense', id=facture.id, depense_id=0) | tojson }};
+
+      document.querySelectorAll(".btn-edit-depense").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          const depId = btn.getAttribute("data-depense-id");
+          form.action = modifierUrlTpl.replace("/depenses/0/", "/depenses/" + depId + "/");
+
+          document.getElementById("editDepCategorie").value = btn.getAttribute("data-categorie-id") || "";
+          document.getElementById("editDepDescription").value = btn.getAttribute("data-description") || "";
+          document.getElementById("editDepMontant").value = btn.getAttribute("data-montant") || "";
+          document.getElementById("editDepMode").value = btn.getAttribute("data-mode") || "espece";
+          document.getElementById("editDepDate").value = btn.getAttribute("data-date") || "";
+
+          const hasJustif = btn.getAttribute("data-has-justificatif") === "1";
+          if (justifInput) {
+            justifInput.value = "";
+            justifInput.required = false;
+          }
+          if (justifRequired) justifRequired.classList.add("d-none");
+          if (justifHint) {
+            justifHint.textContent = hasJustif
+              ? "Laissez vide pour conserver le justificatif actuel."
+              : "Justificatif facultatif (PDF, PNG ou JPEG).";
+          }
+        });
+      });
+    })();
+  </script>
+  {% endif %}
+{% endblock %}

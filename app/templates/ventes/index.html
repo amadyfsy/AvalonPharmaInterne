@@ -1,0 +1,378 @@
+{% extends "base.html" %}
+
+{% block title %}Module ventes — Avalon Pharma{% endblock %}
+
+{% block extra_css %}
+<style>
+  .ventes-cta-card {
+    border-radius: 12px;
+    border: 1px solid rgba(176, 219, 221, 0.65);
+    background: linear-gradient(135deg, rgba(176, 219, 221, 0.15) 0%, var(--card-bg) 50%);
+  }
+  .ventes-quick-link {
+    border-radius: 10px;
+    transition: var(--transition, all 0.2s ease);
+  }
+  .ventes-quick-link:hover {
+    background: rgba(176, 219, 221, 0.18);
+  }
+  /* Ticker client : 1 nom / 3 s + transition visible (compact) */
+  .ventes-kpi-row .kpi-card {
+    padding: 16px 14px;
+  }
+  .ventes-kpi-row .kpi-icon {
+    width: 48px;
+    height: 48px;
+    font-size: 1.2rem;
+  }
+  .ventes-kpi-row .kpi-value {
+    font-size: 1.35rem;
+  }
+  .ventes-kpi-row .kpi-value[data-kpi-mini-fcfa] small {
+    font-size: 0.62em;
+    vertical-align: baseline;
+  }
+  .ventes-kpi-row .kpi-badge {
+    margin-top: 0.25rem;
+  }
+  .ventes-ticker-json {
+    display: none !important;
+  }
+  .ventes-ticker-wrap {
+    overflow: hidden;
+    width: 100%;
+    height: 1.28rem;
+    line-height: 1.28rem;
+    margin-top: 0.2rem;
+    border-radius: 6px;
+    background: rgba(176, 219, 221, 0.2);
+    position: relative;
+  }
+  .ventes-ticker-wrap::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 6px;
+    pointer-events: none;
+    box-shadow: inset 0 4px 8px rgba(255, 255, 255, 0.45), inset 0 -3px 6px rgba(114, 24, 24, 0.05);
+  }
+  .ventes-ticker-viewport {
+    position: relative;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0.25rem;
+    perspective: 420px;
+  }
+  .ventes-ticker-label {
+    display: block;
+    max-width: 100%;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--brand-burgundy, #721818);
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: transform 0.38s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.36s ease;
+    transform-origin: center center;
+  }
+  .ventes-ticker-label.is-exit {
+    transform: translateY(-110%) rotateX(-28deg);
+    opacity: 0;
+  }
+  .ventes-ticker-label.is-enter {
+    animation: ventesTickerCubeIn 0.48s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    transition: none !important;
+  }
+  @keyframes ventesTickerCubeIn {
+    0% {
+      transform: translateY(110%) rotateX(28deg) scale(0.92);
+      opacity: 0;
+    }
+    70% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(0) rotateX(0deg) scale(1);
+      opacity: 1;
+    }
+  }
+  .ventes-kpi-sub {
+    font-size: 0.72rem;
+    color: var(--text-secondary, #6c757d);
+    margin-top: 0.1rem;
+    line-height: 1.25;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Module ventes</h1>
+      <p class="page-subtitle mb-0">
+        Vente directe (facture + bon de livraison), proformas et suivi des documents. Les PDF facture utilisent ReportLab avec en-tête et pied sur chaque page.
+      </p>
+    </div>
+    <div class="page-actions flex-wrap">
+      <a href="{{ url_for('ventes.nouvelle_vente') }}" class="btn btn-primary">
+        <i class="bi bi-cart-plus me-2"></i>Nouvelle vente
+      </a>
+      <a href="{{ url_for('ventes.nouvelle_vente', mode='proforma') }}" class="btn btn-outline-primary">
+        <i class="bi bi-file-earmark-text me-2"></i>Proforma seule
+      </a>
+    </div>
+  </div>
+
+  {% if derniere_facture and dernier_bl %}
+    <div class="alert alert-success border-0 shadow-sm rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+      <div class="d-flex align-items-start gap-2">
+        <span class="text-success fs-4 lh-1"><i class="bi bi-check-circle-fill"></i></span>
+        <div>
+          <strong>Documents générés</strong>
+          <span class="d-block small text-success-emphasis">Facture <code class="small">{{ derniere_facture.numero }}</code> · BL <code class="small">{{ dernier_bl.numero }}</code></span>
+        </div>
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-sm btn-outline-primary js-facture-print"
+           href="{{ url_for('ventes.facture_imprimer', id=derniere_facture.id) }}"
+           data-print-url="{{ url_for('ventes.facture_imprimer', id=derniere_facture.id) }}"
+           data-has-bl="1"
+           data-bl-num="{{ dernier_bl.numero }}">
+          <i class="bi bi-printer me-1"></i> Imprimer (navigateur)
+        </a>
+        <a class="btn btn-sm btn-primary" href="{{ url_for('ventes.facture_pdf', id=derniere_facture.id) }}" target="_blank" rel="noopener">
+          <i class="bi bi-file-earmark-pdf me-1"></i> PDF facture
+        </a>
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('ventes.bl_pdf', id=dernier_bl.id) }}" target="_blank" rel="noopener">
+          <i class="bi bi-truck me-1"></i> PDF BL
+        </a>
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('ventes.factures') }}">Factures</a>
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('ventes.bons_livraison') }}">BL</a>
+      </div>
+    </div>
+  {% elif dernier_proforma %}
+    <div class="alert alert-info border-0 shadow-sm rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+      <div class="d-flex align-items-start gap-2">
+        <span class="text-info fs-4 lh-1"><i class="bi bi-info-circle-fill"></i></span>
+        <div>
+          <strong>Proforma enregistrée</strong>
+          <span class="d-block small">N° <code>{{ dernier_proforma.numero }}</code> — convertissez-la en facture + BL depuis la liste des proformas.</span>
+        </div>
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-sm btn-primary" href="{{ url_for('ventes.proforma_pdf', id=dernier_proforma.id) }}" target="_blank" rel="noopener">
+          <i class="bi bi-file-earmark-pdf me-1"></i> PDF proforma
+        </a>
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('ventes.proformas') }}">Liste proformas</a>
+      </div>
+    </div>
+  {% endif %}
+
+  <h2 class="h6 text-uppercase text-muted fw-semibold mb-3">Indicateurs</h2>
+  <div class="row g-3 mb-4 ventes-kpi-row">
+    <div class="col-12 col-sm-6 col-xl-3">
+      <a href="{{ url_for('ventes.factures') }}" class="d-block text-decoration-none text-reset h-100">
+        <div class="kpi-card kpi-primary h-100">
+          <div class="kpi-icon"><i class="bi bi-cash-coin"></i></div>
+          <div class="kpi-content">
+            <span class="kpi-label">Factures impayées</span>
+            <span class="kpi-value" data-kpi-mini-fcfa="true">{{ "{:,.0f}".format(hub_stats.total_factures_impaye).replace(",", " ") }} <small class="text-body-secondary fw-normal">FCFA</small></span>
+            <div class="ventes-kpi-sub">{{ hub_stats.nb_factures_impayees }} facture(s) avec reste à payer</div>
+            <span class="kpi-badge">Liste factures <i class="bi bi-arrow-right-short"></i></span>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+      <a href="{{ url_for('ventes.bons_livraison') }}" class="d-block text-decoration-none text-reset h-100">
+        <div class="kpi-card kpi-success h-100">
+          <div class="kpi-icon"><i class="bi bi-truck"></i></div>
+          <div class="kpi-content">
+            <span class="kpi-label">Livraisons à effectuer</span>
+            <span class="kpi-value" data-kpi-suffix="à livrer">{{ hub_stats.nb_bl_a_livrer }}</span>
+            <div
+              class="ventes-ticker-wrap"
+              data-ventes-ticker
+              aria-live="polite"
+              aria-label="Clients à livrer"
+            >
+              <script type="application/json" class="ventes-ticker-json">{{ hub_stats.noms_clients_bl_livrer|tojson }}</script>
+              <div class="ventes-ticker-viewport">
+                <span class="ventes-ticker-label">{% if hub_stats.noms_clients_bl_livrer %}{{ hub_stats.noms_clients_bl_livrer[0] }}{% else %}—{% endif %}</span>
+              </div>
+            </div>
+            <span class="kpi-badge mt-1">Voir les BL <i class="bi bi-arrow-right-short"></i></span>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+      <a href="{{ url_for('ventes.proformas') }}" class="d-block text-decoration-none text-reset h-100">
+        <div class="kpi-card kpi-warning h-100">
+          <div class="kpi-icon"><i class="bi bi-file-earmark-text"></i></div>
+          <div class="kpi-content">
+            <span class="kpi-label">Montant proformas ouverts</span>
+            <span class="kpi-value" data-kpi-suffix="à en attente">{{ "{:,.0f}".format(hub_stats.total_proformas_montant).replace(",", " ") }}en attente</span>
+            <div class="ventes-kpi-sub">{{ hub_stats.nb_proformas_ouverts }} ouvert(s) · {{ hub_stats.nb_proformas_suivi }} suivi</div>
+            <div
+              class="ventes-ticker-wrap"
+              data-ventes-ticker
+              aria-live="polite"
+              aria-label="Clients proforma"
+            >
+              <script type="application/json" class="ventes-ticker-json">{{ hub_stats.noms_clients_proforma_suivi|tojson }}</script>
+              <div class="ventes-ticker-viewport">
+                <span class="ventes-ticker-label">{% if hub_stats.noms_clients_proforma_suivi %}{{ hub_stats.noms_clients_proforma_suivi[0] }}{% else %}—{% endif %}</span>
+              </div>
+            </div>
+            <span class="kpi-badge">Liste proformas <i class="bi bi-arrow-right-short"></i></span>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+      <a href="{{ url_for('clients.index') }}" class="d-block text-decoration-none text-reset h-100">
+        <div class="kpi-card kpi-danger h-100">
+          <div class="kpi-icon"><i class="bi bi-people"></i></div>
+          <div class="kpi-content">
+            <span class="kpi-label">Clients actifs</span>
+            <span class="kpi-value" data-kpi-suffix="">{{ hub_stats.clients_actifs }}</span>
+            <div class="ventes-kpi-sub mb-0">Annuaire &amp; paiements</div>
+            <span class="kpi-badge">Ouvrir <i class="bi bi-arrow-right-short"></i></span>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <h2 class="h6 text-uppercase text-muted fw-semibold mb-3">Parcours</h2>
+  <div class="row g-4 mb-4">
+    <div class="col-lg-7">
+      <div class="card ventes-cta-card shadow-sm border-0 h-100">
+        <div class="card-body p-4">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <span class="badge bg-primary rounded-pill">Recommandé</span>
+          </div>
+          <h3 class="h5 mb-2"><i class="bi bi-lightning-charge-fill text-primary me-2"></i>Nouvelle vente</h3>
+          <p class="text-muted small mb-4">
+            Une seule saisie : soit <strong>facture émise + BL préparé</strong> (stocks mis à jour), soit <strong>proforma seule</strong> pour un devis à convertir plus tard.
+          </p>
+          <div class="d-flex flex-wrap gap-2">
+            <a href="{{ url_for('ventes.nouvelle_vente') }}" class="btn btn-primary">
+              <i class="bi bi-cart-check me-1"></i> Vente complète
+            </a>
+            <a href="{{ url_for('ventes.nouvelle_vente', mode='proforma') }}" class="btn btn-outline-primary">
+              Mode proforma
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-header bg-transparent border-0 pt-3 pb-0">
+          <span class="fw-semibold">Autres entrées</span>
+        </div>
+        <div class="list-group list-group-flush border-0 px-2 pb-2">
+          <a href="{{ url_for('ventes.nouveau_facture') }}" class="list-group-item list-group-item-action ventes-quick-link border-0">
+            <i class="bi bi-receipt me-2 text-primary"></i> Nouvelle facture (sans l’assistant vente)
+          </a>
+          <a href="{{ url_for('ventes.nouveau_bl') }}" class="list-group-item list-group-item-action ventes-quick-link border-0">
+            <i class="bi bi-truck me-2 text-success"></i> Nouveau bon de livraison isolé
+          </a>
+          <a href="{{ url_for('ventes.nouveau_proforma') }}" class="list-group-item list-group-item-action ventes-quick-link border-0">
+            <i class="bi bi-file-earmark-plus me-2 text-warning"></i> Nouveau proforma (formulaire détaillé)
+          </a>
+          <a href="{{ url_for('clients.index') }}" class="list-group-item list-group-item-action ventes-quick-link border-0">
+            <i class="bi bi-people me-2 text-secondary"></i> Clients
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 bg-body-secondary bg-opacity-50 rounded-3">
+    <div class="card-body py-3 d-flex flex-wrap align-items-center gap-2 small text-muted">
+      <i class="bi bi-info-circle text-primary fs-5"></i>
+      <span>
+        <strong class="text-body">Documents :</strong>
+        facture en aperçu navigateur ou <strong>PDF ReportLab</strong> ; proforma et BL en PDF. Paramètres d’en-tête et de pied dans l’administration des documents.
+      </span>
+    </div>
+  </div>
+
+  {% include 'ventes/_modal_imprimer_facture.html' %}
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  <script src="{{ url_for('static', filename='public/js/facture-print.js') }}"></script>
+  <script>
+    (function () {
+      var STEP_MS = 3000;
+      var EXIT_MS = 380;
+      var ENTER_ANIM_MS = 480;
+      var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      function parseNames(raw) {
+        try {
+          var a = JSON.parse(raw || '[]');
+          return Array.isArray(a) ? a.filter(function (s) { return String(s || '').trim(); }) : [];
+        } catch (e) {
+          return [];
+        }
+      }
+
+      function readNames(root) {
+        var el = root.querySelector('script.ventes-ticker-json');
+        return parseNames(el ? el.textContent : '');
+      }
+
+      function boot(root) {
+        var names = readNames(root);
+        var span = root.querySelector('.ventes-ticker-label');
+        if (!span) return;
+        if (!names.length) {
+          span.textContent = '—';
+          return;
+        }
+        span.textContent = names[0];
+        if (names.length < 2 || reduceMotion) return;
+
+        var i = 0;
+
+        function tick() {
+          span.classList.add('is-exit');
+          window.setTimeout(function () {
+            span.style.transition = 'none';
+            span.classList.remove('is-exit');
+            i = (i + 1) % names.length;
+            span.textContent = names[i];
+            span.classList.remove('is-enter');
+            void span.offsetWidth;
+            span.style.transition = '';
+            span.classList.add('is-enter');
+            window.setTimeout(function () {
+              span.classList.remove('is-enter');
+            }, ENTER_ANIM_MS);
+          }, EXIT_MS);
+        }
+
+        window.setInterval(tick, STEP_MS);
+      }
+
+      function initTickers() {
+        document.querySelectorAll('[data-ventes-ticker]').forEach(boot);
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initTickers);
+      } else {
+        initTickers();
+      }
+    })();
+  </script>
+{% endblock %}

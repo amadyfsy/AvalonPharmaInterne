@@ -1,0 +1,444 @@
+{% extends "base.html" %}
+
+{% block title %}Rappels & échéances — Avalon Pharma{% endblock %}
+
+{% block extra_css %}
+<style>
+  .rappel-hero {
+    background: linear-gradient(135deg, var(--brand-burgundy, #721818) 0%, var(--brand-burgundy-dark, #5a1218) 100%);
+    border-radius: 0.75rem;
+    color: #fff;
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 0.5rem 1.25rem rgba(114, 24, 24, 0.22);
+  }
+  .rappel-stat {
+    border-radius: 0.65rem;
+    border: 1px solid var(--bs-border-color);
+    background: var(--bs-body-bg);
+    padding: 1rem;
+    height: 100%;
+  }
+  .rappel-filters .form-select,
+  .rappel-filters .form-control { font-size: 0.875rem; }
+  .badge-importance-importante { background: #dc3545; }
+  .badge-importance-normale { background: #6c757d; }
+  .badge-importance-faible { background: #adb5bd; color: #212529; }
+  .rappel-row-retard { background: rgba(220, 53, 69, 0.06); }
+  .rappel-row-urgent { background: rgba(255, 193, 7, 0.1); }
+  .rappel-recurrent-fields { display: none; }
+  .rappel-recurrent-fields.is-visible { display: block; }
+</style>
+{% endblock %}
+
+{% block content %}
+  <div class="rappel-hero d-flex flex-wrap justify-content-between align-items-start gap-3">
+    <div>
+      <h1 class="h4 mb-1 fw-semibold">Rappels &amp; suivi</h1>
+      <p class="mb-0 small opacity-90">Marchés, impôts, démarches administratives — ponctuels ou récurrents avec génération automatique.</p>
+    </div>
+    {% if peut_creer %}
+      <button type="button" class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#modalNouveauRappel">
+        <i class="bi bi-plus-lg me-1"></i> Nouveau rappel
+      </button>
+    {% endif %}
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-sm-4">
+      <div class="rappel-stat border-start border-4 border-warning">
+        <div class="text-muted small text-uppercase fw-semibold">En cours</div>
+        <div class="h4 mb-0 text-warning">{{ nb_en_cours }}</div>
+      </div>
+    </div>
+    <div class="col-sm-4">
+      <div class="rappel-stat border-start border-4 border-danger">
+        <div class="text-muted small text-uppercase fw-semibold">En retard</div>
+        <div class="h4 mb-0 text-danger">{{ nb_retard }}</div>
+      </div>
+    </div>
+    <div class="col-sm-4">
+      <div class="rappel-stat border-start border-4 border-primary">
+        <div class="text-muted small text-uppercase fw-semibold">Importants actifs</div>
+        <div class="h4 mb-0 text-primary">{{ nb_important }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm border-0 mb-3">
+    <div class="card-body py-3 rappel-filters">
+      <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label small mb-1">Recherche</label>
+          <input type="search" name="q" class="form-control form-control-sm" value="{{ q }}" placeholder="Titre, description…">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small mb-1">Statut</label>
+          <select name="statut" class="form-select form-select-sm">
+            <option value="en_cours" {% if statut_filtre == 'en_cours' %}selected{% endif %}>En cours</option>
+            <option value="valide" {% if statut_filtre == 'valide' %}selected{% endif %}>Validés</option>
+            <option value="tous" {% if statut_filtre == 'tous' %}selected{% endif %}>Tous</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small mb-1">Catégorie</label>
+          <select name="categorie" class="form-select form-select-sm">
+            <option value="">Toutes</option>
+            {% for val, label in categories %}
+              <option value="{{ val }}" {% if categorie_filtre == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small mb-1">Importance</label>
+          <select name="importance" class="form-select form-select-sm">
+            <option value="">Toutes</option>
+            {% for val, label in importances %}
+              <option value="{{ val }}" {% if importance_filtre == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small mb-1">Récurrent</label>
+          <select name="recurrent" class="form-select form-select-sm">
+            <option value="">Tous</option>
+            <option value="oui" {% if recurrent_filtre == 'oui' %}selected{% endif %}>Récurrents</option>
+            <option value="non" {% if recurrent_filtre == 'non' %}selected{% endif %}>Ponctuels</option>
+          </select>
+        </div>
+        <div class="col-md-2 d-flex gap-2 align-items-end">
+          <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-funnel me-1"></i> Filtrer</button>
+          <a href="{{ url_for('rappels.index') }}" class="btn btn-outline-secondary btn-sm">Réinitialiser</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card shadow-sm border-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Titre</th>
+            <th>Catégorie</th>
+            <th>Importance</th>
+            <th>Date prévue</th>
+            <th>Date limite</th>
+            <th>Statut</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rappels %}
+            <tr class="{% if r.priorite_affichage == 'retard' %}rappel-row-retard{% elif r.priorite_affichage == 'urgent' %}rappel-row-urgent{% endif %}">
+              <td>
+                <div class="fw-medium">
+                  {{ r.titre }}
+                  {% if r.est_recurrent %}
+                    <span class="badge bg-info text-dark ms-1" title="Rappel récurrent"><i class="bi bi-arrow-repeat"></i></span>
+                  {% endif %}
+                </div>
+                {% if r.description %}
+                  <div class="small text-muted text-truncate" style="max-width:280px">{{ r.description }}</div>
+                {% endif %}
+                {% if r.notes_report and r.statut != 'valide' %}
+                  <div class="small text-info"><i class="bi bi-clock-history me-1"></i>{{ r.notes_report }}</div>
+                {% endif %}
+              </td>
+              <td><span class="badge text-bg-light border">{{ r.categorie_label }}</span></td>
+              <td>
+                <span class="badge badge-importance-{{ r.importance }}">{{ r.importance_label }}</span>
+              </td>
+              <td class="text-nowrap">{{ r.date_prevue.strftime('%d/%m/%Y') if r.date_prevue else '—' }}</td>
+              <td class="text-nowrap">
+                {{ r.date_limite.strftime('%d/%m/%Y') if r.date_limite else '—' }}
+                {% if r.est_en_retard %}<span class="badge bg-danger ms-1">Retard</span>{% endif %}
+              </td>
+              <td>
+                {% if r.statut == 'valide' %}
+                  <span class="badge bg-success">Validé</span>
+                  {% if r.valide_le %}
+                    <div class="small text-muted">{{ r.valide_le.strftime('%d/%m/%Y') }}</div>
+                  {% endif %}
+                {% elif r.est_a_traiter %}
+                  <span class="badge bg-warning text-dark">À traiter</span>
+                {% else %}
+                  <span class="badge bg-secondary">Planifié</span>
+                {% endif %}
+              </td>
+              <td class="text-end text-nowrap">
+                {% if r.statut != 'valide' %}
+                  {% if peut_valider %}
+                    <form method="post" action="{{ url_for('rappels.valider', id=r.id) }}" class="d-inline">
+                      <button type="submit" class="btn btn-sm btn-success" title="Marquer comme traité">
+                        <i class="bi bi-check-lg"></i>
+                      </button>
+                    </form>
+                  {% endif %}
+                  {% if peut_creer %}
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-warning btn-reporter-rappel"
+                      title="Remettre à plus tard"
+                      data-bs-toggle="modal"
+                      data-bs-target="#modalReporterRappel"
+                      data-id="{{ r.id }}"
+                      data-titre="{{ r.titre }}"
+                      data-date-prevue="{{ r.date_prevue.strftime('%Y-%m-%d') if r.date_prevue else '' }}"
+                      data-date-limite="{{ r.date_limite.strftime('%Y-%m-%d') if r.date_limite else '' }}"
+                    >
+                      <i class="bi bi-calendar-plus"></i>
+                    </button>
+                  {% endif %}
+                {% endif %}
+                {% if peut_supprimer %}
+                  <form method="post" action="{{ url_for('rappels.supprimer', id=r.id) }}" class="d-inline" onsubmit="return confirm('Supprimer ce rappel ?');">
+                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </form>
+                {% endif %}
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="7" class="text-center text-muted py-5">
+                <i class="bi bi-bell display-6 d-block mb-2 opacity-50"></i>
+                Aucun rappel pour ces critères.
+                {% if peut_creer %}
+                  <div class="mt-2">
+                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalNouveauRappel">
+                      Ajouter un rappel
+                    </button>
+                  </div>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if pagination.pages > 1 %}
+      <div class="card-footer bg-transparent">
+        <nav aria-label="Pagination rappels">
+          <ul class="pagination pagination-sm mb-0 justify-content-center">
+            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+              <a class="page-link" href="{{ url_for('rappels.index', page=pagination.prev_num, **filtres_url) if pagination.has_prev else '#' }}">Préc.</a>
+            </li>
+            {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+              {% if p %}
+                <li class="page-item {% if p == pagination.page %}active{% endif %}">
+                  <a class="page-link" href="{{ url_for('rappels.index', page=p, **filtres_url) }}">{{ p }}</a>
+                </li>
+              {% else %}
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+              {% endif %}
+            {% endfor %}
+            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+              <a class="page-link" href="{{ url_for('rappels.index', page=pagination.next_num, **filtres_url) if pagination.has_next else '#' }}">Suiv.</a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    {% endif %}
+  </div>
+
+  {% if modeles_recurrents %}
+  <div class="card shadow-sm border-0 mt-4">
+    <div class="card-header bg-transparent py-3">
+      <h2 class="h6 mb-0"><i class="bi bi-arrow-repeat me-2"></i>Modèles récurrents enregistrés</h2>
+      <p class="small text-muted mb-0 mt-1">Ces modèles génèrent automatiquement la prochaine échéance lorsque vous validez un rappel.</p>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Titre</th>
+            <th>Catégorie</th>
+            <th>Fréquence</th>
+            <th>Délai limite</th>
+            <th>Statut</th>
+            {% if peut_creer or peut_supprimer %}
+              <th class="text-end">Actions</th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in modeles_recurrents %}
+            <tr>
+              <td>
+                <div class="fw-medium">{{ m.titre }}</div>
+                {% if m.description %}
+                  <div class="small text-muted text-truncate" style="max-width:240px">{{ m.description }}</div>
+                {% endif %}
+              </td>
+              <td><span class="badge text-bg-light border">{{ m.categorie_label }}</span></td>
+              <td>{{ m.frequence_label }}</td>
+              <td>{{ m.delai_limite_jours }} jour(s) après la date prévue</td>
+              <td>
+                {% if m.actif %}
+                  <span class="badge bg-success">Actif</span>
+                {% else %}
+                  <span class="badge bg-secondary">Inactif</span>
+                {% endif %}
+              </td>
+              {% if peut_creer or peut_supprimer %}
+                <td class="text-end text-nowrap">
+                  {% if peut_creer %}
+                    {% if m.actif %}
+                      <form method="post" action="{{ url_for('rappels.desactiver_recurrence', id=m.id) }}" class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-outline-secondary" title="Désactiver">
+                          <i class="bi bi-pause-fill"></i>
+                        </button>
+                      </form>
+                    {% else %}
+                      <form method="post" action="{{ url_for('rappels.activer_recurrence', id=m.id) }}" class="d-inline">
+                        <button type="submit" class="btn btn-sm btn-outline-success" title="Réactiver">
+                          <i class="bi bi-play-fill"></i>
+                        </button>
+                      </form>
+                    {% endif %}
+                  {% endif %}
+                  {% if peut_supprimer %}
+                    <form method="post" action="{{ url_for('rappels.supprimer_recurrence', id=m.id) }}" class="d-inline" onsubmit="return confirm('Supprimer ce modèle récurrent et ses rappels en cours ?');">
+                      <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer le modèle">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </form>
+                  {% endif %}
+                </td>
+              {% endif %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if peut_creer %}
+  <div class="modal fade" id="modalNouveauRappel" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <form method="post" action="{{ url_for('rappels.nouveau') }}">
+          {{ form.hidden_tag() }}
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-bell me-2"></i>Nouveau rappel</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              {{ form.titre.label(class="form-label") }}
+              {{ form.titre(class="form-control", placeholder="Ex. Dépôt dossier marché ARP") }}
+            </div>
+            <div class="mb-3">
+              {{ form.description.label(class="form-label") }}
+              {{ form.description(class="form-control", rows=2, placeholder="Détails, références, contact…") }}
+            </div>
+            <div class="row g-3">
+              <div class="col-md-6">
+                {{ form.categorie.label(class="form-label") }}
+                {{ form.categorie(class="form-select") }}
+              </div>
+              <div class="col-md-6">
+                {{ form.importance.label(class="form-label") }}
+                {{ form.importance(class="form-select") }}
+              </div>
+              <div class="col-md-6">
+                {{ form.date_prevue.label(class="form-label") }}
+                {{ form.date_prevue(class="form-control", type="date") }}
+              </div>
+              <div class="col-md-6">
+                {{ form.date_limite.label(class="form-label") }}
+                {{ form.date_limite(class="form-control", type="date") }}
+              </div>
+            </div>
+            <div class="border rounded p-3 mt-3 bg-body-tertiary">
+              <div class="form-check mb-2">
+                {{ form.est_recurrent(class="form-check-input", id="chkRecurrent") }}
+                {{ form.est_recurrent.label(class="form-check-label fw-medium") }}
+              </div>
+              <p class="small text-muted mb-2">Les détails seront enregistrés pour recréer automatiquement l'échéance suivante à chaque validation.</p>
+              <div class="rappel-recurrent-fields" id="recurrentFields">
+                <div class="col-md-6">
+                  {{ form.frequence.label(class="form-label") }}
+                  {{ form.frequence(class="form-select") }}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+            {{ form.submit(class="btn btn-primary") }}
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modalReporterRappel" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form method="post" id="formReporterRappel" action="">
+          {{ reporter_form.hidden_tag() }}
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-calendar-plus me-2"></i>Remettre à plus tard</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+          </div>
+          <div class="modal-body">
+            <p class="small text-muted mb-3" id="reporterRappelTitre"></p>
+            <div class="mb-3">
+              {{ reporter_form.date_prevue.label(class="form-label") }}
+              {{ reporter_form.date_prevue(class="form-control", type="date", id="reporterDatePrevue") }}
+            </div>
+            <div class="mb-3">
+              {{ reporter_form.date_limite.label(class="form-label") }}
+              {{ reporter_form.date_limite(class="form-control", type="date", id="reporterDateLimite") }}
+            </div>
+            <div class="mb-0">
+              {{ reporter_form.notes_report.label(class="form-label") }}
+              {{ reporter_form.notes_report(class="form-control", placeholder="Ex. En attente de documents") }}
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+            {{ reporter_form.submit(class="btn btn-warning") }}
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    (function () {
+      const chk = document.getElementById("chkRecurrent");
+      const fields = document.getElementById("recurrentFields");
+      function toggleRecurrent() {
+        if (!fields) return;
+        fields.classList.toggle("is-visible", !!(chk && chk.checked));
+      }
+      if (chk) {
+        chk.addEventListener("change", toggleRecurrent);
+        toggleRecurrent();
+      }
+
+      const form = document.getElementById("formReporterRappel");
+      const titreEl = document.getElementById("reporterRappelTitre");
+      const dp = document.getElementById("reporterDatePrevue");
+      const dl = document.getElementById("reporterDateLimite");
+      document.querySelectorAll(".btn-reporter-rappel").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          const id = btn.getAttribute("data-id");
+          const titre = btn.getAttribute("data-titre") || "";
+          if (form) form.action = "/rappels/" + id + "/reporter";
+          if (titreEl) titreEl.textContent = titre;
+          if (dp) dp.value = btn.getAttribute("data-date-prevue") || "";
+          if (dl) dl.value = btn.getAttribute("data-date-limite") || "";
+        });
+      });
+    })();
+  </script>
+{% endblock %}

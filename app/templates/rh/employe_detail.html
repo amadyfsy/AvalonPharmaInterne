@@ -1,0 +1,368 @@
+{% extends "base.html" %}
+
+{% block title %}Employé {{ employe.matricule }} — Avalon Pharma{% endblock %}
+
+{% block content %}
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+    <div>
+      <h1 class="h4 mb-0">{{ employe.nom }} {{ employe.prenom }}</h1>
+      <div class="small text-muted">Matricule {{ employe.matricule }} · {{ employe.poste }}</div>
+      <div class="mt-1">
+        {% if employe.statut == 'actif' %}
+          <span class="badge bg-success">Actif</span>
+        {% elif employe.statut == 'suspendu' %}
+          <span class="badge bg-warning text-dark">Suspendu</span>
+        {% else %}
+          <span class="badge bg-secondary">Inactif</span>
+        {% endif %}
+        {% if employe.motif_sortie %}
+          <span class="badge bg-light text-dark border ms-1">{{ employe.motif_sortie_label }}</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{{ url_for('rh.index') }}" class="btn btn-outline-secondary btn-sm">Retour liste</a>
+      {% if peut_modifier %}
+        <a href="{{ url_for('rh.modifier_employe', id=employe.id) }}" class="btn btn-primary btn-sm">
+          <i class="bi bi-pencil me-1"></i> Modifier
+        </a>
+        {% if employe.statut == 'actif' %}
+          <form method="post" action="{{ url_for('rh.suspendre_employe', id=employe.id) }}" class="d-inline">
+            <button type="submit" class="btn btn-outline-warning btn-sm" onclick="return confirm('Suspendre cet employé ?');">
+              <i class="bi bi-pause-circle me-1"></i> Suspendre
+            </button>
+          </form>
+          <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalSortieEmploye">
+            <i class="bi bi-box-arrow-right me-1"></i> Fin / démission
+          </button>
+        {% elif employe.statut in ('inactif', 'suspendu') %}
+          <form method="post" action="{{ url_for('rh.reactiver_employe', id=employe.id) }}" class="d-inline">
+            <button type="submit" class="btn btn-outline-success btn-sm">
+              <i class="bi bi-arrow-counterclockwise me-1"></i> Réactiver
+            </button>
+          </form>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+
+  {% if employe.statut == 'inactif' and employe.date_sortie %}
+    <div class="alert alert-secondary small py-2 mb-3">
+      <strong>Sortie :</strong> {{ employe.date_sortie.strftime('%d/%m/%Y') }}
+      — {{ employe.motif_sortie_label }}
+      {% if employe.notes_sortie %}<br><span class="text-muted">{{ employe.notes_sortie }}</span>{% endif %}
+    </div>
+  {% endif %}
+
+  <div class="row g-3">
+    <div class="col-lg-8">
+      <div class="card shadow-sm mb-3">
+        <div class="card-header"><strong>Informations employé</strong></div>
+        <div class="card-body">
+          <div class="row g-3 small">
+            <div class="col-md-4"><div class="text-muted">Nom</div><div>{{ employe.nom }}</div></div>
+            <div class="col-md-4"><div class="text-muted">Prénom</div><div>{{ employe.prenom }}</div></div>
+            <div class="col-md-4"><div class="text-muted">Date naissance</div><div>{{ employe.date_naissance.strftime('%d/%m/%Y') if employe.date_naissance else '—' }}</div></div>
+            <div class="col-md-4"><div class="text-muted">CIN</div><div>{{ cin or '—' }}</div></div>
+            <div class="col-md-4"><div class="text-muted">Téléphone</div><div>{{ employe.telephone or '—' }}</div></div>
+            <div class="col-md-4"><div class="text-muted">Email</div><div>{{ employe.email or '—' }}</div></div>
+            <div class="col-md-6"><div class="text-muted">Adresse</div><div>{{ employe.adresse or '—' }}</div></div>
+            <div class="col-md-3"><div class="text-muted">Poste</div><div>{{ employe.poste }}</div></div>
+            <div class="col-md-3"><div class="text-muted">Département</div><div>{{ employe.departement }}</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card shadow-sm mb-3">
+        <div class="card-header"><strong>Contrat & rémunération</strong></div>
+        <div class="card-body">
+          <div class="row g-3 small">
+            <div class="col-md-3"><div class="text-muted">Type contrat</div><div>{{ employe.type_contrat }}</div></div>
+            <div class="col-md-3"><div class="text-muted">Date embauche</div><div>{{ employe.date_embauche.strftime('%d/%m/%Y') if employe.date_embauche else '—' }}</div></div>
+            <div class="col-md-3"><div class="text-muted">Fin contrat</div><div>{{ employe.date_fin_contrat.strftime('%d/%m/%Y') if employe.date_fin_contrat else '—' }}</div></div>
+            <div class="col-md-3"><div class="text-muted">Salaire base</div><div>{{ "{:,.0f}".format(employe.salaire_base or 0).replace(",", "\u202f") }} FCFA</div></div>
+            <div class="col-md-6"><div class="text-muted">RIB</div><div>{{ rib or '—' }}</div></div>
+          </div>
+          <hr class="my-2">
+          <div class="row g-3 small">
+            <div class="col-12"><div class="text-muted fw-semibold">Taux de cotisation (bulletin de paie)</div></div>
+            <div class="col-md-2"><div class="text-muted">IPRES sal.</div><div>{{ employe.taux_ipres_salarial or 5.6 }} %</div></div>
+            <div class="col-md-2"><div class="text-muted">CSS sal.</div><div>{{ employe.taux_css_salarial or 7 }} %</div></div>
+            <div class="col-md-2"><div class="text-muted">IPRES pat.</div><div>{{ employe.taux_ipres_patronal or 8.4 }} %</div></div>
+            <div class="col-md-2"><div class="text-muted">CSS pat.</div><div>{{ employe.taux_css_patronal or 14 }} %</div></div>
+            <div class="col-md-2"><div class="text-muted">Seuil IRPP</div><div>{{ "{:,.0f}".format(employe.seuil_irpp or 30000).replace(",", "\u202f") }} FCFA</div></div>
+            <div class="col-md-2"><div class="text-muted">Taux IRPP</div><div>{{ employe.taux_irpp or 10 }} %</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card shadow-sm mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <strong>Bulletins de paie</strong>
+          <a href="{{ url_for('rh.paies') }}" class="btn btn-sm btn-outline-primary">Toutes les paies</a>
+        </div>
+        <div class="card-body p-0">
+          {% if paies_employe %}
+            <div class="table-responsive">
+              <table class="table table-sm align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Période</th>
+                    <th class="text-end">Net à payer</th>
+                    <th>Statut</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for p in paies_employe %}
+                    <tr>
+                      <td>{{ '%02d'|format(p.mois) }}/{{ p.annee }}</td>
+                      <td class="text-end fw-semibold">{{ "{:,.0f}".format(p.net_a_payer|float).replace(",", "\u202f") }} FCFA</td>
+                      <td>
+                        {% if p.statut == 'paye' %}
+                          <span class="badge bg-success">Payé</span>
+                        {% else %}
+                          <span class="badge bg-warning text-dark">À payer</span>
+                        {% endif %}
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="p-3 text-muted small">Aucun bulletin généré.</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card shadow-sm mb-3">
+        <div class="card-header"><strong>Demandes de congé</strong></div>
+        <div class="card-body p-0">
+          {% if demandes_conges %}
+            <div class="table-responsive">
+              <table class="table table-sm align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Type</th>
+                    <th>Période</th>
+                    <th class="text-end">Jours</th>
+                    <th>Statut</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for conge in demandes_conges %}
+                    <tr>
+                      <td class="text-capitalize">{{ conge.type_conge.replace('_', ' ') }}</td>
+                      <td>
+                        {{ conge.date_debut.strftime('%d/%m/%Y') if conge.date_debut else '—' }}
+                        -
+                        {{ conge.date_fin.strftime('%d/%m/%Y') if conge.date_fin else '—' }}
+                      </td>
+                      <td class="text-end">{{ "%.1f"|format(conge.nb_jours or 0) }}</td>
+                      <td>
+                        {% if conge.statut == 'approuve' %}
+                          <span class="badge bg-success-subtle text-success-emphasis">Approuvé</span>
+                        {% elif conge.statut == 'refuse' %}
+                          <span class="badge bg-danger-subtle text-danger-emphasis">Refusé</span>
+                        {% else %}
+                          <span class="badge bg-warning-subtle text-warning-emphasis">En attente</span>
+                        {% endif %}
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="p-3 text-muted small">Aucune demande de congé enregistrée.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="card shadow-sm mb-3 border-start border-4 border-danger">
+        <div class="card-header bg-transparent">
+          <strong>Solde de paie dû</strong>
+          <div class="small text-muted fw-normal">Rémunération nette non encore versée</div>
+        </div>
+        <div class="card-body">
+          <div class="display-6 fw-bold text-danger mb-1">
+            {{ "{:,.0f}".format(somme_a_payer or 0).replace(",", "\u202f") }}
+            <span class="fs-6 fw-normal text-muted">FCFA</span>
+          </div>
+          <p class="small text-muted mb-3">
+            {% if nb_paies_impayees %}
+              {{ nb_paies_impayees }} bulletin{{ 's' if nb_paies_impayees > 1 else '' }} en attente de règlement
+            {% else %}
+              Aucune rémunération en attente
+            {% endif %}
+          </p>
+          <div class="d-flex justify-content-between small border-top pt-2 mb-3">
+            <span class="text-muted">Total déjà versé</span>
+            <span class="fw-semibold text-success">{{ "{:,.0f}".format(total_paye or 0).replace(",", "\u202f") }} FCFA</span>
+          </div>
+          {% if paies_impayees %}
+            <button type="button" class="btn btn-sm btn-outline-danger w-100" data-bs-toggle="modal" data-bs-target="#modalDetailSoldeDu">
+              <i class="bi bi-list-ul me-1"></i> Voir le détail
+            </button>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card shadow-sm mb-3">
+        <div class="card-header"><strong>Documents</strong></div>
+        <div class="card-body small">
+          <div class="mb-3">
+            <div class="text-muted">Copie CIN</div>
+            {% if employe.document_cin %}
+              <div><code>{{ employe.document_cin }}</code></div>
+            {% else %}
+              <div>—</div>
+            {% endif %}
+          </div>
+          <div class="mb-0">
+            <div class="text-muted">Contrat signé</div>
+            {% if employe.document_contrat %}
+              <div><code>{{ employe.document_contrat }}</code></div>
+            {% else %}
+              <div>—</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="card shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <strong>Congé annuel (5 ans)</strong>
+          <span class="badge bg-primary-subtle text-primary-emphasis">{{ quota_annuel|int }} j/an</span>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Année</th>
+                  <th class="text-end">Acquis</th>
+                  <th class="text-end">Pris</th>
+                  <th class="text-end">Restants</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in recap_conges %}
+                  <tr>
+                    <td>{{ row.annee }}</td>
+                    <td class="text-end">{{ "%.1f"|format(row.acquis) }}</td>
+                    <td class="text-end">{{ "%.1f"|format(row.pris) }}</td>
+                    <td class="text-end">
+                      {% if row.restant < 0 %}
+                        <span class="text-danger fw-semibold">{{ "%.1f"|format(row.restant) }}</span>
+                      {% else %}
+                        <span class="fw-semibold">{{ "%.1f"|format(row.restant) }}</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if paies_impayees %}
+  <div class="modal fade" id="modalDetailSoldeDu" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-wallet2 me-2"></i>Détail du solde dû — {{ employe.nom }} {{ employe.prenom }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+        </div>
+        <div class="modal-body p-0">
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Période</th>
+                  <th class="text-end">Base</th>
+                  <th class="text-end">Primes</th>
+                  <th class="text-end">H. sup.</th>
+                    <th class="text-end">Retenues</th>
+                    <th class="text-end">Ch. patron.</th>
+                    <th class="text-end">Net dû</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for p in paies_impayees %}
+                  <tr>
+                    <td class="text-nowrap fw-medium">{{ '%02d'|format(p.mois) }}/{{ p.annee }}</td>
+                    <td class="text-end">{{ "{:,.0f}".format(p.salaire_base|float).replace(",", "\u202f") }}</td>
+                    <td class="text-end">{{ "{:,.0f}".format(p.primes|float).replace(",", "\u202f") }}</td>
+                    <td class="text-end">{{ "{:,.0f}".format(p.heures_sup|float).replace(",", "\u202f") }}</td>
+                    <td class="text-end text-muted">
+                      {{ "{:,.0f}".format((p.cotisations_sociales|float) + (p.irpp|float) + (p.deductions|float)).replace(",", "\u202f") }}
+                    </td>
+                    <td class="text-end text-muted small">{{ "{:,.0f}".format(p.charges_patronales_calc).replace(",", "\u202f") }}</td>
+                    <td class="text-end fw-semibold text-danger">{{ "{:,.0f}".format(p.net_a_payer|float).replace(",", "\u202f") }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+              <tfoot class="table-light">
+                <tr>
+                  <th colspan="6" class="text-end">Total dû (net salarié)</th>
+                  <th class="text-end text-danger">{{ "{:,.0f}".format(somme_a_payer or 0).replace(",", "\u202f") }} FCFA</th>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <p class="small text-muted px-3 py-2 mb-0">
+            Cotisations sociales, IRPP et autres déductions sont regroupés dans la colonne « Retenues ».
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fermer</button>
+          <a href="{{ url_for('rh.paies') }}" class="btn btn-primary">
+            <i class="bi bi-cash-coin me-1"></i> Régler les paies
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if peut_modifier and employe.statut == 'actif' %}
+  <div class="modal fade" id="modalSortieEmploye" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form method="post" action="{{ url_for('rh.sortie_employe', id=employe.id) }}">
+          {{ sortie_form.hidden_tag() }}
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-box-arrow-right me-2"></i>Fin de contrat / démission</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+          </div>
+          <div class="modal-body">
+            <p class="small text-muted">Enregistre la sortie de <strong>{{ employe.nom }} {{ employe.prenom }}</strong> et passe le statut à <strong>inactif</strong>.</p>
+            <div class="mb-3">
+              {{ sortie_form.motif_sortie.label(class="form-label") }}
+              {{ sortie_form.motif_sortie(class="form-select") }}
+            </div>
+            <div class="mb-3">
+              {{ sortie_form.date_sortie.label(class="form-label") }}
+              {{ sortie_form.date_sortie(class="form-control", type="date") }}
+            </div>
+            <div class="mb-0">
+              {{ sortie_form.notes_sortie.label(class="form-label") }}
+              {{ sortie_form.notes_sortie(class="form-control", placeholder="Observations, préavis, documents remis…") }}
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+            {{ sortie_form.submit(class="btn btn-danger") }}
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+{% endblock %}

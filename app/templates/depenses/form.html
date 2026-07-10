@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title or 'Dépense' }} — Avalon Pharma{% endblock %}
+
+{% block extra_css %}
+<style>
+  .dep-form-hero {
+    background: linear-gradient(135deg, var(--brand-burgundy, #721818) 0%, var(--brand-burgundy-dark, #5a1218) 100%);
+    border-radius: 0.75rem;
+    color: #fff;
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 0.5rem 1.25rem rgba(114, 24, 24, 0.22);
+  }
+  .dep-form-card .card-header {
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  .dep-form-card .form-label { font-weight: 500; font-size: 0.875rem; color: var(--bs-secondary-color); }
+  .dep-form-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    background: linear-gradient(to top, var(--bs-body-bg) 70%, transparent);
+    padding-top: 1rem;
+    margin-top: 0.5rem;
+  }
+  @media (min-width: 992px) {
+    .dep-form-sidebar { position: sticky; top: 1rem; }
+  }
+  .dep-form-rappels {
+    background: linear-gradient(135deg, var(--brand-burgundy, #721818) 0%, var(--brand-burgundy-dark, #5a1218) 100%);
+    color: #fff;
+    box-shadow: 0 0.5rem 1.25rem rgba(114, 24, 24, 0.22);
+  }
+  .dep-form-rappels .h6,
+  .dep-form-rappels ul,
+  .dep-form-rappels li,
+  .dep-form-rappels strong {
+    color: #fff;
+  }
+  .dep-form-rappels a {
+    color: #fff;
+    text-decoration: underline;
+  }
+  .dep-form-rappels a:hover {
+    color: rgba(255, 255, 255, 0.85);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+  <form method="post" enctype="multipart/form-data" novalidate>
+    {{ form.hidden_tag() }}
+
+    <div class="dep-form-hero d-flex flex-wrap justify-content-between align-items-start gap-3">
+      <div class="d-flex gap-3 align-items-start">
+        <div class="rounded-3 bg-white bg-opacity-25 p-3 d-none d-sm-flex">
+          <i class="bi bi-receipt-cutoff fs-2"></i>
+        </div>
+        <div>
+          <nav aria-label="breadcrumb" class="mb-2">
+            <ol class="breadcrumb mb-0 small">
+              <li class="breadcrumb-item"><a href="{{ url_for('depenses.index') }}" class="text-white text-decoration-underline">Dépenses</a></li>
+              <li class="breadcrumb-item text-white active" aria-current="page">Saisie</li>
+            </ol>
+          </nav>
+          <h1 class="h4 mb-1 fw-semibold text-white">{{ title or 'Saisir une dépense' }}</h1>
+          <p class="lead mb-0 text-white small" style="opacity: .92;">
+            Montants en <strong>FCFA</strong>. Après enregistrement, la dépense est <strong>en attente</strong> jusqu’à validation.
+          </p>
+        </div>
+      </div>
+      <a href="{{ url_for('depenses.index') }}" class="btn btn-outline-light btn-sm">
+        <i class="bi bi-list-ul me-1"></i> Liste
+      </a>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-lg-8">
+        <div class="card dep-form-card shadow-sm border-0 mb-4">
+          <div class="card-header bg-body-secondary border-0 py-3 d-flex align-items-center gap-2">
+            <i class="bi bi-tag text-primary"></i>
+            <span>Référence &amp; catégorisation</span>
+          </div>
+          <div class="card-body row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Référence</label>
+              <input type="text" class="form-control bg-body-secondary" value="{{ reference_preview }}" readonly tabindex="-1" aria-readonly="true">
+              <div class="form-text small">Attribuée automatiquement à l'enregistrement (année / mois / n° du mois).</div>
+            </div>
+            <div class="col-md-6">
+              {{ form.date_depense.label(class="form-label") }} <span class="text-danger">*</span>
+              {{ form.date_depense(class="form-control", type="date") }}
+              {% for e in form.date_depense.errors %}<div class="invalid-feedback d-block small">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="col-md-6">
+              {{ form.categorie_id.label(class="form-label") }} <span class="text-danger">*</span>
+              {{ form.categorie_id(class="form-select", id="depCategorieSelect") }}
+              {% for e in form.categorie_id.errors %}<div class="invalid-feedback d-block small">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Type de dépense</label>
+              <div class="d-flex align-items-center gap-2 flex-wrap mt-1">
+                <span id="depTypeBadge" class="badge rounded-pill bg-secondary">—</span>
+                <span class="small text-muted">Automatique selon la <strong>catégorie</strong> (non modifiable ici).</span>
+              </div>
+            </div>
+            <div class="col-12">
+              {{ form.libelle.label(class="form-label") }} <span class="text-danger">*</span>
+              {{ form.libelle(class="form-control", placeholder="Libellé comptable / description courte") }}
+              {% for e in form.libelle.errors %}<div class="invalid-feedback d-block small">{{ e }}</div>{% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <div class="card dep-form-card dep-montant-card shadow-sm border-0 mb-4" id="depMontantCard">
+          <div class="card-header bg-body-secondary border-0 py-3 d-flex align-items-center gap-2">
+            <i class="bi bi-calculator text-success"></i>
+            <span>Montants (HT / TVA)</span>
+          </div>
+          <div class="card-body row g-3">
+            <div class="col-12 d-none" id="depMontantHintFixe">
+              <div class="alert alert-primary border-0 py-2 px-3 mb-0 small" role="note">
+                <strong><i class="bi bi-pin-angle me-1"></i>Dépense fixe :</strong> saisissez ici le <strong>montant de la charge pour cette période</strong> (loyer, abonnement, cotisation…). Ce montant est censé rester stable : vous le renseignez à la <strong>création</strong> de la ligne de dépense pour le mois concerné.
+              </div>
+            </div>
+            <div class="col-12 d-none" id="depMontantHintVariable">
+              <div class="alert alert-light border py-2 px-3 mb-0 small text-muted" role="note">
+                <strong>Dépense variable :</strong> indiquez le montant <strong>réel</strong> de l’opération (transport, douane, achat ponctuel…).
+              </div>
+            </div>
+            <div class="col-md-4">
+              {{ form.montant_ht.label(class="form-label") }} <span class="text-danger">*</span>
+              <div class="input-group">
+                {{ form.montant_ht(class="form-control", id="depMontantHtInput", placeholder="0,00") }}
+                <span class="input-group-text">FCFA</span>
+              </div>
+              {% for e in form.montant_ht.errors %}<div class="invalid-feedback d-block small">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="col-md-4">
+              {{ form.tva.label(class="form-label") }}
+              <div class="input-group">
+                {{ form.tva(class="form-control", placeholder="0") }}
+                <span class="input-group-text">%</span>
+              </div>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+              <p class="small text-muted mb-0">Le TTC est calculé automatiquement à l’enregistrement.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card dep-form-card shadow-sm border-0 mb-2 border-start border-4 border-info">
+          <div class="card-header bg-body-secondary border-0 py-3 d-flex align-items-center gap-2">
+            <i class="bi bi-credit-card text-info"></i>
+            <span>Paiement &amp; pièces</span>
+          </div>
+          <div class="card-body row g-3">
+            <div class="col-md-6">
+              {{ form.mode_paiement.label(class="form-label") }} <span class="text-danger">*</span>
+              {{ form.mode_paiement(class="form-select") }}
+            </div>
+            <div class="col-12">
+              {{ form.justificatif.label(class="form-label") }}
+              {{ form.justificatif(class="form-control", accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg") }}
+              <div class="form-text">PDF, PNG ou JPEG (facultatif). Le fichier est renommé selon le type de dépense si fourni.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-4">
+        <div class="dep-form-sidebar">
+          <div class="card border-0 shadow-sm dep-form-rappels mb-4">
+            <div class="card-body">
+              <h3 class="h6 mb-3"><i class="bi bi-lightbulb me-2"></i>Rappels</h3>
+              <ul class="small mb-0 ps-3">
+                <li class="mb-2">Référence <strong>unique</strong> par dépense.</li>
+                <li class="mb-2">Le <strong>fournisseur</strong> n’est pas renseigné ici : indiquez le tiers dans le <strong>libellé</strong> si besoin, ou la dépense provient d’une <strong>commande fournisseur</strong> (lien automatique).</li>
+                <li class="mb-2">Le <strong>type</strong> (fixe / variable) est celui de la <strong>catégorie</strong> choisie.</li>
+                <li class="mb-2">Catégorie <strong>fixe</strong> : le <strong>montant</strong> correspond à la charge récurrente pour la période — saisi une fois à l’enregistrement.</li>
+                <li class="mb-2">Les <a href="{{ url_for('depenses.categories_depenses_index') }}">catégories</a> à code système se rattachent seules aux modules Achats / Ventes ; les autres servent à la saisie libre.</li>
+                <li class="mb-2">Justificatif <strong>facultatif</strong> (PDF, PNG ou JPEG), renommé selon la catégorie si fourni.</li>
+                <li>Contexte <strong>Côte d’Ivoire</strong> : saisie en francs CFA.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="card border-0 shadow-sm">
+            <div class="card-body text-center py-4">
+              <i class="bi bi-shield-check text-success display-6 d-block mb-2"></i>
+              <p class="small text-muted mb-0">La validation met à jour la trésorerie selon le mode de paiement (caisse / banque).</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dep-form-actions d-flex flex-wrap justify-content-between align-items-center gap-3">
+      <a href="{{ url_for('depenses.index') }}" class="text-muted small text-decoration-none">← Retour à la liste</a>
+      <button type="submit" class="btn btn-primary btn-lg px-4 shadow-sm">
+        <i class="bi bi-check-lg me-2"></i> Enregistrer la dépense
+      </button>
+    </div>
+  </form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var sel = document.getElementById('depCategorieSelect');
+  var badge = document.getElementById('depTypeBadge');
+  var map = {{ (types_par_categorie or {})|tojson }};
+  var hintFixe = document.getElementById('depMontantHintFixe');
+  var hintVar = document.getElementById('depMontantHintVariable');
+  var montCard = document.getElementById('depMontantCard');
+  var montInput = document.getElementById('depMontantHtInput');
+  function sync() {
+    var t = sel ? map[String(sel.value)] : null;
+    if (badge) {
+      if (t === 'fixe') {
+        badge.className = 'badge rounded-pill bg-primary';
+        badge.textContent = 'Fixe';
+      } else if (t === 'variable') {
+        badge.className = 'badge rounded-pill bg-info text-dark';
+        badge.textContent = 'Variable';
+      } else {
+        badge.className = 'badge rounded-pill bg-secondary';
+        badge.textContent = '—';
+      }
+    }
+    if (hintFixe) hintFixe.classList.toggle('d-none', t !== 'fixe');
+    if (hintVar) hintVar.classList.toggle('d-none', t !== 'variable');
+    if (montCard) {
+      montCard.classList.toggle('border', t === 'fixe');
+      montCard.classList.toggle('border-2', t === 'fixe');
+      montCard.classList.toggle('border-primary', t === 'fixe');
+    }
+    if (montInput) {
+      if (t === 'fixe') montInput.setAttribute('aria-describedby', 'depMontantHintFixe');
+      else if (t === 'variable') montInput.setAttribute('aria-describedby', 'depMontantHintVariable');
+      else montInput.removeAttribute('aria-describedby');
+    }
+  }
+  if (sel) {
+    sel.addEventListener('change', sync);
+    sync();
+  }
+})();
+</script>
+{% endblock %}

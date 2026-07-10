@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Mouvements - Medical ERP{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h4 mb-0">Mouvements de stock</h1>
+    <a href="{{ url_for('stock.nouveau_mouvement') }}" class="btn btn-primary btn-sm">
+      Nouveau mouvement
+    </a>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-lg-6">
+      <div class="card shadow-sm h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <strong>Entrées prévues (commandes fournisseur)</strong>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0 align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Commande</th>
+                  <th>Produit</th>
+                  <th class="text-end">Reste</th>
+                  <th style="width:130px;"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for l in lignes_entrees_prevues %}
+                  {% set cmd = l.commande %}
+                  {% set reste = (l.quantite_commandee or 0) - (l.quantite_recue or 0) %}
+                  <tr>
+                    <td>
+                      <div class="fw-semibold">{{ cmd.numero if cmd else '—' }}</div>
+                      <div class="small text-muted">{{ cmd.fournisseur.raison_sociale if cmd and cmd.fournisseur else '—' }}</div>
+                    </td>
+                    <td>{{ l.produit.reference if l.produit else '' }}</td>
+                    <td class="text-end">{{ reste }}</td>
+                    <td class="text-end">
+                      <form method="post" action="{{ url_for('achats.recevoir_commande', id=cmd.id) }}">
+                        <button type="submit" class="btn btn-success btn-sm">Valider</button>
+                      </form>
+                    </td>
+                  </tr>
+                {% else %}
+                  <tr><td colspan="4" class="text-center text-muted py-3">Aucune entrée prévue</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="card shadow-sm h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <strong>Sorties prévues (commandes clients / BL)</strong>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0 align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>BL</th>
+                  <th>Produit</th>
+                  <th class="text-end">Reste</th>
+                  <th style="width:130px;"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for l in lignes_sorties_prevues %}
+                  {% set bl = l.bon_livraison %}
+                  {% set reste = (l.quantite_commandee or 0) - (l.quantite_livree or 0) %}
+                  <tr>
+                    <td>
+                      <div class="fw-semibold">{{ bl.numero if bl else '—' }}</div>
+                      <div class="small text-muted">{{ bl.client.nom if bl and bl.client else '—' }}</div>
+                    </td>
+                    <td>{{ l.produit.reference if l.produit else '' }}</td>
+                    <td class="text-end">{{ reste }}</td>
+                    <td class="text-end">
+                      <form method="post" action="{{ url_for('ventes.valider_bl', id=bl.id) }}">
+                        <button type="submit" class="btn btn-warning btn-sm">Valider</button>
+                      </form>
+                    </td>
+                  </tr>
+                {% else %}
+                  <tr><td colspan="4" class="text-center text-muted py-3">Aucune sortie prévue</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-header"><strong>Historique des mouvements validés</strong></div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Produit</th>
+              <th>Type</th>
+              <th>Quantité</th>
+              <th>Motif</th>
+              <th>Réf. document</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in mouvements %}
+              <tr>
+                <td>{{ m.produit.reference if m.produit else '' }}</td>
+                <td>{{ m.type_mouvement }}</td>
+                <td>{{ m.quantite }}</td>
+                <td>{{ m.motif or '' }}</td>
+                <td>{{ m.reference_document or '' }}</td>
+                <td>{{ m.created_at.strftime('%d/%m/%Y') if m.created_at else '' }}</td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="6" class="text-center text-muted py-4">Aucun mouvement</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+

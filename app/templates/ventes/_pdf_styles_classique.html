@@ -1,0 +1,117 @@
+{# Style type document papier (facture Avalon / Sénégal) — sans grille Excel #}
+<style type="text/css">
+  @page {
+    size: A4;
+    margin: 14mm 16mm 16mm 16mm;
+  }
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    font-family: "DejaVu Sans", Arial, Helvetica, sans-serif;
+    font-size: 11pt;
+    line-height: 1.4;
+    color: #000;
+    margin: 0;
+    padding: 0;
+  }
+  .pdf-logo-wrap {
+    text-align: center;
+    margin: 0 0 10px 0;
+  }
+  .pdf-logo-wrap img {
+    max-height: 64px;
+    max-width: 200px;
+  }
+  .pdf-doc-title {
+    text-align: center;
+    font-size: 13pt;
+    font-weight: bold;
+    margin: 0 0 14px 0;
+    letter-spacing: 0.02em;
+  }
+  .pdf-line {
+    margin: 0 0 7px 0;
+    padding: 0;
+  }
+  .pdf-line-client {
+    margin: 0 0 10px 0;
+  }
+  .pdf-lbl {
+    font-weight: bold;
+  }
+  .pdf-arrete {
+    margin: 0 0 12px 0;
+    text-align: justify;
+  }
+  /* Bloc coordonnées (sous la date) */
+  .pdf-coords {
+    margin: 0 0 16px 0;
+    font-size: 10.5pt;
+    line-height: 1.45;
+  }
+  .pdf-coords p {
+    margin: 0 0 4px 0;
+    padding: 0;
+  }
+  /* Tableau type tabulation : pas de bordures verticales ni lignes grises */
+  table.pdf-grid {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+    font-size: 10.5pt;
+  }
+  table.pdf-grid th {
+    border: none;
+    border-bottom: 2px solid #000;
+    padding: 2px 4px 6px 0;
+    font-weight: bold;
+    text-align: left;
+    vertical-align: bottom;
+  }
+  table.pdf-grid th.pdf-col-num {
+    text-align: right;
+    white-space: nowrap;
+  }
+  table.pdf-grid td {
+    border: none;
+    padding: 5px 4px 5px 0;
+    vertical-align: top;
+  }
+  table.pdf-grid td.pdf-col-num {
+    text-align: right;
+    white-space: nowrap;
+  }
+  table.pdf-grid .pdf-col-desc {
+    width: 48%;
+  }
+  table.pdf-grid .pdf-col-qty {
+    width: 11%;
+  }
+  table.pdf-grid .pdf-col-pu {
+    width: 18%;
+  }
+  table.pdf-grid .pdf-col-mt {
+    width: 23%;
+  }
+  table.pdf-grid tr.pdf-tr-total td {
+    font-weight: bold;
+    padding-top: 12px;
+    border: none;
+    border-top: 1px solid #000;
+  }
+  .pdf-mentions {
+    margin-top: 12px;
+    font-size: 9pt;
+    color: #222;
+    line-height: 1.35;
+  }
+  .pdf-pied {
+    margin-top: 22px;
+    font-size: 9pt;
+    color: #333;
+    white-space: pre-wrap;
+    border-top: 1px solid #ccc;
+    padding-top: 10px;
+  }
+</style>

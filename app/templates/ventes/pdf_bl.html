@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <title>BL {{ bl.numero }}</title>
+    {% include 'ventes/_pdf_styles_classique.html' %}
+  </head>
+  <body>
+    {% if logo_data_uri %}
+      <div class="pdf-logo-wrap">
+        <img src="{{ logo_data_uri }}" alt="" />
+      </div>
+    {% endif %}
+
+    <div class="pdf-doc-title">Bordereau de Livraison No {{ bl.numero }}</div>
+
+    <p class="pdf-line pdf-line-client"><span class="pdf-lbl">CLIENT :</span> {{ bl.client.raison_sociale if bl.client else '' }}</p>
+    {% if bl.adresse_livraison %}
+      <p class="pdf-line">{{ bl.adresse_livraison }}</p>
+    {% endif %}
+
+    {% set date_doc = bl.date_livraison %}
+    {% include 'ventes/_pdf_coordonnees.html' %}
+
+    <table class="pdf-grid">
+      <thead>
+        <tr>
+          <th class="pdf-col-desc" style="width:78%">DÉSIGNATION</th>
+          <th class="pdf-col-num" style="width:22%">QUANTITÉ</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for l in bl.lignes|sort(attribute='id') %}
+          <tr>
+            <td class="pdf-col-desc">
+              {{ l.produit.designation if l.produit else '' }}
+              {% if l.lot %}<span style="font-size:9pt;"> — Lot : {{ l.lot.numero_lot }}</span>{% endif %}
+            </td>
+            <td class="pdf-col-num">{{ l.quantite_commandee }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if bl.notes %}
+      <div class="pdf-mentions" style="margin-top:14px;"><span class="pdf-lbl">Notes :</span> {{ bl.notes }}</div>
+    {% endif %}
+
+    {% if doc_params.pied_de_page %}
+      <div class="pdf-pied">{{ doc_params.pied_de_page }}</div>
+    {% endif %}
+  </body>
+</html>

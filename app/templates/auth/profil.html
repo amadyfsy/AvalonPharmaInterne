@@ -1,0 +1,336 @@
+{% extends "base.html" %}
+
+{% block title %}Profil - Medical ERP{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h4 mb-0">Profil</h1>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-lg-3">
+      <div class="card shadow-sm mb-3">
+        <div class="card-header py-2"><strong class="small">Informations utilisateur</strong></div>
+        <div class="card-body small py-3">
+          <div class="mb-2">
+            <div class="text-muted">Nom complet</div>
+            <div class="text-break">{{ current_user.full_name }}</div>
+          </div>
+          <div class="mb-2">
+            <div class="text-muted">Email</div>
+            <div class="text-break">{{ current_user.email }}</div>
+          </div>
+          <div class="mb-2">
+            <div class="text-muted">Rôle</div>
+            <div class="text-capitalize">{{ current_user.role }}</div>
+          </div>
+          <div class="mb-2">
+            <div class="text-muted">Statut</div>
+            <div>
+              {% if current_user.is_active %}
+                <span class="badge bg-success-subtle text-success-emphasis">Actif</span>
+              {% else %}
+                <span class="badge bg-danger-subtle text-danger-emphasis">Désactivé</span>
+              {% endif %}
+            </div>
+          </div>
+          <div>
+            <div class="text-muted">Dernière connexion</div>
+            <div>{{ current_user.last_login.strftime('%d/%m/%Y %H:%M') if current_user.last_login else '—' }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card shadow-sm mb-3">
+        <div class="card-header py-2"><strong class="small">Téléphone (connexion)</strong></div>
+        <div class="card-body py-3">
+          <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ form.csrf_token._value() }}">
+            <input type="hidden" name="profile_action" value="update_telephone">
+            <div class="mb-2">
+              <label class="form-label small mb-1" for="profile_telephone">Numéro mobile</label>
+              <input
+                type="tel"
+                class="form-control form-control-sm"
+                name="telephone"
+                id="profile_telephone"
+                value="{{ current_user.telephone or '' }}"
+                placeholder="77 123 45 67"
+                autocomplete="tel"
+              >
+              <div class="form-text small">
+                Saisissez votre numéro pour vous connecter avec l'email <strong>ou</strong> le téléphone.
+                Laissez vide pour retirer le numéro.
+              </div>
+            </div>
+            <button type="submit" class="btn btn-outline-primary btn-sm w-100">
+              <i class="bi bi-telephone me-1"></i> Enregistrer le téléphone
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <div class="card shadow-sm">
+        <div class="card-header py-2"><strong class="small">Changer mon mot de passe</strong></div>
+        <div class="card-body py-3">
+          <form method="post">
+            {{ form.hidden_tag() }}
+
+            <div class="mb-2">
+              {{ form.old_password.label(class="form-label small mb-1") }}
+              {{ form.old_password(class="form-control form-control-sm") }}
+              {% for error in form.old_password.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            <div class="mb-2">
+              {{ form.new_password.label(class="form-label small mb-1") }}
+              {{ form.new_password(class="form-control form-control-sm") }}
+              {% for error in form.new_password.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            <div class="mb-3">
+              {{ form.confirm_password.label(class="form-label small mb-1") }}
+              {{ form.confirm_password(class="form-control form-control-sm") }}
+              {% for error in form.confirm_password.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            {{ form.submit(class="btn btn-primary btn-sm w-100") }}
+          </form>
+        </div>
+      </div>
+    </div>
+
+    {% if current_user.role == 'admin' %}
+      <div class="col-12 col-lg-9">
+        <div class="card shadow-sm mb-3">
+          <div class="card-header py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <strong>Nouvel utilisateur</strong>
+            <span class="small text-muted">Mot de passe vide → <code>passer123</code></span>
+          </div>
+          <div class="card-body py-3">
+            <form method="post" class="row g-2 align-items-end">
+              <input type="hidden" name="csrf_token" value="{{ form.csrf_token._value() }}">
+              <input type="hidden" name="admin_action" value="create_user">
+              <div class="col-12 col-md-3">
+                <label class="form-label small mb-0">Prénom</label>
+                <input type="text" name="new_first_name" class="form-control form-control-sm" required placeholder="Prénom">
+              </div>
+              <div class="col-12 col-md-3">
+                <label class="form-label small mb-0">Nom</label>
+                <input type="text" name="new_last_name" class="form-control form-control-sm" required placeholder="Nom">
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label small mb-0">Email</label>
+                <input type="email" name="new_email" class="form-control form-control-sm" required placeholder="email@exemple.com">
+              </div>
+              <div class="col-12 col-md-3">
+                <label class="form-label small mb-0">Téléphone</label>
+                <input type="tel" name="new_telephone" class="form-control form-control-sm" placeholder="77 123 45 67">
+              </div>
+              <div class="col-12 col-md-2">
+                <label class="form-label small mb-0">Rôle</label>
+                <select name="new_role" class="form-select form-select-sm" required>
+                  {% for role in role_options %}
+                    <option value="{{ role }}">{{ role|capitalize }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-12 col-md-2">
+                <label class="form-label small mb-0">Mot de passe (optionnel)</label>
+                <input type="password" name="new_password" class="form-control form-control-sm" placeholder="passer123 si vide" autocomplete="new-password">
+              </div>
+              <div class="col-12 col-md-2">
+                <div class="form-check mb-0">
+                  <input class="form-check-input" type="checkbox" name="new_is_active" id="new_is_active" checked>
+                  <label class="form-check-label small" for="new_is_active">Compte actif</label>
+                </div>
+              </div>
+              <div class="col-12">
+                <button type="submit" class="btn btn-primary btn-sm">
+                  <i class="bi bi-person-plus me-1"></i> Créer l'utilisateur
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div class="card shadow-sm">
+          <div class="card-header py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <strong>Gestion des comptes</strong>
+            <span class="small text-muted">Réactivation rapide : <code>passer123</code></span>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-sm align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Nom</th>
+                    <th>Utilisateur</th>
+                    <th>Employé lié</th>
+                    <th>Rôle</th>
+                    <th>Statut</th>
+                    <th class="text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for u in users %}
+                    <tr>
+                      <td>{{ u.full_name }}</td>
+                      <td>
+                        <div>{{ u.email }}</div>
+                        {% if u.telephone %}
+                          <div class="small text-muted"><i class="bi bi-telephone me-1"></i>{{ u.telephone }}</div>
+                        {% endif %}
+                      </td>
+                      <td>
+                        {% set emp = employes_by_user_id.get(u.id) %}
+                        {% if emp %}
+                          {{ emp.matricule }} — {{ emp.nom }} {{ emp.prenom }}
+                        {% else %}
+                          <span class="text-muted">—</span>
+                        {% endif %}
+                      </td>
+                      <td><span class="badge text-bg-light border text-capitalize">{{ u.role }}</span></td>
+                      <td>
+                        {% if u.is_active %}
+                          <span class="badge bg-success-subtle text-success-emphasis">Actif</span>
+                        {% else %}
+                          <span class="badge bg-danger-subtle text-danger-emphasis">Inactif</span>
+                        {% endif %}
+                      </td>
+                      <td class="text-end">
+                        <div class="d-flex justify-content-end flex-wrap gap-1">
+                          <button
+                            type="button"
+                            class="btn btn-sm btn-outline-primary btn-edit-user"
+                            data-bs-toggle="modal"
+                            data-bs-target="#editUserModal"
+                            data-user-id="{{ u.id }}"
+                            data-first-name="{{ u.first_name or '' }}"
+                            data-last-name="{{ u.last_name or '' }}"
+                            data-email="{{ u.email }}"
+                            data-telephone="{{ u.telephone or '' }}"
+                            data-role="{{ u.role }}"
+                            data-active="{{ '1' if u.is_active else '0' }}"
+                          >
+                            Modifier
+                          </button>
+                          <form method="post" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ form.csrf_token._value() }}">
+                            <input type="hidden" name="admin_action" value="toggle_access">
+                            <input type="hidden" name="user_id" value="{{ u.id }}">
+                            <button class="btn btn-sm btn-outline-secondary" type="submit">
+                              {% if u.is_active %}Désactiver{% else %}Activer{% endif %}
+                            </button>
+                          </form>
+                          {% if not u.is_active %}
+                            <form method="post" class="d-inline">
+                              <input type="hidden" name="csrf_token" value="{{ form.csrf_token._value() }}">
+                              <input type="hidden" name="admin_action" value="activate_default">
+                              <input type="hidden" name="user_id" value="{{ u.id }}">
+                              <button class="btn btn-sm btn-primary" type="submit">Mdp défaut</button>
+                            </form>
+                          {% endif %}
+                        </div>
+                      </td>
+                    </tr>
+                  {% else %}
+                    <tr>
+                      <td colspan="6" class="text-center text-muted py-3">Aucun utilisateur trouvé.</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h2 class="modal-title h5" id="editUserModalLabel">Modifier l'utilisateur</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+              </div>
+              <form method="post">
+                <div class="modal-body">
+                  <input type="hidden" name="csrf_token" value="{{ form.csrf_token._value() }}">
+                  <input type="hidden" name="admin_action" value="update_user">
+                  <input type="hidden" name="user_id" id="edit_user_id" value="">
+                  <div class="mb-3">
+                    <label class="form-label" for="edit_first_name">Prénom</label>
+                    <input type="text" class="form-control" name="edit_first_name" id="edit_first_name" required>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label" for="edit_last_name">Nom</label>
+                    <input type="text" class="form-control" name="edit_last_name" id="edit_last_name" required>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label" for="edit_email">Email</label>
+                    <input type="email" class="form-control" name="edit_email" id="edit_email" required autocomplete="username">
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label" for="edit_telephone">Téléphone (connexion)</label>
+                    <input type="tel" class="form-control" name="edit_telephone" id="edit_telephone" placeholder="77 123 45 67">
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label" for="edit_role">Rôle</label>
+                    <select class="form-select" name="edit_role" id="edit_role" required>
+                      {% for role in role_options %}
+                        <option value="{{ role }}">{{ role|capitalize }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="mb-3 form-check">
+                    <input class="form-check-input" type="checkbox" name="edit_is_active" id="edit_is_active" value="on">
+                    <label class="form-check-label" for="edit_is_active">Compte actif</label>
+                  </div>
+                  <div class="mb-0">
+                    <label class="form-label" for="edit_password">Nouveau mot de passe</label>
+                    <input type="password" class="form-control" name="edit_password" id="edit_password" placeholder="Laisser vide pour ne pas changer" autocomplete="new-password">
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Annuler</button>
+                  <button type="submit" class="btn btn-primary">Enregistrer</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  {% if current_user.role == 'admin' %}
+    <script>
+      (function () {
+        var modal = document.getElementById('editUserModal');
+        if (!modal) return;
+        modal.addEventListener('show.bs.modal', function (event) {
+          var btn = event.relatedTarget;
+          if (!btn || !btn.classList.contains('btn-edit-user')) return;
+          document.getElementById('edit_user_id').value = btn.getAttribute('data-user-id') || '';
+          document.getElementById('edit_first_name').value = btn.getAttribute('data-first-name') || '';
+          document.getElementById('edit_last_name').value = btn.getAttribute('data-last-name') || '';
+          document.getElementById('edit_email').value = btn.getAttribute('data-email') || '';
+          document.getElementById('edit_telephone').value = btn.getAttribute('data-telephone') || '';
+          var role = btn.getAttribute('data-role') || '';
+          var sel = document.getElementById('edit_role');
+          if (sel) sel.value = role;
+          document.getElementById('edit_is_active').checked = btn.getAttribute('data-active') === '1';
+          document.getElementById('edit_password').value = '';
+        });
+      })();
+    </script>
+  {% endif %}
+{% endblock %}

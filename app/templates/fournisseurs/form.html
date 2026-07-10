@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title or 'Nouveau fournisseur' }} - Avalon Pharma{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h4 mb-0">{{ title or 'Nouveau fournisseur' }}</h1>
+    <a href="{{ url_for('fournisseurs.index') }}" class="btn btn-outline-secondary btn-sm">Retour</a>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <form method="post" novalidate>
+        {{ form.hidden_tag() }}
+        <div class="row g-3">
+          <div class="col-md-4">
+            {{ form.code.label(class="form-label") }}
+            {{ form.code(class="form-control" ~ (" is-invalid" if form.code.errors else "")) }}
+            {% for e in form.code.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+          </div>
+          <div class="col-md-8">
+            {{ form.raison_sociale.label(class="form-label") }}
+            {{ form.raison_sociale(class="form-control" ~ (" is-invalid" if form.raison_sociale.errors else "")) }}
+            {% for e in form.raison_sociale.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+          </div>
+
+          <div class="col-md-4">
+            {{ form.contact.label(class="form-label") }}
+            {{ form.contact(class="form-control" ~ (" is-invalid" if form.contact.errors else "")) }}
+            {% for e in form.contact.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+          </div>
+          <div class="col-md-4">
+            {{ form.telephone.label(class="form-label") }}
+            {{ form.telephone(class="form-control" ~ (" is-invalid" if form.telephone.errors else "")) }}
+            {% for e in form.telephone.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+          </div>
+          <div class="col-md-4">
+            {{ form.email.label(class="form-label") }}
+            {{ form.email(class="form-control" ~ (" is-invalid" if form.email.errors else "")) }}
+            {% for e in form.email.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+          </div>
+
+          <div class="col-md-4">
+            {{ form.ville.label(class="form-label") }}
+            {{ form.ville(class="form-control") }}
+          </div>
+          <div class="col-md-4">
+            {{ form.pays.label(class="form-label") }}
+            {{ form.pays(class="form-control") }}
+          </div>
+          <div class="col-md-4">
+            {{ form.rib.label(class="form-label") }}
+            {{ form.rib(class="form-control") }}
+          </div>
+
+          <div class="col-12">
+            {{ form.adresse.label(class="form-label") }}
+            {{ form.adresse(class="form-control", rows="2") }}
+          </div>
+          <div class="col-12">
+            {{ form.conditions_paiement.label(class="form-label") }}
+            {{ form.conditions_paiement(class="form-control", rows="2") }}
+          </div>
+          <div class="col-12">
+            <div class="form-check form-switch">
+              {{ form.est_actif(class="form-check-input") }}
+              {{ form.est_actif.label(class="form-check-label") }}
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4 d-flex gap-2">
+          <button type="submit" class="btn btn-primary">{{ form.submit.label.text }}</button>
+          <a href="{{ url_for('fournisseurs.index') }}" class="btn btn-outline-secondary">Annuler</a>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}

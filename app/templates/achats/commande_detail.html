@@ -1,0 +1,373 @@
+{% extends "base.html" %}
+
+{% block title %}Commande {{ commande.numero }} — Achats{% endblock %}
+
+{% block content %}
+  <div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-1 small">
+          <li class="breadcrumb-item"><a href="{{ url_for('achats.index') }}">Commandes fournisseur</a></li>
+          <li class="breadcrumb-item active" aria-current="page">{{ commande.numero }}</li>
+        </ol>
+      </nav>
+      <h1 class="page-title h4 mb-0">{{ commande.numero }}</h1>
+      <p class="text-muted small mb-0">{{ commande.fournisseur.raison_sociale if commande.fournisseur else '—' }}</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      {% if commande.statut not in ('recue', 'annulee') %}
+        <a href="{{ url_for('achats.modifier_commande', id=commande.id) }}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-pencil-square me-1"></i> Modifier
+        </a>
+        <form method="post" action="{{ url_for('achats.recevoir_commande', id=commande.id) }}" class="d-inline"
+              onsubmit="return confirm('Réceptionner cette commande ? Les quantités commandées seront ajoutées au stock (lots + mouvements).');">
+          <button type="submit" class="btn btn-success btn-sm">
+            <i class="bi bi-box-arrow-in-down me-1"></i> Réceptionner
+          </button>
+        </form>
+      {% endif %}
+      <a href="{{ url_for('achats.index') }}" class="btn btn-outline-primary btn-sm">Liste</a>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-8">
+      <div class="card shadow-sm">
+        <div class="card-header">
+          <h2 class="h6 mb-0">Lignes de commande</h2>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Réf.</th>
+                  <th>Produit</th>
+                  <th class="text-end">Qté commandée</th>
+                  <th class="text-end">Qté reçue</th>
+                  <th class="text-end">Prix achat HT</th>
+                  <th class="text-end">Montant HT</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for ligne in lignes %}
+                  {% set p = ligne.produit %}
+                  {% set montant = (ligne.prix_achat_ht | float) * ligne.quantite_commandee %}
+                  <tr>
+                    <td class="small text-muted">{{ p.reference if p else '—' }}</td>
+                    <td>{{ p.designation if p else '—' }}</td>
+                    <td class="text-end">{{ ligne.quantite_commandee }}</td>
+                    <td class="text-end">{{ ligne.quantite_recue or 0 }}</td>
+                    <td class="text-end">{{ ligne.prix_achat_ht }} FCFA</td>
+                    <td class="text-end fw-medium">{{ '%.2f'|format(montant) }} FCFA</td>
+                  </tr>
+                {% else %}
+                  <tr>
+                    <td colspan="6" class="text-center text-muted py-4">Aucune ligne.</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+              <tfoot class="table-light">
+                <tr>
+                  <td colspan="5" class="text-end"><strong>Total HT</strong></td>
+                  <td class="text-end"><strong>{{ commande.total_ht }} FCFA</strong></td>
+                </tr>
+                <tr>
+                  <td colspan="5" class="text-end">TVA</td>
+                  <td class="text-end">{{ commande.tva_montant }} FCFA</td>
+                </tr>
+                <tr>
+                  <td colspan="5" class="text-end"><strong>Total TTC</strong></td>
+                  <td class="text-end"><strong>{{ commande.total_ttc }} FCFA</strong></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card shadow-sm mb-3">
+        <div class="card-header">
+          <h2 class="h6 mb-0">Informations</h2>
+        </div>
+        <div class="card-body small">
+          {% set labels = {
+            'brouillon': 'Brouillon',
+            'envoyee': 'Envoyée',
+            'partiellement_recue': 'Partiellement reçue',
+            'recue': 'Reçue',
+            'annulee': 'Annulée'
+          } %}
+          {% set cls = {
+            'brouillon': 'secondary',
+            'envoyee': 'primary',
+            'partiellement_recue': 'warning',
+            'recue': 'success',
+            'annulee': 'danger'
+          } %}
+          <dl class="row mb-0">
+            <dt class="col-5 text-muted">Statut</dt>
+            <dd class="col-7">
+              <span class="badge bg-{{ cls.get(commande.statut, 'secondary') }}">
+                {{ labels.get(commande.statut, commande.statut) }}
+              </span>
+            </dd>
+            <dt class="col-5 text-muted">Date commande</dt>
+            <dd class="col-7">{{ commande.date_commande.strftime('%d/%m/%Y') if commande.date_commande else '—' }}</dd>
+            <dt class="col-5 text-muted">Livraison prévue</dt>
+            <dd class="col-7">
+              {% if commande.date_livraison_prevue %}
+                {{ commande.date_livraison_prevue.strftime('%d/%m/%Y') }}
+              {% else %}
+                —
+              {% endif %}
+            </dd>
+          </dl>
+        </div>
+      </div>
+      {% if notes_affichage %}
+        <div class="card shadow-sm">
+          <div class="card-header">
+            <h2 class="h6 mb-0">Notes</h2>
+          </div>
+          <div class="card-body">
+            <pre class="small mb-0 text-muted" style="white-space: pre-wrap;">{{ notes_affichage }}</pre>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card shadow-sm mt-4">
+    <div class="card-header fw-semibold d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <span>Dépenses liées à cet achat (hors commande produits)</span>
+      <span class="badge bg-warning text-dark">Total : {{ format_fcfa(depenses_liees_total) }} FCFA</span>
+    </div>
+    {% if peut_gerer_depenses %}
+      <div class="card-body border-bottom bg-body-tertiary">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <h3 class="h6 mb-0">Ajouter une dépense</h3>
+          <a href="{{ url_for('depenses.nouvelle_depense') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-box-arrow-up-right me-1"></i> Saisir via module Dépenses
+          </a>
+        </div>
+        <form method="post" action="{{ url_for('achats.commande_ajouter_depense', id=commande.id) }}" enctype="multipart/form-data" class="row g-3 align-items-end">
+          <div class="col-12 col-md-4">
+            <label class="form-label small">Type de dépense</label>
+            <select class="form-select form-select-sm" name="categorie_id" required>
+              {% for c in depense_categories %}
+                <option value="{{ c.id }}">{{ c.nom }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small">Description / justification</label>
+            <input class="form-control form-control-sm" type="text" name="description" placeholder="Ex. Transport Abidjan → Bouaké" required>
+          </div>
+          <div class="col-6 col-md-2">
+            <label class="form-label small">Montant HT</label>
+            <input class="form-control form-control-sm" type="number" name="montant_ht" min="0.01" step="0.01" required>
+          </div>
+          <div class="col-6 col-md-2">
+            <label class="form-label small">Paiement</label>
+            <select class="form-select form-select-sm" name="mode_paiement">
+              <option value="espece">Espèce</option>
+              <option value="virement">Virement</option>
+              <option value="cheque">Chèque</option>
+              <option value="carte">Carte</option>
+            </select>
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label small">Date</label>
+            <input class="form-control form-control-sm" type="date" name="date_depense"
+                   value="{{ commande.date_commande.strftime('%Y-%m-%d') if commande.date_commande else '' }}">
+          </div>
+          <div class="col-12 col-md-5">
+            <label class="form-label small">Justificatif</label>
+            <input class="form-control form-control-sm" type="file" name="justificatif" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg">
+            <div class="form-text">PDF, PNG ou JPEG (facultatif).</div>
+          </div>
+          <div class="col-12 col-md-3">
+            <button type="submit" class="btn btn-primary btn-sm w-100">
+              <i class="bi bi-plus-lg me-1"></i> Enregistrer la dépense
+            </button>
+          </div>
+        </form>
+      </div>
+    {% endif %}
+    {% if depenses_liees %}
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Date</th>
+                <th>Libellé</th>
+                <th>Catégorie</th>
+                <th>Statut</th>
+                <th>Justificatif</th>
+                <th class="text-end">Montant TTC</th>
+                {% if peut_gerer_depenses %}<th class="text-end" style="width:90px;">Actions</th>{% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for d in depenses_liees %}
+                {% set suffix = ' (achat ' ~ commande.numero ~ ')' %}
+                {% set suffix_len = suffix|length %}
+                {% set desc_base = d.libelle[0:(d.libelle|length - suffix_len)] if d.libelle and d.libelle.endswith(suffix) else d.libelle %}
+                <tr>
+                  <td>{{ d.date_depense.strftime('%d/%m/%Y') if d.date_depense else '—' }}</td>
+                  <td>{{ d.libelle }}</td>
+                  <td>{{ d.categorie.nom if d.categorie else '—' }}</td>
+                  <td>
+                    <span class="badge bg-{% if d.statut == 'valide' %}success{% elif d.statut == 'rejete' %}danger{% else %}warning text-dark{% endif %}">
+                      {{ d.statut }}
+                    </span>
+                  </td>
+                  <td>
+                    {% if d.justificatif %}
+                      <a href="{{ url_for('depenses.justificatif_fichier', stored_name=d.justificatif) }}" class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener">
+                        <i class="bi bi-paperclip me-1"></i> Voir
+                      </a>
+                    {% else %}
+                      <span class="text-muted small">—</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-end fw-medium">{{ format_fcfa(d.montant_ttc) }} FCFA</td>
+                  {% if peut_gerer_depenses %}
+                    <td class="text-end">
+                      {% if d.statut == 'en_attente' and commande.statut != 'annulee' %}
+                        <button type="button"
+                                class="btn btn-sm btn-outline-primary btn-edit-depense"
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalEditDepense"
+                                data-depense-id="{{ d.id }}"
+                                data-categorie-id="{{ d.categorie_id }}"
+                                data-description="{{ desc_base }}"
+                                data-montant="{{ d.montant_ht }}"
+                                data-mode="{{ d.mode_paiement }}"
+                                data-date="{{ d.date_depense.strftime('%Y-%m-%d') if d.date_depense else '' }}"
+                                data-has-justificatif="{{ '1' if d.justificatif else '0' }}"
+                                title="Modifier">
+                          <i class="bi bi-pencil"></i>
+                        </button>
+                      {% else %}
+                        <span class="text-muted small">—</span>
+                      {% endif %}
+                    </td>
+                  {% endif %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% elif not peut_gerer_depenses %}
+      <div class="card-body">
+        <p class="text-muted mb-0">Aucune dépense liée à cet achat pour le moment.</p>
+      </div>
+    {% endif %}
+    <div class="card-footer bg-body-tertiary small text-muted">
+      Transport, douane et autres frais d'achat. Le justificatif est facultatif. Seules les dépenses <strong>en attente</strong> peuvent être modifiées.
+    </div>
+  </div>
+
+  {% if peut_gerer_depenses %}
+    <div class="modal fade" id="modalEditDepense" tabindex="-1" aria-labelledby="modalEditDepenseLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+          <form method="post" id="formEditDepense" action="#" enctype="multipart/form-data">
+            <div class="modal-header">
+              <h5 class="modal-title" id="modalEditDepenseLabel">Modifier la dépense</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+              <div class="row g-3">
+                <div class="col-12 col-md-6">
+                  <label class="form-label">Type de dépense</label>
+                  <select class="form-select" name="categorie_id" id="editDepCategorie" required>
+                    {% for c in depense_categories %}
+                      <option value="{{ c.id }}">{{ c.nom }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-12 col-md-6">
+                  <label class="form-label">Date</label>
+                  <input class="form-control" type="date" name="date_depense" id="editDepDate" required>
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Description / justification</label>
+                  <input class="form-control" type="text" name="description" id="editDepDescription" required>
+                </div>
+                <div class="col-6 col-md-4">
+                  <label class="form-label">Montant HT</label>
+                  <input class="form-control" type="number" name="montant_ht" id="editDepMontant" min="0.01" step="0.01" required>
+                </div>
+                <div class="col-6 col-md-4">
+                  <label class="form-label">Paiement</label>
+                  <select class="form-select" name="mode_paiement" id="editDepMode">
+                    <option value="espece">Espèce</option>
+                    <option value="virement">Virement</option>
+                    <option value="cheque">Chèque</option>
+                    <option value="carte">Carte</option>
+                  </select>
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Justificatif <span class="text-danger" id="editDepJustifRequired">*</span></label>
+                  <input class="form-control" type="file" name="justificatif" id="editDepJustificatif" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg">
+                  <div class="form-text" id="editDepJustifHint">Laissez vide pour conserver le fichier actuel.</div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-lg me-1"></i> Enregistrer
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}
+
+{% block scripts %}
+  {% if peut_gerer_depenses %}
+  <script>
+    (function () {
+      const form = document.getElementById("formEditDepense");
+      const justifInput = document.getElementById("editDepJustificatif");
+      const justifRequired = document.getElementById("editDepJustifRequired");
+      const justifHint = document.getElementById("editDepJustifHint");
+      const modifierUrlTpl = {{ url_for('achats.commande_modifier_depense', id=commande.id, depense_id=0) | tojson }};
+
+      document.querySelectorAll(".btn-edit-depense").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          const depId = btn.getAttribute("data-depense-id");
+          form.action = modifierUrlTpl.replace("/depenses/0/", "/depenses/" + depId + "/");
+
+          document.getElementById("editDepCategorie").value = btn.getAttribute("data-categorie-id") || "";
+          document.getElementById("editDepDescription").value = btn.getAttribute("data-description") || "";
+          document.getElementById("editDepMontant").value = btn.getAttribute("data-montant") || "";
+          document.getElementById("editDepMode").value = btn.getAttribute("data-mode") || "espece";
+          document.getElementById("editDepDate").value = btn.getAttribute("data-date") || "";
+
+          const hasJustif = btn.getAttribute("data-has-justificatif") === "1";
+          if (justifInput) {
+            justifInput.value = "";
+            justifInput.required = false;
+          }
+          if (justifRequired) justifRequired.classList.add("d-none");
+          if (justifHint) {
+            justifHint.textContent = hasJustif
+              ? "Laissez vide pour conserver le justificatif actuel."
+              : "Justificatif facultatif (PDF, PNG ou JPEG).";
+          }
+        });
+      });
+    })();
+  </script>
+  {% endif %}
+{% endblock %}

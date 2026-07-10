@@ -1,0 +1,380 @@
+{% extends "base.html" %}
+
+{% block title %}Sécurité — Utilisateurs{% endblock %}
+
+{% block extra_css %}
+<style>
+  .sec-hero {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    border-radius: 0.75rem;
+    color: #fff;
+    padding: 1.35rem 1.5rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 0.5rem 1.25rem rgba(30, 41, 59, 0.25);
+  }
+  .sec-stat {
+    border-radius: 0.65rem;
+    border: 1px solid var(--bs-border-color);
+    background: var(--bs-body-bg);
+    padding: 1rem 1.1rem;
+    height: 100%;
+  }
+  .sec-stat .val { font-size: 1.4rem; font-weight: 700; }
+  .role-card {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.5rem;
+    padding: 0.65rem 0.85rem;
+    height: 100%;
+    background: var(--bs-body-bg);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+  <div class="sec-hero d-flex flex-wrap justify-content-between align-items-start gap-3">
+    <div>
+      <h1 class="h4 mb-1 text-white"><i class="bi bi-shield-lock me-2"></i>Sécurité & accès</h1>
+      <p class="mb-0 small text-white" style="opacity:.9;">
+        Gérez les comptes, les rôles et surveillez les connexions suspectes sur la plateforme Avalon.
+      </p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{{ url_for('securite.audit_logs') }}" class="btn btn-outline-light btn-sm">
+        <i class="bi bi-journal-text me-1"></i> Journal d'audit
+      </a>
+      <a href="{{ url_for('auth.profil') }}" class="btn btn-light btn-sm">
+        <i class="bi bi-person me-1"></i> Mon profil
+      </a>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="sec-stat shadow-sm">
+        <div class="text-muted small text-uppercase fw-semibold">Comptes actifs</div>
+        <div class="val text-success">{{ nb_actifs }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="sec-stat shadow-sm">
+        <div class="text-muted small text-uppercase fw-semibold">Comptes inactifs</div>
+        <div class="val {% if nb_inactifs %}text-danger{% else %}text-muted{% endif %}">{{ nb_inactifs }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="sec-stat shadow-sm">
+        <div class="text-muted small text-uppercase fw-semibold">Échecs connexion (14 j)</div>
+        <div class="val {% if nb_echecs_14j %}text-warning{% else %}text-muted{% endif %}">{{ nb_echecs_14j }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="sec-stat shadow-sm">
+        <div class="text-muted small text-uppercase fw-semibold">Jamais connectés</div>
+        <div class="val {% if jamais_connectes %}text-info{% else %}text-muted{% endif %}">{{ jamais_connectes|length }}</div>
+      </div>
+    </div>
+  </div>
+
+  {% if jamais_connectes %}
+  <div class="alert alert-info small py-2 mb-3">
+    <i class="bi bi-info-circle me-1"></i>
+    <strong>{{ jamais_connectes|length }} compte(s) actif(s)</strong> n'ont jamais ouvert de session :
+    {% for u in jamais_connectes[:5] %}{{ u.email }}{% if not loop.last %}, {% endif %}{% endfor %}
+    {% if jamais_connectes|length > 5 %}…{% endif %}
+  </div>
+  {% endif %}
+
+  <div class="row g-3 mb-4">
+    <div class="col-lg-7">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-header bg-white py-3">
+          <strong><i class="bi bi-person-plus me-2 text-primary"></i>Créer un compte</strong>
+        </div>
+        <div class="card-body">
+          <form method="post" class="row g-2 align-items-end">
+            {{ form.hidden_tag() }}
+            <input type="hidden" name="admin_action" value="create_user">
+            <div class="col-md-4">
+              <label class="form-label small mb-0">Prénom</label>
+              <input type="text" name="new_first_name" class="form-control form-control-sm" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small mb-0">Nom</label>
+              <input type="text" name="new_last_name" class="form-control form-control-sm" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small mb-0">Email</label>
+              <input type="email" name="new_email" class="form-control form-control-sm" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small mb-0">Rôle</label>
+              <select name="new_role" class="form-select form-select-sm" required>
+                {% for role in role_options %}
+                  <option value="{{ role }}">{{ role|capitalize }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small mb-0">Téléphone (connexion)</label>
+              <input type="tel" name="new_telephone" class="form-control form-control-sm" placeholder="77 123 45 67">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small mb-0">Mot de passe</label>
+              <input type="password" name="new_password" class="form-control form-control-sm" placeholder="passer123 si vide" autocomplete="new-password">
+            </div>
+            <div class="col-md-4">
+              <div class="form-check mt-4">
+                <input class="form-check-input" type="checkbox" name="new_is_active" id="new_is_active" checked>
+                <label class="form-check-label small" for="new_is_active">Compte actif</label>
+              </div>
+            </div>
+            <div class="col-12">
+              <button type="submit" class="btn btn-primary btn-sm">
+                <i class="bi bi-check-lg me-1"></i> Créer
+              </button>
+              <span class="small text-muted ms-2">Mot de passe vide → <code>passer123</code></span>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-header bg-white py-3">
+          <strong><i class="bi bi-key me-2 text-warning"></i>Rôles & permissions</strong>
+        </div>
+        <div class="card-body small">
+          <div class="row g-2">
+            {% for role in role_options %}
+              <div class="col-12">
+                <div class="role-card">
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="fw-semibold text-capitalize">{{ role }}</span>
+                    <span class="badge text-bg-light border">{{ par_role.get(role, 0) }} compte(s)</span>
+                  </div>
+                  <div class="text-muted">{{ role_descriptions.get(role, '') }}</div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+      <strong><i class="bi bi-people me-2"></i>Comptes utilisateurs</strong>
+      <span class="small text-muted">{{ users|length }} compte(s)</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Contact</th>
+            <th>Rôle</th>
+            <th>Employé RH</th>
+            <th>Dernière connexion</th>
+            <th>Statut</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+            <tr {% if u.id == current_user_id %}class="table-primary table-opacity-25"{% endif %}>
+              <td>
+                <div class="fw-medium">{{ u.full_name }}</div>
+                <div class="small text-muted">{{ u.email }}</div>
+                {% if u.telephone %}
+                  <div class="small text-muted"><i class="bi bi-telephone me-1"></i>{{ u.telephone }}</div>
+                {% endif %}
+                {% if u.id == current_user_id %}<span class="badge text-bg-primary">Vous</span>{% endif %}
+              </td>
+              <td><span class="badge text-bg-light border text-capitalize">{{ u.role }}</span></td>
+              <td class="small">
+                {% set emp = employes_by_user_id.get(u.id) %}
+                {% if emp %}
+                  <a href="{{ url_for('rh.detail_employe', id=emp.id) }}" class="text-decoration-none">
+                    {{ emp.matricule }} — {{ emp.nom }} {{ emp.prenom }}
+                  </a>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td class="small text-nowrap">
+                {% if u.last_login %}
+                  {{ u.last_login.strftime('%d/%m/%Y %H:%M') }}
+                {% else %}
+                  <span class="text-warning">Jamais</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if u.is_active %}
+                  <span class="badge bg-success-subtle text-success-emphasis">Actif</span>
+                {% else %}
+                  <span class="badge bg-danger-subtle text-danger-emphasis">Inactif</span>
+                {% endif %}
+              </td>
+              <td class="text-end text-nowrap">
+                <button type="button" class="btn btn-sm btn-outline-primary btn-edit-user"
+                  data-bs-toggle="modal" data-bs-target="#editUserModal"
+                  data-user-id="{{ u.id }}"
+                  data-first-name="{{ u.first_name or '' }}"
+                  data-last-name="{{ u.last_name or '' }}"
+                  data-email="{{ u.email }}"
+                  data-telephone="{{ u.telephone or '' }}"
+                  data-role="{{ u.role }}"
+                  data-active="{{ '1' if u.is_active else '0' }}">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <form method="post" class="d-inline">
+                  {{ form.hidden_tag() }}
+                  <input type="hidden" name="admin_action" value="toggle_access">
+                  <input type="hidden" name="user_id" value="{{ u.id }}">
+                  <button class="btn btn-sm btn-outline-secondary" type="submit" title="Activer / désactiver">
+                    <i class="bi bi-{{ 'pause' if u.is_active else 'play' }}-fill"></i>
+                  </button>
+                </form>
+                {% if not u.is_active or not u.last_login %}
+                <form method="post" class="d-inline">
+                  {{ form.hidden_tag() }}
+                  <input type="hidden" name="admin_action" value="activate_default">
+                  <input type="hidden" name="user_id" value="{{ u.id }}">
+                  <button class="btn btn-sm btn-outline-warning" type="submit" title="Réinitialiser mdp passer123">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                  </button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="6" class="text-center text-muted py-4">Aucun utilisateur.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-header bg-white py-3">
+          <strong><i class="bi bi-exclamation-triangle me-2 text-danger"></i>Échecs de connexion récents</strong>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead class="table-light">
+              <tr><th>Date</th><th>Email</th><th>IP</th></tr>
+            </thead>
+            <tbody>
+              {% for att in echecs_connexion %}
+                <tr>
+                  <td class="text-nowrap small">{{ att.timestamp.strftime('%d/%m %H:%M') if att.timestamp else '—' }}</td>
+                  <td class="small">{{ att.email or '—' }}</td>
+                  <td class="small text-muted">{{ att.ip_address or '—' }}</td>
+                </tr>
+              {% else %}
+                <tr><td colspan="3" class="text-center text-muted small py-3">Aucun échec sur 14 jours.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-header bg-white py-3 d-flex justify-content-between">
+          <strong><i class="bi bi-activity me-2"></i>Activité récente</strong>
+          <a href="{{ url_for('securite.audit_logs') }}" class="small">Tout voir</a>
+        </div>
+        <ul class="list-group list-group-flush small">
+          {% for log in activite_recente %}
+            <li class="list-group-item d-flex justify-content-between gap-2">
+              <span>
+                <span class="badge text-bg-secondary">{{ log.action }}</span>
+                {{ log.module }} — {{ log.entite }}
+                {% if log.user %}<span class="text-muted">({{ log.user.email }})</span>{% endif %}
+              </span>
+              <span class="text-muted text-nowrap">{{ log.timestamp.strftime('%d/%m %H:%M') if log.timestamp else '' }}</span>
+            </li>
+          {% else %}
+            <li class="list-group-item text-muted text-center py-3">Aucune activité enregistrée.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="editUserModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <form method="post">
+          <div class="modal-header">
+            <h2 class="modal-title h5">Modifier l'utilisateur</h2>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            {{ form.hidden_tag() }}
+            <input type="hidden" name="admin_action" value="update_user">
+            <input type="hidden" name="user_id" id="edit_user_id">
+            <div class="mb-3">
+              <label class="form-label" for="edit_first_name">Prénom</label>
+              <input type="text" class="form-control" name="edit_first_name" id="edit_first_name" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="edit_last_name">Nom</label>
+              <input type="text" class="form-control" name="edit_last_name" id="edit_last_name" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="edit_email">Email</label>
+              <input type="email" class="form-control" name="edit_email" id="edit_email" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="edit_telephone">Téléphone (connexion)</label>
+              <input type="tel" class="form-control" name="edit_telephone" id="edit_telephone" placeholder="77 123 45 67">
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="edit_role">Rôle</label>
+              <select class="form-select" name="edit_role" id="edit_role" required>
+                {% for role in role_options %}
+                  <option value="{{ role }}">{{ role|capitalize }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-3 form-check">
+              <input class="form-check-input" type="checkbox" name="edit_is_active" id="edit_is_active" value="on">
+              <label class="form-check-label" for="edit_is_active">Compte actif</label>
+            </div>
+            <div class="mb-0">
+              <label class="form-label" for="edit_password">Nouveau mot de passe</label>
+              <input type="password" class="form-control" name="edit_password" id="edit_password" placeholder="Laisser vide pour ne pas changer">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Annuler</button>
+            <button type="submit" class="btn btn-primary">Enregistrer</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    (function () {
+      document.querySelectorAll('.btn-edit-user').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          document.getElementById('edit_user_id').value = btn.getAttribute('data-user-id') || '';
+          document.getElementById('edit_first_name').value = btn.getAttribute('data-first-name') || '';
+          document.getElementById('edit_last_name').value = btn.getAttribute('data-last-name') || '';
+          document.getElementById('edit_email').value = btn.getAttribute('data-email') || '';
+          document.getElementById('edit_telephone').value = btn.getAttribute('data-telephone') || '';
+          document.getElementById('edit_role').value = btn.getAttribute('data-role') || '';
+          document.getElementById('edit_is_active').checked = btn.getAttribute('data-active') === '1';
+          document.getElementById('edit_password').value = '';
+        });
+      });
+    })();
+  </script>
+{% endblock %}

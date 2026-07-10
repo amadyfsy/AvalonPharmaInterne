@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} — Avalon Pharma{% endblock %}
+
+
+{% block content %}
+  <div class="client-form-hero d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+      <nav aria-label="breadcrumb" class="mb-2">
+        <ol class="breadcrumb mb-0 small">
+          <li class="breadcrumb-item"><a href="{{ url_for('clients.index') }}" class="text-white text-decoration-underline">Clients</a></li>
+          <li class="breadcrumb-item text-white active" aria-current="page">Nouveau</li>
+        </ol>
+      </nav>
+      <h1 class="h4 mb-0 fw-semibold text-white">{{ title }}</h1>
+    </div>
+    <a href="{{ url_for('clients.index') }}" class="btn btn-outline-light btn-sm">Retour à la liste</a>
+  </div>
+
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+      <div class="alert clients-alert-mint border-0 d-flex gap-2 mb-4">
+        <i class="bi bi-info-circle flex-shrink-0 mt-1"></i>
+        <div class="small mb-0">Pour une saisie ultra-rapide (nom de la structure seul), utilisez <strong>Client rapide</strong> depuis la <a href="{{ url_for('clients.index') }}">liste des clients</a> ou lors d’une <a href="{{ url_for('ventes.nouvelle_vente') }}">nouvelle vente</a>.</div>
+      </div>
+
+      <div class="card client-form-card shadow-sm border-0 clients-card-accent">
+        <div class="card-header border-0 py-3">
+          <i class="bi bi-card-heading me-2 text-primary"></i> Fiche client
+        </div>
+        <div class="card-body p-4">
+          <form method="post">
+            {{ form.hidden_tag() }}
+
+            <div class="row g-3">
+              <div class="col-md-4">
+                {{ form.code.label(class="form-label") }} <span class="text-danger">*</span>
+                {{ form.code(class="form-control", placeholder="Ex. CLI-001") }}
+              </div>
+              <div class="col-md-8">
+                {{ form.raison_sociale.label(class="form-label") }} <span class="text-danger">*</span>
+                {{ form.raison_sociale(class="form-control", placeholder="Nom de la structure") }}
+              </div>
+              <div class="col-md-6">
+                {{ form.type_client.label(class="form-label") }} <span class="text-danger">*</span>
+                {{ form.type_client(class="form-select") }}
+              </div>
+              <div class="col-md-6">
+                {{ form.contact.label(class="form-label") }}
+                {{ form.contact(class="form-control") }}
+              </div>
+              <div class="col-md-6">
+                {{ form.telephone.label(class="form-label") }}
+                {{ form.telephone(class="form-control", placeholder="+225 …") }}
+              </div>
+              <div class="col-md-6">
+                {{ form.email.label(class="form-label") }}
+                {{ form.email(class="form-control") }}
+              </div>
+              <div class="col-12">
+                {{ form.adresse.label(class="form-label") }}
+                {{ form.adresse(class="form-control", rows="2") }}
+              </div>
+              <div class="col-md-4">
+                {{ form.ville.label(class="form-label") }}
+                {{ form.ville(class="form-control") }}
+              </div>
+              <div class="col-md-4">
+                {{ form.nif_stat.label(class="form-label") }}
+                {{ form.nif_stat(class="form-control") }}
+              </div>
+              <div class="col-md-4 d-flex align-items-end pb-2">
+                <div class="form-check">
+                  {{ form.est_actif(class="form-check-input") }}
+                  {{ form.est_actif.label(class="form-check-label") }}
+                </div>
+              </div>
+              <div class="col-md-6">
+                {{ form.plafond_credit.label(class="form-label") }}
+                {{ form.plafond_credit(class="form-control") }}
+              </div>
+              <div class="col-md-6">
+                {{ form.remise_habituelle.label(class="form-label") }}
+                {{ form.remise_habituelle(class="form-control") }}
+              </div>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2 justify-content-between mt-4 pt-3 border-top">
+              <a href="{{ url_for('clients.index') }}" class="btn btn-outline-secondary">Annuler</a>
+              {{ form.submit(class="btn btn-success px-4") }}
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

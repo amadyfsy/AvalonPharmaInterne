@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} — Avalon Pharma{% endblock %}
+
+{% block extra_css %}
+<style>
+  .dep-page-hero {
+    background: linear-gradient(135deg, var(--brand-burgundy, #721818) 0%, var(--brand-burgundy-dark, #5a1218) 100%);
+    border-radius: 0.75rem;
+    color: #fff;
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 0.5rem 1.25rem rgba(114, 24, 24, 0.22);
+  }
+  .dep-page-hero .breadcrumb-item + .breadcrumb-item::before { color: rgba(255,255,255,.65); }
+  .cat-dep-form-card .form-label { font-weight: 500; font-size: 0.875rem; color: var(--bs-secondary-color); }
+</style>
+{% endblock %}
+
+{% block content %}
+  <div class="dep-page-hero d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+      <nav aria-label="breadcrumb" class="mb-2">
+        <ol class="breadcrumb mb-0 small">
+          <li class="breadcrumb-item"><a href="{{ url_for('depenses.categories_depenses_index') }}" class="text-white text-decoration-underline">Catégories</a></li>
+          <li class="breadcrumb-item text-white active" aria-current="page">Nouvelle</li>
+        </ol>
+      </nav>
+      <h1 class="h4 mb-0 fw-semibold text-white">{{ title }}</h1>
+    </div>
+    <a href="{{ url_for('depenses.categories_depenses_index') }}" class="btn btn-outline-light btn-sm">Retour</a>
+  </div>
+
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card cat-dep-form-card shadow-sm border-0">
+        <div class="card-header bg-body-secondary border-0 py-3">
+          <i class="bi bi-pencil-square me-2 text-primary"></i> Informations
+        </div>
+        <div class="card-body">
+          <form method="post">
+            {{ form.hidden_tag() }}
+
+            <div class="mb-3">
+              {{ form.nom.label(class="form-label") }} <span class="text-danger">*</span>
+              {{ form.nom(class="form-control", placeholder="Ex. Transport du personnel, Douane, Salaires…") }}
+              {% for e in form.nom.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+            </div>
+
+            <div class="mb-3">
+              {{ form.type_depense.label(class="form-label") }} <span class="text-danger">*</span>
+              {{ form.type_depense(class="form-select") }}
+              <div class="form-text">Fixe : charges récurrentes ou prévisibles. Variable : selon l’activité (transport ponctuel, douane…).</div>
+              {% for e in form.type_depense.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+            </div>
+
+            <div class="mb-3">
+              {{ form.icone.label(class="form-label") }} <span class="text-danger">*</span>
+              <div class="input-group">
+                {{ form.icone(class="form-select", id="categorieIconeSelect") }}
+                <span class="input-group-text" id="iconePreview" title="Aperçu"><i class="bi bi-tag fs-5"></i></span>
+              </div>
+              {% for e in form.icone.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+            </div>
+
+            <div class="mb-4">
+              {{ form.description.label(class="form-label") }}
+              {{ form.description(class="form-control", rows="3", placeholder="Usage prévu, règles internes…") }}
+            </div>
+
+            <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center">
+              <a href="{{ url_for('depenses.categories_depenses_index') }}" class="btn btn-outline-secondary">Annuler</a>
+              {{ form.submit(class="btn btn-primary px-4") }}
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    var sel = document.getElementById('categorieIconeSelect');
+    var prev = document.querySelector('#iconePreview i');
+    if (!sel || !prev) return;
+    function sync() {
+      var cls = sel.value || 'bi-tag';
+      prev.className = 'bi ' + cls + ' fs-5';
+    }
+    sel.addEventListener('change', sync);
+    sync();
+  })();
+  </script>
+{% endblock %}

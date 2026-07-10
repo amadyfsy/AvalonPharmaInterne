@@ -1,0 +1,23 @@
+{# Comme document papier : date « Lieu, le … », puis adresse / Tel / RC / NINEA / Email / banque #}
+{% set mois = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'] %}
+{% set lieu = doc_params.lieu_signature or 'St Louis' %}
+<div class="pdf-coords">
+  {% if date_doc %}
+    {% set m = mois[date_doc.month - 1] %}
+    <p>{{ lieu }}, le {{ date_doc.day }} {{ m|capitalize }} {{ date_doc.year }}</p>
+  {% endif %}
+  {% if doc_params.adresse_ligne %}
+    <p>{{ doc_params.adresse_ligne }}</p>
+  {% endif %}
+  {% if doc_params.telephone or doc_params.rc or doc_params.ninea or doc_params.email %}
+    <p>
+      {% if doc_params.telephone %}Tel : {{ doc_params.telephone }}{% endif %}
+      {% if doc_params.rc %}{% if doc_params.telephone %} {% endif %}RC : {{ doc_params.rc }}{% endif %}
+      {% if doc_params.ninea %} NINEA : {{ doc_params.ninea }}{% endif %}
+      {% if doc_params.email %} Email : {{ doc_params.email }}{% endif %}
+    </p>
+  {% endif %}
+  {% if doc_params.compte_bancaire %}
+    <p>{{ doc_params.compte_bancaire }}</p>
+  {% endif %}
+</div>

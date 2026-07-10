@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} — Avalon Pharma{% endblock %}
+
+{% block content %}
+  <div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+      <nav aria-label="fil d'ariane">
+        <ol class="breadcrumb mb-2">
+          <li class="breadcrumb-item"><a href="{{ url_for('ventes.factures') }}">Factures</a></li>
+          <li class="breadcrumb-item active" aria-current="page">{{ title }}</li>
+        </ol>
+      </nav>
+      <h1 class="page-title mb-0">{{ title }}</h1>
+    </div>
+    {% if facture %}
+      <a href="{{ url_for('ventes.facture_detail', id=facture.id) }}" class="btn btn-outline-secondary btn-sm">Annuler / Fiche</a>
+    {% else %}
+      <a href="{{ url_for('ventes.factures') }}" class="btn btn-outline-secondary btn-sm">Retour liste</a>
+    {% endif %}
+  </div>
+
+  <form method="post" id="factureForm" action="{{ form_action }}">
+    <div class="row g-3 mb-3">
+      <div class="col-12 col-md-6">
+        {% include 'partials/_client_picker.html' %}
+      </div>
+
+      <div class="col-12 col-md-3">
+        <label class="form-label">Date émission</label>
+        <input class="form-control" type="date" name="date_emission" required
+               value="{{ facture.date_emission.strftime('%Y-%m-%d') if facture and facture.date_emission else '' }}">
+      </div>
+
+      <div class="col-12 col-md-3">
+        <label class="form-label">Date échéance</label>
+        <input class="form-control" type="date" name="date_echeance" required
+               value="{{ facture.date_echeance.strftime('%Y-%m-%d') if facture and facture.date_echeance else '' }}">
+      </div>
+
+      <div class="col-12 col-md-4">
+        <label class="form-label">Remise globale (%)</label>
+        <input class="form-control" type="number" step="0.01" name="remise_globale"
+               value="{{ facture.remise_globale if facture else 0 }}">
+      </div>
+
+      <div class="col-12 col-md-4">
+        <label class="form-label">BC <span class="text-muted fw-normal">(bon de commande, optionnel)</span></label>
+        <input class="form-control" type="text" name="bc" maxlength="80" placeholder="Ex. BC-2026-001"
+               value="{{ facture.bc if facture and facture.bc else '' }}">
+      </div>
+    </div>
+
+    <div class="card shadow-sm mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Lignes</span>
+        <button type="button" class="btn btn-outline-primary btn-sm" id="addLine">
+          <i class="bi bi-plus-lg me-1"></i> Ajouter une ligne
+        </button>
+      </div>
+
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Produit</th>
+                <th style="width:120px;">Quantité</th>
+                <th style="width:160px;">Prix unitaire HT</th>
+                <th style="width:60px;"></th>
+              </tr>
+            </thead>
+            <tbody id="linesBody">
+              {% if facture and facture.lignes %}
+                {% for l in facture.lignes|sort(attribute='id') %}
+                  <tr class="line-row">
+                    <td>
+                      <select class="form-select" name="produit_id[]" required>
+                        <option value="" disabled>Choisir...</option>
+                        {% for p in produits %}
+                          <option value="{{ p.id }}" {% if l.produit_id == p.id %}selected{% endif %}>{{ p.reference }} - {{ p.designation }}</option>
+                        {% else %}
+                          <option value="" disabled>Aucun produit</option>
+                        {% endfor %}
+                      </select>
+                    </td>
+                    <td>
+                      <input class="form-control" type="number" min="1" name="quantite[]" value="{{ l.quantite }}" required>
+                    </td>
+                    <td>
+                      <input class="form-control" type="number" step="0.01" min="0" name="prix_unitaire_ht[]" value="{{ l.prix_unitaire_ht }}" required>
+                    </td>
+                    <td>
+                      <button type="button" class="btn btn-sm btn-outline-danger removeLine" title="Supprimer">
+                        <i class="bi bi-x"></i>
+                      </button>
+                    </td>
+                  </tr>
+                {% endfor %}
+              {% else %}
+                <tr class="line-row">
+                  <td>
+                    <select class="form-select" name="produit_id[]" required>
+                      <option value="" disabled selected>Choisir...</option>
+                      {% for p in produits %}
+                        <option value="{{ p.id }}">{{ p.reference }} - {{ p.designation }}</option>
+                      {% else %}
+                        <option value="" disabled>Aucun produit</option>
+                      {% endfor %}
+                    </select>
+                  </td>
+                  <td>
+                    <input class="form-control" type="number" min="1" name="quantite[]" value="1" required>
+                  </td>
+                  <td>
+                    <input class="form-control" type="number" step="0.01" min="0" name="prix_unitaire_ht[]" required>
+                  </td>
+                  <td>
+                    <button type="button" class="btn btn-sm btn-outline-danger removeLine" title="Supprimer">
+                      <i class="bi bi-x"></i>
+                    </button>
+                  </td>
+                </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    {% if edit_requires_confirm %}
+    <div class="alert alert-warning border-warning mb-3">
+      <div class="fw-semibold mb-2"><i class="bi bi-exclamation-triangle me-1"></i> Facture déjà émise ou partiellement payée</div>
+      <p class="small mb-2 mb-md-3">
+        La modification change les montants et recalcule le reste à payer à partir des paiements déjà enregistrés.
+        Vérifiez la cohérence avec votre comptabilité avant d’enregistrer.
+      </p>
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" value="1" name="confirm_edit_facture_emise" id="confirmEditFactureEmise" required>
+        <label class="form-check-label small" for="confirmEditFactureEmise">
+          Je confirme la modification de cette facture (numéro {{ facture.numero if facture else '—' }}).
+        </label>
+      </div>
+    </div>
+    {% endif %}
+
+    <button type="submit" class="btn btn-primary">
+      <i class="bi bi-save me-1"></i> Enregistrer
+    </button>
+  </form>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    (function () {
+      const apiBase = "/ventes/api/produits/";
+      const linesBody = document.getElementById("linesBody");
+      const addBtn = document.getElementById("addLine");
+      const clientSelect = document.getElementById("clientSelect");
+
+      {% if facture and facture.client_id %}
+      if (clientSelect) {
+        clientSelect.value = "{{ facture.client_id }}";
+      }
+      {% endif %}
+
+      function bindRemove(btn) {
+        btn.addEventListener("click", function () {
+          const row = this.closest(".line-row");
+          const rows = document.querySelectorAll(".line-row");
+          if (row && rows.length > 1) row.remove();
+        });
+      }
+
+      function updatePriceForRow(row) {
+        const select = row.querySelector("select[name='produit_id[]']");
+        const priceInput = row.querySelector("input[name='prix_unitaire_ht[]']");
+        if (!select || !priceInput) return;
+
+        select.addEventListener("change", async function () {
+          const id = select.value;
+          if (!id) { priceInput.value = ""; return; }
+
+          try {
+            const res = await fetch(apiBase + id);
+            if (!res.ok) throw new Error("API error");
+            const data = await res.json();
+            priceInput.value = data.prix_vente_ht ?? "";
+          } catch (e) {
+            /* ignore */
+          }
+        });
+      }
+
+      function updateAllRows() {
+        document.querySelectorAll(".line-row").forEach(function (row) {
+          updatePriceForRow(row);
+        });
+      }
+
+      linesBody.querySelectorAll(".removeLine").forEach(bindRemove);
+
+      addBtn.addEventListener("click", function () {
+        const firstRow = document.querySelector(".line-row");
+        const newRow = firstRow.cloneNode(true);
+
+        newRow.querySelectorAll("input").forEach(function (i) {
+          if (i.name === "quantite[]") i.value = 1;
+          if (i.name === "prix_unitaire_ht[]") i.value = "";
+        });
+        newRow.querySelectorAll("select").forEach(function (s) { s.selectedIndex = 0; });
+
+        linesBody.appendChild(newRow);
+        updatePriceForRow(newRow);
+        const removeBtn = newRow.querySelector(".removeLine");
+        if (removeBtn) bindRemove(removeBtn);
+      });
+
+      updateAllRows();
+    })();
+  </script>
+{% endblock %}

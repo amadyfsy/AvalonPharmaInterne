@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}Modifier {{ commande.numero }} — Achats{% endblock %}
+
+{% block content %}
+  <div class="page-header mb-4">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb mb-1 small">
+        <li class="breadcrumb-item"><a href="{{ url_for('achats.index') }}">Commandes fournisseur</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('achats.detail_commande', id=commande.id) }}">{{ commande.numero }}</a></li>
+        <li class="breadcrumb-item active">Modifier</li>
+      </ol>
+    </nav>
+    <h1 class="page-title h4 mb-0">Modifier la commande {{ commande.numero }}</h1>
+    <p class="text-muted small mb-0">Tant que la commande n’est pas réceptionnée, vous pouvez ajuster fournisseur, dates, notes et lignes.</p>
+  </div>
+
+  <form method="post" action="{{ url_for('achats.modifier_commande', id=commande.id) }}" id="formCommande">
+    <div class="card shadow-sm mb-3">
+      <div class="card-body row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Fournisseur <span class="text-danger">*</span></label>
+          <select name="fournisseur_id" class="form-select" required>
+            {% for f in fournisseurs %}
+              <option value="{{ f.id }}" {% if f.id == commande.fournisseur_id %}selected{% endif %}>{{ f.raison_sociale }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Date commande <span class="text-danger">*</span></label>
+          <input type="date" name="date_commande" class="form-control" required
+                 value="{{ commande.date_commande.isoformat() if commande.date_commande else '' }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Livraison prévue</label>
+          <input type="date" name="date_livraison_prevue" class="form-control"
+                 value="{{ commande.date_livraison_prevue.isoformat() if commande.date_livraison_prevue else '' }}">
+        </div>
+        <div class="col-12">
+          <label class="form-label">Notes</label>
+          <textarea name="notes" class="form-control" rows="3" placeholder="Notes internes…">{{ commande.notes or '' }}</textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h2 class="h6 mb-0">Produits</h2>
+        <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddLigne">
+          <i class="bi bi-plus-lg"></i> Ajouter une ligne
+        </button>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-bordered align-middle mb-0" id="tableLignes">
+            <thead class="table-light">
+              <tr>
+                <th style="width: 38%;">Produit</th>
+                <th style="width: 14%;">Quantité</th>
+                <th style="width: 18%;">Prix achat HT</th>
+                <th style="width: 10%;"></th>
+              </tr>
+            </thead>
+            <tbody id="lignesBody">
+              {% if lignes %}
+                {% for ligne in lignes %}
+                  <tr class="ligne-row">
+                    <td>
+                      <input type="hidden" name="ligne_id[]" value="{{ ligne.id }}">
+                      <select name="produit_id[]" class="form-select form-select-sm" required>
+                        {% for p in produits %}
+                          <option value="{{ p.id }}" {% if ligne.produit_id == p.id %}selected{% endif %}>
+                            {{ p.reference }} — {{ p.designation }}
+                          </option>
+                        {% endfor %}
+                      </select>
+                    </td>
+                    <td><input type="number" name="quantite[]" class="form-control form-control-sm" min="1" step="1" required value="{{ ligne.quantite_commandee }}"></td>
+                    <td><input type="number" name="prix_achat_ht[]" class="form-control form-control-sm" min="0" step="0.01" required value="{{ ligne.prix_achat_ht }}"></td>
+                    <td class="text-center">
+                      <button type="button" class="btn btn-sm btn-outline-danger btn-remove-ligne" title="Retirer"><i class="bi bi-trash"></i></button>
+                    </td>
+                  </tr>
+                {% endfor %}
+              {% else %}
+                <tr class="ligne-row">
+                  <td>
+                    <input type="hidden" name="ligne_id[]" value="0">
+                    <select name="produit_id[]" class="form-select form-select-sm" required>
+                      {% for p in produits %}
+                        <option value="{{ p.id }}">{{ p.reference }} — {{ p.designation }}</option>
+                      {% endfor %}
+                    </select>
+                  </td>
+                  <td><input type="number" name="quantite[]" class="form-control form-control-sm" min="1" step="1" required value="1"></td>
+                  <td><input type="number" name="prix_achat_ht[]" class="form-control form-control-sm" min="0" step="0.01" required value="0"></td>
+                  <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-outline-danger btn-remove-ligne" title="Retirer"><i class="bi bi-trash"></i></button>
+                  </td>
+                </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2">
+      <button type="submit" class="btn btn-primary">
+        <i class="bi bi-check-lg me-1"></i> Enregistrer
+      </button>
+      <a href="{{ url_for('achats.detail_commande', id=commande.id) }}" class="btn btn-outline-secondary">Annuler</a>
+    </div>
+  </form>
+
+  <template id="tplLigne">
+    <tr class="ligne-row">
+      <td>
+        <input type="hidden" name="ligne_id[]" value="0">
+        <select name="produit_id[]" class="form-select form-select-sm" required>
+          {% for p in produits %}
+            <option value="{{ p.id }}">{{ p.reference }} — {{ p.designation }}</option>
+          {% endfor %}
+        </select>
+      </td>
+      <td><input type="number" name="quantite[]" class="form-control form-control-sm" min="1" step="1" required value="1"></td>
+      <td><input type="number" name="prix_achat_ht[]" class="form-control form-control-sm" min="0" step="0.01" required value="0"></td>
+      <td class="text-center">
+        <button type="button" class="btn btn-sm btn-outline-danger btn-remove-ligne" title="Retirer"><i class="bi bi-trash"></i></button>
+      </td>
+    </tr>
+  </template>
+
+  <script>
+  (function() {
+    var body = document.getElementById('lignesBody');
+    var tpl = document.getElementById('tplLigne');
+    document.getElementById('btnAddLigne').addEventListener('click', function() {
+      body.appendChild(tpl.content.cloneNode(true));
+      bindRemove();
+    });
+    function bindRemove() {
+      body.querySelectorAll('.btn-remove-ligne').forEach(function(btn) {
+        btn.onclick = function() {
+          var rows = body.querySelectorAll('.ligne-row');
+          if (rows.length <= 1) {
+            alert('Au moins une ligne produit est obligatoire.');
+            return;
+          }
+          this.closest('tr').remove();
+        };
+      });
+    }
+    bindRemove();
+  })();
+  </script>
+{% endblock %}

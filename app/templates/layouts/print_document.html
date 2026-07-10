@@ -1,0 +1,37 @@
+{# Mise en page commune : impression navigateur avec en-tête & pied paramétrables.
+   Coquille = 1 tableau thead/tfoot ; pour facture+BL sur 2 « blocs », surcharger print_document_wrapper. #}
+{% extends "base.html" %}
+
+{% block extra_css %}
+<link href="{{ url_for('static', filename='public/css/erp-print-document.css') }}" rel="stylesheet">
+{% block print_document_extra_css %}{% endblock %}
+{% endblock %}
+
+{% block content %}
+{% block print_toolbar %}{% endblock %}
+{% block print_document_wrapper %}
+<div class="erp-print-scope">
+  <table class="erp-print-sheet" role="presentation">
+    {% include 'partials/_erp_print_sheet_thead.html' %}
+    {% include 'partials/_erp_print_sheet_tfoot.html' %}
+    <tbody>
+      <tr>
+        <td class="erp-print-sheet__body">
+          <div class="erp-running-body">
+            <div class="erp-running-body-inner">
+              {% block print_document_body %}{% endblock %}
+            </div>
+            <div class="erp-print-page-spacer" aria-hidden="true"></div>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='public/js/erp-print-layout.js') }}" defer></script>
+{% endblock %}

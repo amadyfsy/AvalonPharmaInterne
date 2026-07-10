@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% macro badge_statut_proforma(st) -%}
+  {% if st == 'converti' %}
+    <span class="badge bg-success">Convertie</span>
+  {% elif st == 'accepte' %}
+    <span class="badge bg-primary">Acceptée</span>
+  {% elif st == 'envoye' %}
+    <span class="badge bg-info text-dark">Envoyée</span>
+  {% elif st == 'refuse' %}
+    <span class="badge bg-danger">Refusée</span>
+  {% elif st == 'brouillon' %}
+    <span class="badge bg-secondary">Brouillon</span>
+  {% else %}
+    <span class="badge bg-light text-dark">{{ st }}</span>
+  {% endif %}
+{%- endmacro %}
+
+{% block title %}Proforma {{ proforma.numero }} — Avalon Pharma{% endblock %}
+
+{% block content %}
+  <div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+      <nav aria-label="fil d'ariane">
+        <ol class="breadcrumb mb-2">
+          <li class="breadcrumb-item"><a href="{{ url_for('ventes.proformas') }}">Proformas</a></li>
+          <li class="breadcrumb-item active" aria-current="page">{{ proforma.numero }}</li>
+        </ol>
+      </nav>
+      <h1 class="page-title mb-1">Proforma {{ proforma.numero }}</h1>
+      <p class="page-subtitle mb-0">{{ badge_statut_proforma(proforma.statut) }}</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{{ url_for('ventes.proforma_imprimer', id=proforma.id) }}" class="btn btn-outline-primary" target="_blank" rel="noopener">
+        <i class="bi bi-printer me-1"></i> Aperçu / Imprimer
+      </a>
+      <a href="{{ url_for('ventes.proforma_pdf', id=proforma.id) }}" class="btn btn-outline-primary" target="_blank" rel="noopener">
+        <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+      </a>
+      {% if proforma.statut != 'converti' %}
+        <form method="post" action="{{ url_for('ventes.convertir_proforma', id=proforma.id) }}" class="d-inline"
+              onsubmit="return confirm('Créer la facture (émise) et le bon de livraison à partir de cette proforma ?');">
+          <button class="btn btn-primary" type="submit">
+            <i class="bi bi-arrow-repeat me-1"></i> Convertir en facture + BL
+          </button>
+        </form>
+      {% endif %}
+      <a href="{{ url_for('ventes.proformas') }}" class="btn btn-outline-secondary">Liste</a>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-header fw-semibold">Client & dates</div>
+        <div class="card-body">
+          <p class="mb-2"><strong>{{ proforma.client.raison_sociale if proforma.client else '—' }}</strong></p>
+          {% if proforma.client and proforma.client.telephone %}
+            <p class="small text-muted mb-1"><i class="bi bi-telephone me-1"></i>{{ proforma.client.telephone }}</p>
+          {% endif %}
+          {% if proforma.client and proforma.client.email %}
+            <p class="small text-muted mb-3"><i class="bi bi-envelope me-1"></i>{{ proforma.client.email }}</p>
+          {% endif %}
+          <hr>
+          <dl class="row small mb-0">
+            <dt class="col-5">Émission</dt>
+            <dd class="col-7">{{ proforma.date_emission.strftime('%d/%m/%Y') if proforma.date_emission else '—' }}</dd>
+            <dt class="col-5">Validité</dt>
+            <dd class="col-7">{{ proforma.date_validite.strftime('%d/%m/%Y') if proforma.date_validite else '—' }}</dd>
+            <dt class="col-5">Remise globale</dt>
+            <dd class="col-7">{{ proforma.remise_globale or 0 }} %</dd>
+          </dl>
+          {% if proforma.notes %}
+            <hr>
+            <div class="small text-muted">Notes</div>
+            <div class="small">{{ proforma.notes }}</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-8">
+      <div class="card shadow-sm">
+        <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+          <span>Lignes</span>
+          <span class="small text-muted">{{ proforma.lignes|length }} ligne(s)</span>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Produit</th>
+                  <th class="text-end" style="width:90px;">Qté</th>
+                  <th class="text-end" style="width:110px;">PU HT</th>
+                  <th class="text-end" style="width:120px;">Montant HT</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for l in proforma.lignes|sort(attribute='id') %}
+                  <tr>
+                    <td>
+                      {% if l.produit %}
+                        <span class="text-muted small">{{ l.produit.reference }}</span><br>
+                        {{ l.produit.designation }}
+                      {% else %}
+                        —
+                      {% endif %}
+                    </td>
+                    <td class="text-end">{{ l.quantite }}</td>
+                    <td class="text-end">{{ format_fcfa(l.prix_unitaire_ht) }}</td>
+                    <td class="text-end fw-medium">{{ format_fcfa(l.montant_ht) }}</td>
+                  </tr>
+                {% else %}
+                  <tr><td colspan="4" class="text-center text-muted py-4">Aucune ligne</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card-footer bg-body-tertiary">
+          <div class="row g-2 justify-content-end text-end">
+            {% if affiche_tva %}
+              <div class="col-12 col-sm-auto">
+                <div class="small text-muted">Total HT</div>
+                <div class="fs-6 fw-semibold">{{ format_fcfa(proforma.total_ht) }} FCFA</div>
+              </div>
+              <div class="col-12 col-sm-auto">
+                <div class="small text-muted">TVA</div>
+                <div class="fs-6">{{ format_fcfa(proforma.tva_montant) }} FCFA</div>
+              </div>
+              <div class="col-12 col-sm-auto">
+                <div class="small text-muted">Total TTC</div>
+                <div class="fs-5 fw-bold text-primary">{{ format_fcfa(proforma.total_ttc) }} FCFA</div>
+              </div>
+            {% else %}
+              <div class="col-12 col-sm-auto">
+                <div class="small text-muted">Total</div>
+                <div class="fs-5 fw-bold text-primary">{{ format_fcfa(proforma.total_ht) }} FCFA</div>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mt-4">
+    <div class="card-header fw-semibold">Conversion</div>
+    <div class="card-body">
+      {% if facture_issue %}
+        <p class="mb-1">Cette proforma a déjà été convertie en facture.</p>
+        <a href="{{ url_for('ventes.facture_detail', id=facture_issue.id) }}" class="btn btn-sm btn-outline-primary">
+          Voir facture {{ facture_issue.numero }}
+        </a>
+      {% else %}
+        <p class="mb-2 text-muted">Pas encore convertie en facture + bon de livraison.</p>
+        <form method="post" action="{{ url_for('ventes.convertir_proforma', id=proforma.id) }}" class="d-inline"
+              onsubmit="return confirm('Créer la facture (émise) et le bon de livraison à partir de cette proforma ?');">
+          <button class="btn btn-primary btn-sm" type="submit">Convertir maintenant</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}
+

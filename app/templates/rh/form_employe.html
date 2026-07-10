@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title if title else 'Nouvel Employé' }} - Medical ERP{% endblock %}
+
+{% block extra_css %}
+<style>
+  .rh-hero {
+    background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+    border-radius: 0.75rem;
+    color: #fff;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 0.5rem 1.25rem rgba(13, 110, 253, 0.25);
+  }
+  .rh-card .card-header {
+    font-weight: 600;
+    border-bottom: 0;
+    background: var(--bs-body-tertiary);
+  }
+  .rh-label {
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--bs-secondary-color);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+  <div class="rh-hero d-flex flex-wrap justify-content-between align-items-start gap-3">
+    <div>
+      <h1 class="h4 mb-1 text-white">{{ title if title else 'Nouvel employé' }}</h1>
+      <p class="mb-0 small text-white" style="opacity:.9;">
+        Enregistrez le dossier RH complet : identité, poste, contrat, salaire et pièces justificatives.
+      </p>
+    </div>
+    <a href="{{ url_for('rh.index') if not employe else url_for('rh.detail_employe', id=employe.id) }}" class="btn btn-outline-light btn-sm">
+      <i class="bi bi-arrow-left me-1"></i>{% if employe %}Fiche employé{% else %}Retour employés{% endif %}
+    </a>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" novalidate>
+    {{ form.hidden_tag() }}
+
+    <div class="row g-3">
+      <div class="col-lg-8">
+        <div class="card rh-card shadow-sm mb-3">
+          <div class="card-header py-3">
+            <i class="bi bi-person-vcard me-2 text-primary"></i>Identité
+          </div>
+          <div class="card-body row g-3">
+            <div class="col-md-4">
+              {{ form.matricule.label(class="rh-label") }} <span class="text-danger">*</span>
+              {{ form.matricule(class="form-control" ~ (" is-invalid" if form.matricule.errors else "")) }}
+              {% for e in form.matricule.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="col-md-4">
+              {{ form.nom.label(class="rh-label") }} <span class="text-danger">*</span>
+              {{ form.nom(class="form-control" ~ (" is-invalid" if form.nom.errors else "")) }}
+              {% for e in form.nom.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="col-md-4">
+              {{ form.prenom.label(class="rh-label") }} <span class="text-danger">*</span>
+              {{ form.prenom(class="form-control" ~ (" is-invalid" if form.prenom.errors else "")) }}
+              {% for e in form.prenom.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="col-md-4">
+              {{ form.date_naissance.label(class="rh-label") }} <span class="text-danger">*</span>
+              {{ form.date_naissance(class="form-control" ~ (" is-invalid" if form.date_naissance.errors else ""), type="date") }}
+              {% for e in form.date_naissance.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="col-md-4">
+              {{ form.cin.label(class="rh-label") }} <span class="text-danger">*</span>
+              {{ form.cin(class="form-control" ~ (" is-invalid" if form.cin.errors else "")) }}
+              {% for e in form.cin.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <div class="card rh-card shadow-sm mb-3">
+          <div class="card-header py-3">
+            <i class="bi bi-telephone me-2 text-success"></i>Contact
+          </div>
+          <div class="card-body row g-3">
+            <div class="col-md-4">
+              {{ form.telephone.label(class="rh-label") }}
+              {{ form.telephone(class="form-control" ~ (" is-invalid" if form.telephone.errors else ""), placeholder="77 123 45 67") }}
+              <div class="form-text small">Utilisé aussi pour la connexion si un compte utilisateur est lié.</div>
+              {% for e in form.telephone.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="col-md-4">
+              {{ form.email.label(class="rh-label") }}
+              {{ form.email(class="form-control" ~ (" is-invalid" if form.email.errors else "")) }}
+              {% for e in form.email.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="col-md-4">
+              {{ form.adresse.label(class="rh-label") }}
+              {{ form.adresse(class="form-control" ~ (" is-invalid" if form.adresse.errors else "")) }}
+              {% for e in form.adresse.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <div class="card rh-card shadow-sm mb-3">
+          <div class="card-header py-3">
+            <i class="bi bi-briefcase me-2 text-warning"></i>Contrat & rémunération
+          </div>
+          <div class="card-body row g-3">
+            <div class="col-md-4">
+              {{ form.poste.label(class="rh-label") }} <span class="text-danger">*</span>
+              {{ form.poste(class="form-control" ~ (" is-invalid" if form.poste.errors else "")) }}
+              {% for e in form.poste.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="col-md-4">
+              {{ form.departement.label(class="rh-label") }} <span class="text-danger">*</span>
+              {{ form.departement(class="form-control" ~ (" is-invalid" if form.departement.errors else "")) }}
+              {% for e in form.departement.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="col-md-4">
+              {{ form.type_contrat.label(class="rh-label") }} <span class="text-danger">*</span>
+              {{ form.type_contrat(class="form-select" ~ (" is-invalid" if form.type_contrat.errors else ""), id="typeContrat") }}
+              {% for e in form.type_contrat.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="col-md-4">
+              {{ form.date_embauche.label(class="rh-label") }} <span class="text-danger">*</span>
+              {{ form.date_embauche(class="form-control" ~ (" is-invalid" if form.date_embauche.errors else ""), type="date") }}
+              {% for e in form.date_embauche.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="col-md-4" id="blocDateFinContrat">
+              {{ form.date_fin_contrat.label(class="rh-label") }}
+              <span class="text-danger" id="finContratStar" style="display:none;">*</span>
+              {{ form.date_fin_contrat(class="form-control" ~ (" is-invalid" if form.date_fin_contrat.errors else ""), type="date", id="dateFinContrat") }}
+              <div class="form-text">Obligatoire pour CDD et Stage.</div>
+              {% for e in form.date_fin_contrat.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="col-md-4">
+              {{ form.salaire_base.label(class="rh-label") }} <span class="text-danger">*</span>
+              <div class="input-group">
+                {{ form.salaire_base(class="form-control" ~ (" is-invalid" if form.salaire_base.errors else "")) }}
+                <span class="input-group-text">FCFA</span>
+              </div>
+              {% for e in form.salaire_base.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="col-md-4">
+              {{ form.rib_bancaire.label(class="rh-label") }}
+              {{ form.rib_bancaire(class="form-control" ~ (" is-invalid" if form.rib_bancaire.errors else "")) }}
+              {% for e in form.rib_bancaire.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <div class="card rh-card shadow-sm mb-3">
+          <div class="card-header py-3">
+            <i class="bi bi-percent me-2 text-danger"></i>Paramètres sociaux & paie
+          </div>
+          <div class="card-body row g-3">
+            <div class="col-12">
+              <p class="small text-muted mb-0">
+                Taux en pourcentage du brut mensuel. Utilisés pour le calcul automatique des bulletins (IPRES, CSS, IRPP).
+              </p>
+            </div>
+            <div class="col-md-4">
+              {{ form.taux_ipres_salarial.label(class="rh-label") }}
+              <div class="input-group">
+                {{ form.taux_ipres_salarial(class="form-control" ~ (" is-invalid" if form.taux_ipres_salarial.errors else "")) }}
+                <span class="input-group-text">%</span>
+              </div>
+              {% for e in form.taux_ipres_salarial.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="col-md-4">
+              {{ form.taux_css_salarial.label(class="rh-label") }}
+              <div class="input-group">
+                {{ form.taux_css_salarial(class="form-control" ~ (" is-invalid" if form.taux_css_salarial.errors else "")) }}
+                <span class="input-group-text">%</span>
+              </div>
+              {% for e in form.taux_css_salarial.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="col-md-4">
+              {{ form.taux_ipres_patronal.label(class="rh-label") }}
+              <div class="input-group">
+                {{ form.taux_ipres_patronal(class="form-control" ~ (" is-invalid" if form.taux_ipres_patronal.errors else "")) }}
+                <span class="input-group-text">%</span>
+              </div>
+              {% for e in form.taux_ipres_patronal.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="col-md-4">
+              {{ form.taux_css_patronal.label(class="rh-label") }}
+              <div class="input-group">
+                {{ form.taux_css_patronal(class="form-control" ~ (" is-invalid" if form.taux_css_patronal.errors else "")) }}
+                <span class="input-group-text">%</span>
+              </div>
+              {% for e in form.taux_css_patronal.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="col-md-4">
+              {{ form.seuil_irpp.label(class="rh-label") }}
+              <div class="input-group">
+                {{ form.seuil_irpp(class="form-control" ~ (" is-invalid" if form.seuil_irpp.errors else "")) }}
+                <span class="input-group-text">FCFA</span>
+              </div>
+              {% for e in form.seuil_irpp.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="col-md-4">
+              {{ form.taux_irpp.label(class="rh-label") }}
+              <div class="input-group">
+                {{ form.taux_irpp(class="form-control" ~ (" is-invalid" if form.taux_irpp.errors else "")) }}
+                <span class="input-group-text">%</span>
+              </div>
+              {% for e in form.taux_irpp.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-4">
+        <div class="card rh-card shadow-sm mb-3">
+          <div class="card-header py-3">
+            <i class="bi bi-file-earmark-arrow-up me-2 text-info"></i>Pièces jointes
+          </div>
+          <div class="card-body">
+            <div class="mb-3">
+              {{ form.document_cin.label(class="rh-label") }}
+              {{ form.document_cin(class="form-control" ~ (" is-invalid" if form.document_cin.errors else "")) }}
+              <div class="form-text">Formats : JPG, PNG, PDF{% if employe %} — laisser vide pour conserver le fichier actuel{% endif %}</div>
+              {% for e in form.document_cin.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="mb-0">
+              {{ form.document_contrat.label(class="rh-label") }}
+              {{ form.document_contrat(class="form-control" ~ (" is-invalid" if form.document_contrat.errors else "")) }}
+              <div class="form-text">Formats : JPG, PNG, PDF{% if employe %} — laisser vide pour conserver le fichier actuel{% endif %}</div>
+              {% for e in form.document_contrat.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <div class="card shadow-sm border-0 bg-primary bg-opacity-10">
+          <div class="card-body small text-muted">
+            <strong class="text-primary d-block mb-2">Bonnes pratiques</strong>
+            <ul class="mb-0 ps-3">
+              <li>Le matricule doit rester unique.</li>
+              <li>Le salaire est saisi en brut mensuel.</li>
+              <li>Les taux IPRES/CSS/IRPP sont personnalisables par employé.</li>
+              <li>Les pièces jointes sont stockées de façon sécurisée.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-3 d-flex gap-2">
+      <button type="submit" class="btn btn-primary px-4">
+        <i class="bi bi-check-lg me-1"></i>{{ form.submit.label.text if form.submit else 'Enregistrer' }}
+      </button>
+      <a href="{{ url_for('rh.index') if not employe else url_for('rh.detail_employe', id=employe.id) }}" class="btn btn-outline-secondary">Annuler</a>
+    </div>
+  </form>
+
+  <script>
+    (function () {
+      var tc = document.getElementById('typeContrat');
+      var df = document.getElementById('dateFinContrat');
+      var star = document.getElementById('finContratStar');
+      if (!tc || !df) return;
+      function syncFinContrat() {
+        var required = tc.value === 'CDD' || tc.value === 'Stage';
+        df.required = required;
+        if (star) star.style.display = required ? 'inline' : 'none';
+      }
+      tc.addEventListener('change', syncFinContrat);
+      syncFinContrat();
+    })();
+  </script>
+{% endblock %}
+

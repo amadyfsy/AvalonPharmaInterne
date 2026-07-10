@@ -1,0 +1,387 @@
+            <!-- Page Header -->
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Nouvelle commande fournisseur</h1>
+                    <p class="page-subtitle">Assistant complet : fournisseur, produits, dépenses — une seule commande enregistrée à la fin</p>
+                </div>
+                <div class="page-actions">
+                    <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-2"></i>Retour
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Stepper -->
+            <div class="stepper-container mb-4">
+                <div class="stepper">
+                    <div class="step active" data-step="1">
+                        <div class="step-icon">
+                            <i class="bi bi-truck"></i>
+                        </div>
+                        <div class="step-content">
+                            <span class="step-number">Étape 1</span>
+                            <span class="step-title">Fournisseur</span>
+                        </div>
+                    </div>
+                    <div class="step-line"></div>
+                    <div class="step" data-step="2">
+                        <div class="step-icon">
+                            <i class="bi bi-box-seam"></i>
+                        </div>
+                        <div class="step-content">
+                            <span class="step-number">Étape 2</span>
+                            <span class="step-title">Produits</span>
+                        </div>
+                    </div>
+                    <div class="step-line"></div>
+                    <div class="step" data-step="3">
+                        <div class="step-icon">
+                            <i class="bi bi-cash-stack"></i>
+                        </div>
+                        <div class="step-content">
+                            <span class="step-number">Étape 3</span>
+                            <span class="step-title">Dépenses</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step 1: Fournisseur -->
+            <div class="step-content-panel active" id="step1">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title">
+                            <i class="bi bi-truck me-2"></i>Sélection du fournisseur
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3 mb-4 pb-3 border-bottom">
+                            <div class="col-md-4">
+                                <label class="form-label">Date de commande <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" id="dateCommande" value="{{ today.isoformat() }}" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Échéance / livraison prévue</label>
+                                <input type="date" class="form-control" id="dateLivraisonPrevue" value="{{ today.isoformat() }}" title="Date prévue de livraison ou échéance">
+                            </div>
+                        </div>
+                        <div class="row g-4">
+                            <!-- Search Supplier -->
+                            <div class="col-12">
+                                <div class="search-supplier-box">
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                        <input type="text" class="form-control" id="searchSupplier" placeholder="Rechercher un fournisseur par nom, telephone ou email...">
+                                        <a href="{{ url_for('fournisseurs.nouveau') }}" class="btn btn-primary" target="_blank" rel="noopener noreferrer" id="btnNewSupplier">
+                                            <i class="bi bi-plus-lg me-2"></i>Nouveau Fournisseur
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Supplier List -->
+                            <div class="col-12">
+                                <div class="supplier-list" id="supplierList">
+                                    {% if fournisseurs_data %}
+                                        {% for fd in fournisseurs_data %}
+                                        {% set f = fd.obj %}
+                                        <div class="supplier-item" data-id="{{ f.id }}">
+                                            <div class="supplier-avatar">
+                                                <i class="bi bi-building"></i>
+                                            </div>
+                                            <div class="supplier-info">
+                                                <span class="supplier-name">{{ f.raison_sociale }}</span>
+                                                <span class="supplier-details">{{ fd.details }}</span>
+                                            </div>
+                                            <div class="supplier-stats">
+                                                <span class="stat-label">Commandes</span>
+                                                <span class="stat-value">{{ fd.nb_commandes }}</span>
+                                            </div>
+                                            <button type="button" class="btn btn-outline-primary btn-select-supplier">Selectionner</button>
+                                        </div>
+                                        {% endfor %}
+                                    {% else %}
+                                        <p class="text-muted mb-0">Aucun fournisseur actif. <a href="{{ url_for('fournisseurs.nouveau') }}">Créer un fournisseur</a>.</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <!-- Selected Supplier Card (Hidden initially) -->
+                            <div class="col-12" id="selectedSupplierContainer" style="display: none;">
+                                <div class="selected-supplier-card">
+                                    <div class="selected-badge">
+                                        <i class="bi bi-check-circle-fill"></i> Fournisseur selectionne
+                                    </div>
+                                    <div class="selected-supplier-content">
+                                        <div class="selected-supplier-avatar">
+                                            <i class="bi bi-building"></i>
+                                        </div>
+                                        <div class="selected-supplier-info">
+                                            <h4 id="selectedSupplierName">-</h4>
+                                            <p id="selectedSupplierDetails">-</p>
+                                        </div>
+                                        <button class="btn btn-outline-danger btn-sm" id="btnChangeSupplier">
+                                            <i class="bi bi-x-lg me-1"></i>Changer
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="d-flex justify-content-between">
+                            <button class="btn btn-success" id="btnSaveSupplier" disabled>
+                                <i class="bi bi-save me-2"></i>Enregistrer Fournisseur
+                            </button>
+                            <button class="btn btn-primary" id="btnNextStep1" disabled>
+                                Suivant <i class="bi bi-arrow-right ms-2"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step 2: Produits -->
+            <div class="step-content-panel" id="step2">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title">
+                            <i class="bi bi-box-seam me-2"></i>Produits de la Commande
+                        </h5>
+                        <button class="btn btn-primary btn-sm" id="btnAddProduct">
+                            <i class="bi bi-plus-lg me-2"></i>Ajouter Produit
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered" id="productsTable">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 30%;">Produit</th>
+                                        <th style="width: 15%;">Prix Achat</th>
+                                        <th style="width: 15%;">Prix Vente</th>
+                                        <th style="width: 12%;">Quantite</th>
+                                        <th style="width: 15%;">Total</th>
+                                        <th style="width: 13%;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="productsList">
+                                    <!-- Products will be added here -->
+                                </tbody>
+                                <tfoot>
+                                    <tr class="table-light">
+                                        <td colspan="4" class="text-end"><strong>Total Commande:</strong></td>
+                                        <td><strong id="totalCommande">0 FCFA</strong></td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                        
+                        <!-- Empty State -->
+                        <div class="empty-state" id="emptyProductsState">
+                            <i class="bi bi-inbox"></i>
+                            <h5>Aucun produit ajoute</h5>
+                            <p>Cliquez sur "Ajouter Produit" pour commencer</p>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="d-flex justify-content-between">
+                            <button class="btn btn-outline-secondary" id="btnPrevStep2">
+                                <i class="bi bi-arrow-left me-2"></i>Précédent
+                            </button>
+                            <div>
+                                <button class="btn btn-success me-2" id="btnSaveProducts" disabled>
+                                    <i class="bi bi-save me-2"></i>Enregistrer Produits
+                                </button>
+                                <button class="btn btn-primary" id="btnNextStep2" disabled>
+                                    Suivant <i class="bi bi-arrow-right ms-2"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step 3 : dépenses (transport + douane) -->
+            <div class="step-content-panel" id="step3">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-primary bg-opacity-10 border-0">
+                        <h5 class="card-title mb-0 text-primary">
+                            <i class="bi bi-cash-stack me-2"></i>Dépenses associées
+                        </h5>
+                        <p class="small text-muted mb-0 mt-2">Étape facultative — alimentation du module <strong>Dépenses</strong> à la finalisation.</p>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info border-0 d-flex gap-2 mb-4" role="status">
+                            <i class="bi bi-geo-alt flex-shrink-0 mt-1"></i>
+                            <div class="small">
+                                <strong>Contexte Côte d’Ivoire (FCFA)</strong> — Les montants sont en francs CFA. Le <strong>transport</strong> et la <strong>douane</strong> sont enregistrés dans les catégories correspondantes du module Dépenses lors de la validation de la commande.
+                            </div>
+                        </div>
+
+                        <h6 class="fw-bold mb-2"><i class="bi bi-truck me-1 text-primary"></i> Transport</h6>
+                        <p class="text-muted small mb-3">Lieu de départ, d’arrivée, transporteur et n° du transporteur. Si vous commencez une saisie, tous les champs marqués <span class="text-danger">*</span> sont requis.</p>
+                        <div class="expense-form border rounded-3 p-3 p-md-4 mb-4 bg-body-tertiary bg-opacity-50">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Lieu de départ</label>
+                                    <input type="text" class="form-control" id="fraisTransportDepart" placeholder="Ex. Abidjan">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Lieu d’arrivée</label>
+                                    <input type="text" class="form-control" id="fraisTransportArrivee" placeholder="Ex. Bouaké">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Transporteur</label>
+                                    <input type="text" class="form-control" id="fraisTransportTransporteur" placeholder="Raison sociale ou nom">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">N° transporteur</label>
+                                    <input type="text" class="form-control" id="fraisTransportNumero" placeholder="Téléphone, immatriculation, réf. transport…">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Montant <span class="text-danger">*</span> <span class="text-muted small">(si saisi)</span></label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="fraisTransportMontant" min="0" step="0.01" placeholder="0">
+                                        <span class="input-group-text">FCFA</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Mode de paiement</label>
+                                    <select class="form-select" id="fraisTransportMode">
+                                        <option value="">—</option>
+                                        <option value="espece">Espèces</option>
+                                        <option value="virement">Virement</option>
+                                        <option value="cheque">Chèque</option>
+                                        <option value="carte">Carte bancaire</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Référence</label>
+                                    <input type="text" class="form-control" id="fraisTransportReference" placeholder="N° BL, facture transport…">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Notes</label>
+                                    <textarea class="form-control" id="fraisTransportNotes" rows="2" placeholder="Informations complémentaires…"></textarea>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Justificatif <span class="text-muted small">(facultatif)</span></label>
+                                    <input type="file" class="form-control" id="justificatifTransport" name="justificatif_transport" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg">
+                                    <div class="form-text">PDF, PNG ou JPEG — facultatif.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h6 class="fw-bold mb-2"><i class="bi bi-building me-1 text-primary"></i> Douane</h6>
+                        <p class="text-muted small mb-3">Bureau de douane et montant. Catégorie <strong>Douane</strong> ou <strong>Impôt douane</strong> selon votre paramétrage.</p>
+                        <div class="expense-form border rounded-3 p-3 p-md-4 mb-4 bg-body-tertiary bg-opacity-50">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Bureau / lieu</label>
+                                    <input type="text" class="form-control" id="fraisDouaneBureau" placeholder="Ex. Port d’Abidjan">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Montant</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="fraisDouaneMontant" min="0" step="0.01" placeholder="0">
+                                        <span class="input-group-text">FCFA</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Mode de paiement</label>
+                                    <select class="form-select" id="fraisDouaneMode">
+                                        <option value="">—</option>
+                                        <option value="espece">Espèces</option>
+                                        <option value="virement">Virement</option>
+                                        <option value="cheque">Chèque</option>
+                                        <option value="carte">Carte bancaire</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">N° déclaration / référence</label>
+                                    <input type="text" class="form-control" id="fraisDouaneReference" placeholder="Référence douanière">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Justificatif <span class="text-muted small">(facultatif)</span></label>
+                                    <input type="file" class="form-control" id="justificatifDouane" name="justificatif_douane" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg">
+                                    <div class="form-text">PDF, PNG ou JPEG — facultatif.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h6 class="fw-bold mb-2"><i class="bi bi-receipt me-1 text-primary"></i> Autre dépense</h6>
+                        <p class="text-muted small mb-3">Frais complémentaires (manutention, assurance, etc.) avec catégorie et justification.</p>
+                        <div class="expense-form border rounded-3 p-3 p-md-4 mb-4 bg-body-tertiary bg-opacity-50">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Type de dépense</label>
+                                    <select class="form-select" id="fraisAutreCategorie">
+                                        <option value="">—</option>
+                                        {% if depense_categories is defined %}
+                                          {% for c in depense_categories %}
+                                            <option value="{{ c.id }}">{{ c.nom }}</option>
+                                          {% endfor %}
+                                        {% endif %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Description / justification</label>
+                                    <input type="text" class="form-control" id="fraisAutreLibelle" placeholder="Ex. Assurance transport marchandises">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Montant</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="fraisAutreMontant" min="0" step="0.01" placeholder="0">
+                                        <span class="input-group-text">FCFA</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Mode de paiement</label>
+                                    <select class="form-select" id="fraisAutreMode">
+                                        <option value="">—</option>
+                                        <option value="espece">Espèces</option>
+                                        <option value="virement">Virement</option>
+                                        <option value="cheque">Chèque</option>
+                                        <option value="carte">Carte bancaire</option>
+                                    </select>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Justificatif <span class="text-muted small">(facultatif)</span></label>
+                                    <input type="file" class="form-control" id="justificatifAutre" name="justificatif_autre" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="expense-summary mt-4 border-top pt-4">
+                            <h6 class="mb-3"><i class="bi bi-calculator me-2"></i>Récapitulatif</h6>
+                            <div class="summary-table">
+                                <div class="summary-row">
+                                    <span>Total produits (fournitures)</span>
+                                    <span id="summaryProduits">0 FCFA</span>
+                                </div>
+                                <div class="summary-row">
+                                    <span>Dépenses (transport + douane + autre)</span>
+                                    <span id="summaryDepense">0 FCFA</span>
+                                </div>
+                                <div class="summary-row total">
+                                    <span>Total général</span>
+                                    <span id="summaryTotal">0 FCFA</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="d-flex justify-content-between">
+                            <button class="btn btn-outline-secondary" id="btnPrevStep3">
+                                <i class="bi bi-arrow-left me-2"></i>Précédent
+                            </button>
+                            <div>
+                                <button class="btn btn-primary" id="btnFinalizeOrder">
+                                    <i class="bi bi-check-circle me-2"></i>Finaliser Commande
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>

@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}Catégories de dépenses — Avalon Pharma{% endblock %}
+
+{% block extra_css %}
+<style>
+  .dep-page-hero {
+    background: linear-gradient(135deg, var(--brand-burgundy, #721818) 0%, var(--brand-burgundy-dark, #5a1218) 100%);
+    border-radius: 0.75rem;
+    color: #fff;
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 0.5rem 1.25rem rgba(114, 24, 24, 0.22);
+  }
+  .dep-page-hero .breadcrumb-item + .breadcrumb-item::before { color: rgba(255,255,255,.65); }
+  .dep-stat-card {
+    border-radius: 0.65rem;
+    border: 1px solid var(--bs-border-color);
+    background: var(--bs-body-bg);
+    padding: 1rem 1.15rem;
+    height: 100%;
+  }
+  .dep-stat-card .dep-stat-value {
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .dep-stat-card .dep-stat-sub {
+    font-size: 0.78rem;
+    color: var(--bs-secondary-color);
+    margin-top: 0.35rem;
+    line-height: 1.35;
+  }
+  .dep-table-card .table thead th {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--bs-secondary-color);
+    border-bottom-width: 1px;
+  }
+  .dep-cat-group-row td {
+    background: var(--bs-secondary-bg);
+    border-top: 1px solid var(--bs-border-color);
+  }
+  .dep-cat-liaison {
+    max-width: 14rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+  <div class="dep-page-hero d-flex flex-wrap justify-content-between align-items-start gap-3">
+    <div class="d-flex gap-3 align-items-start">
+      <div class="rounded-3 bg-white bg-opacity-25 p-3 d-none d-sm-flex">
+        <i class="bi bi-folder2 fs-2"></i>
+      </div>
+      <div>
+        <nav aria-label="breadcrumb" class="mb-2">
+          <ol class="breadcrumb mb-0 small">
+            <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}" class="text-white text-decoration-underline">Tableau de bord</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('depenses.index') }}" class="text-white text-decoration-underline">Dépenses</a></li>
+            <li class="breadcrumb-item text-white active" aria-current="page">Catégories</li>
+          </ol>
+        </nav>
+        <h1 class="h4 mb-1 fw-semibold text-white">Catégories de dépenses</h1>
+        <p class="lead mb-0 text-white small" style="opacity: .92;">
+          Liste organisée par <strong>famille métier</strong>. Certaines lignes portent un <strong>code système</strong> : elles sont retrouvées automatiquement par les modules <strong>Achats</strong> (frais d’approvisionnement) et <strong>Ventes</strong> (frais de livraison), sans dépendre du libellé affiché.
+        </p>
+      </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{{ url_for('depenses.index') }}" class="btn btn-outline-light btn-sm">
+        <i class="bi bi-list-ul me-1"></i> Liste des dépenses
+      </a>
+      {% if peut_creer_categorie_depense %}
+      <a href="{{ url_for('depenses.categorie_depense_nouvelle') }}" class="btn btn-light btn-sm">
+        <i class="bi bi-plus-lg me-1"></i> Nouvelle catégorie
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-sm-6 col-lg-4">
+      <div class="dep-stat-card shadow-sm border-start border-4 border-primary">
+        <div class="text-muted small text-uppercase fw-semibold mb-1">Dépenses fixes validées (TTC)</div>
+        <div class="dep-stat-value text-primary">{{ "{:,.0f}".format(total_fixe_mois).replace(",", "\u202f") }} <span class="fs-6 fw-normal text-muted">FCFA</span></div>
+        <div class="dep-stat-sub">{{ libelle_mois_cours }} · <span class="text-muted">Mois préc. ({{ libelle_mois_prec }}) :</span> {{ "{:,.0f}".format(total_fixe_prev).replace(",", "\u202f") }} FCFA</div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-4">
+      <div class="dep-stat-card shadow-sm border-start border-4 border-info">
+        <div class="text-muted small text-uppercase fw-semibold mb-1">Dépenses variables validées (TTC)</div>
+        <div class="dep-stat-value text-info">{{ "{:,.0f}".format(total_variable_mois).replace(",", "\u202f") }} <span class="fs-6 fw-normal text-muted">FCFA</span></div>
+        <div class="dep-stat-sub">{{ libelle_mois_cours }} · <span class="text-muted">Mois préc. ({{ libelle_mois_prec }}) :</span> {{ "{:,.0f}".format(total_variable_prev).replace(",", "\u202f") }} FCFA</div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="dep-stat-card shadow-sm">
+        <div class="text-muted small text-uppercase fw-semibold mb-1">Catégories définies</div>
+        <div class="dep-stat-value">{{ nb_categories }}</div>
+        <div class="dep-stat-sub">{{ nb_fixe_cat }} fixes · {{ nb_variable_cat }} variables · <span class="text-muted">Total validé mois :</span> {{ "{:,.0f}".format(total_valide_mois).replace(",", "\u202f") }} FCFA</div>
+      </div>
+    </div>
+  </div>
+  <p class="small text-muted mb-4"><i class="bi bi-info-circle me-1"></i> Les deux premières cartes = sommes des dépenses au statut <strong>validé</strong> (date de dépense dans le mois), ventilées par type hérité de la catégorie au moment de la saisie. Les catégories <strong>sans</strong> ligne « module lié » restent libres pour la saisie manuelle.</p>
+
+  <div class="card dep-table-card shadow-sm border-0">
+    <div class="card-header bg-transparent border-0 pt-3 pb-0 d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <h2 class="h6 mb-0"><i class="bi bi-folder2-open me-2 text-primary"></i>Liste des catégories</h2>
+      <span class="small text-muted">{{ nb_categories }} ligne(s)</span>
+    </div>
+    <div class="card-body p-0 pt-2">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+          <thead class="table-light">
+            <tr>
+              <th style="width:56px" class="text-center">Icône</th>
+              <th>Nom</th>
+              <th>Type</th>
+              <th>Module lié</th>
+              <th class="text-end text-nowrap">Dépenses</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for group in category_groups %}
+              <tr class="dep-cat-group-row">
+                <td colspan="6" class="py-2 px-3 fw-semibold small text-secondary text-uppercase">
+                  <i class="bi bi-diagram-3 me-1"></i>{{ group.label }}
+                </td>
+              </tr>
+              {% for row in group.rows %}
+                {% set c = row.cat %}
+                <tr>
+                  <td class="text-center fs-4 text-primary"><i class="bi {{ c.icone or 'bi-tag' }}" aria-hidden="true"></i></td>
+                  <td>
+                    <strong>{{ c.nom }}</strong>
+                    {% if c.code_systeme %}
+                      <div class="mt-1"><code class="small text-muted">{{ c.code_systeme }}</code></div>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if row.type_str == 'fixe' %}
+                      <span class="badge rounded-pill bg-primary">Fixe</span>
+                    {% else %}
+                      <span class="badge rounded-pill bg-info text-dark">Variable</span>
+                    {% endif %}
+                  </td>
+                  <td class="small text-muted dep-cat-liaison">
+                    {% if row.liaison %}
+                      <span class="text-truncate d-inline-block align-bottom w-100" title="{{ row.liaison }}">{{ row.liaison }}</span>
+                    {% else %}
+                      <span class="text-body-secondary">—</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-end text-nowrap">
+                    {% if row.nb_depenses %}
+                      <span class="fw-semibold">{{ row.nb_depenses }}</span>
+                    {% else %}
+                      <span class="text-muted">0</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-muted small">{{ c.description or '—' }}</td>
+                </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="6" class="text-center text-muted py-5">
+                  <i class="bi bi-folder-x display-6 d-block mb-2 opacity-50"></i>
+                  Aucune catégorie.
+                  <div class="mt-2">
+                    {% if peut_creer_categorie_depense %}
+                    <a href="{{ url_for('depenses.categorie_depense_nouvelle') }}" class="btn btn-primary btn-sm">En créer une</a>
+                    {% else %}
+                    <span class="small text-muted">Création réservée aux profils autorisés.</span>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+{% endblock %}

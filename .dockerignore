@@ -1,0 +1,16 @@
+**/__pycache__
+**/*.pyc
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+logs
+*.log
+*.db
+.venv
+site-public/node_modules
+site-public/dist
+instance/uploads/*
+!instance/uploads/.gitkeep
+.DS_Store

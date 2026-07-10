@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <title>Proforma {{ proforma.numero }}</title>
+    {% include 'ventes/_pdf_styles_classique.html' %}
+  </head>
+  <body>
+    {% if logo_data_uri %}
+      <div class="pdf-logo-wrap">
+        <img src="{{ logo_data_uri }}" alt="" />
+      </div>
+    {% endif %}
+
+    <div class="pdf-doc-title">PROFORMA No {{ proforma.numero }}</div>
+
+    <p class="pdf-line pdf-line-client"><span class="pdf-lbl">CLIENT :</span> {{ proforma.client.raison_sociale if proforma.client else '' }}</p>
+
+    <p class="pdf-arrete">Arrêté le présent document à la somme de : <strong>{{ montant_lettres }}</strong>.</p>
+
+    {% set date_doc = proforma.date_emission %}
+    {% include 'ventes/_pdf_coordonnees.html' %}
+
+    <table class="pdf-grid">
+      <thead>
+        <tr>
+          <th class="pdf-col-desc">DÉSIGNATION</th>
+          <th class="pdf-col-num pdf-col-qty">QUANTITÉ</th>
+          <th class="pdf-col-num pdf-col-pu">PRIX<br />UNITAIRE</th>
+          <th class="pdf-col-num pdf-col-mt">MONTANT</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for l in proforma.lignes|sort(attribute='id') %}
+          <tr>
+            <td class="pdf-col-desc">{{ l.produit.designation if l.produit else '' }}</td>
+            <td class="pdf-col-num pdf-col-qty">{{ l.quantite }}</td>
+            <td class="pdf-col-num pdf-col-pu">{{ format_fcfa(l.prix_unitaire_ht) }}</td>
+            <td class="pdf-col-num pdf-col-mt">{{ format_fcfa(l.montant_ht) }}</td>
+          </tr>
+        {% endfor %}
+        <tr class="pdf-tr-total">
+          <td class="pdf-col-desc">Total</td>
+          <td class="pdf-col-num pdf-col-qty"></td>
+          <td class="pdf-col-num pdf-col-pu"></td>
+          <td class="pdf-col-num pdf-col-mt">{{ format_fcfa(proforma.total_ht) }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    {% if affiche_tva %}
+      <div class="pdf-mentions">
+        TVA : {{ format_fcfa(proforma.tva_montant) }} — Total TTC : {{ format_fcfa(proforma.total_ttc) }}
+      </div>
+    {% endif %}
+
+    {% if proforma.notes %}
+      <div class="pdf-mentions" style="margin-top:8px;"><span class="pdf-lbl">Notes :</span> {{ proforma.notes }}</div>
+    {% endif %}
+
+    {% if doc_params.pied_de_page %}
+      <div class="pdf-pied">{{ doc_params.pied_de_page }}</div>
+    {% endif %}
+  </body>
+</html>

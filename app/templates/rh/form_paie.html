@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Générer paie - Medical ERP{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h1 class="h4 mb-0">Générer une paie</h1>
+      <div class="small text-muted">Renseignez la période, l'employé puis les éléments variables.</div>
+    </div>
+    <a href="{{ url_for('rh.paies') }}" class="btn btn-outline-secondary btn-sm">Retour</a>
+  </div>
+
+  <div class="card shadow-sm border-0">
+    <div class="card-header bg-white">
+      <strong>Formulaire de génération</strong>
+    </div>
+    <div class="card-body">
+      <form method="post">
+        <div class="row g-3">
+          <div class="col-12">
+            <div class="text-uppercase small text-muted fw-semibold">Période</div>
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label">Mois</label>
+            <select class="form-select" name="mois" required>
+              {% set mois_labels = [
+                (1, 'Janvier'), (2, 'Février'), (3, 'Mars'), (4, 'Avril'),
+                (5, 'Mai'), (6, 'Juin'), (7, 'Juillet'), (8, 'Août'),
+                (9, 'Septembre'), (10, 'Octobre'), (11, 'Novembre'), (12, 'Décembre')
+              ] %}
+              {% for val, label in mois_labels %}
+                <option value="{{ val }}" {% if val == (today_month or 0) %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label">Année</label>
+            <input class="form-control" type="number" name="annee" min="2000" max="2100" value="{{ today_year if today_year else '' }}" required>
+          </div>
+
+          <div class="col-12">
+            <div class="text-uppercase small text-muted fw-semibold mt-2">Employé concerné</div>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Employé</label>
+            <select class="form-select" name="employe_id" required>
+              <option value="" disabled {% if employes %}selected{% endif %}>Sélectionnez un employé</option>
+              {% for e in employes %}
+                <option value="{{ e.id }}">{{ e.matricule }} - {{ e.nom }} {{ e.prenom }}</option>
+              {% else %}
+                <option value="" disabled selected>Aucun employé</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-12">
+            <div class="text-uppercase small text-muted fw-semibold mt-2">Éléments variables</div>
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label">Primes (FCFA)</label>
+            <input class="form-control" type="number" step="0.01" min="0" name="primes" value="0">
+          </div>
+
+          <div class="col-12 col-md-4">
+            <label class="form-label">Heures supplémentaires (FCFA)</label>
+            <input class="form-control" type="number" step="0.01" min="0" name="heures_sup" value="0">
+          </div>
+
+          <div class="col-12 col-md-4">
+            <label class="form-label">Déductions (FCFA)</label>
+            <input class="form-control" type="number" step="0.01" min="0" name="deductions" value="0">
+          </div>
+        </div>
+
+        <div class="alert alert-light border small mt-4 mb-0">
+          <strong>Calcul automatique</strong> selon les taux configurés sur la fiche de chaque employé
+          (IPRES, CSS, IRPP). Modifiables via <em>Modifier l'employé → Paramètres sociaux & paie</em>.
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 mt-4">
+          <button class="btn btn-primary" type="submit" {% if not employes %}disabled{% endif %}>
+            <i class="bi bi-calculator me-1"></i> Générer le bulletin
+          </button>
+          <a href="{{ url_for('rh.paies') }}" class="btn btn-light border">Annuler</a>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}
+

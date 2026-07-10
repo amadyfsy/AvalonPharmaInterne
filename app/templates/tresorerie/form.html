@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title or 'Saisir mouvement' }} - Avalon Pharma{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h4 mb-0">{{ title or 'Saisir mouvement' }}</h1>
+    <a href="{{ url_for('tresorerie.index') }}" class="btn btn-outline-secondary btn-sm">Retour</a>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <form method="post" novalidate>
+        {{ form.hidden_tag() }}
+        <div class="row g-3">
+          <div class="col-md-6">
+            {{ form.type_compte.label(class="form-label") }}
+            {{ form.type_compte(class="form-select" ~ (" is-invalid" if form.type_compte.errors else "")) }}
+            {% for e in form.type_compte.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+          </div>
+          <div class="col-md-6">
+            {{ form.type_operation.label(class="form-label") }}
+            {{ form.type_operation(class="form-select" ~ (" is-invalid" if form.type_operation.errors else "")) }}
+            {% for e in form.type_operation.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+          </div>
+          <div class="col-md-6">
+            {{ form.libelle.label(class="form-label") }}
+            {{ form.libelle(class="form-control" ~ (" is-invalid" if form.libelle.errors else "")) }}
+            {% for e in form.libelle.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+          </div>
+          <div class="col-md-3">
+            {{ form.montant.label(class="form-label") }}
+            {{ form.montant(class="form-control" ~ (" is-invalid" if form.montant.errors else "")) }}
+            {% for e in form.montant.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+          </div>
+          <div class="col-md-3">
+            {{ form.date_operation.label(class="form-label") }}
+            {{ form.date_operation(class="form-control" ~ (" is-invalid" if form.date_operation.errors else ""), type="date") }}
+            {% for e in form.date_operation.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+          </div>
+          <div class="col-12">
+            {{ form.reference_document.label(class="form-label") }}
+            {{ form.reference_document(class="form-control") }}
+          </div>
+        </div>
+        <div class="mt-4 d-flex gap-2">
+          <button type="submit" class="btn btn-primary">{{ form.submit.label.text }}</button>
+          <a href="{{ url_for('tresorerie.index') }}" class="btn btn-outline-secondary">Annuler</a>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% macro badge_statut_facture(st) -%}
+  {% if st == 'payee' %}
+    <span class="badge bg-success">Payée</span>
+  {% elif st == 'partiellement_payee' %}
+    <span class="badge bg-info text-dark">Partielle</span>
+  {% elif st == 'emise' %}
+    <span class="badge bg-primary">Émise</span>
+  {% elif st == 'brouillon' %}
+    <span class="badge bg-secondary">Brouillon</span>
+  {% elif st == 'annulee' %}
+    <span class="badge bg-dark">Annulée</span>
+  {% else %}
+    <span class="badge bg-light text-dark">{{ st }}</span>
+  {% endif %}
+{%- endmacro %}
+
+{% macro libelle_statut_facture(st) -%}
+  {% if st == 'payee' %}Payée
+  {% elif st == 'partiellement_payee' %}Partiellement payée
+  {% elif st == 'emise' %}Émise
+  {% elif st == 'brouillon' %}Brouillon
+  {% elif st == 'annulee' %}Annulée
+  {% else %}{{ st }}
+  {% endif %}
+{%- endmacro %}
+
+{% block title %}Factures — Avalon Pharma{% endblock %}
+
+{% block content %}
+  <div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+      <h1 class="page-title">Factures</h1>
+      <p class="page-subtitle mb-0">Consultez, modifiez les brouillons et exportez en PDF. Les filtres s’appliquent automatiquement.</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{{ url_for('ventes.nouvelle_vente') }}" class="btn btn-primary">
+        <i class="bi bi-cart-plus me-1"></i> Nouvelle vente
+      </a>
+      <a href="{{ url_for('ventes.nouveau_facture') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-file-earmark-plus me-1"></i> Facture seule
+      </a>
+    </div>
+  </div>
+
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+      <form id="facturesFiltersForm" method="get" action="{{ url_for('ventes.factures') }}" class="row g-3 align-items-end" role="search">
+        <div class="col-md-5 col-lg-6">
+          <label class="form-label small text-muted mb-1" for="factQ">Rechercher</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="search" class="form-control" id="factQ" name="q" value="{{ q }}" placeholder="N° facture, client…" autocomplete="off">
+          </div>
+        </div>
+        <div class="col-md-4 col-lg-3">
+          <label class="form-label small text-muted mb-1" for="factStatut">Statut</label>
+          <select class="form-select" id="factStatut" name="statut" onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()">
+            <option value="" {% if not statut_filtre %}selected{% endif %}>Tous les statuts</option>
+            {% for st in statuts_facture %}
+              <option value="{{ st }}" {% if statut_filtre == st %}selected{% endif %}>{{ libelle_statut_facture(st) }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3 col-lg-3 d-flex align-items-end">
+          {% if q or statut_filtre %}
+            <a href="{{ url_for('ventes.factures') }}" class="btn btn-outline-secondary">Tout afficher</a>
+          {% endif %}
+        </div>
+      </form>
+      <p class="small text-muted mb-0 mt-2">
+        {% if pagination.total %}
+          <strong>{{ pagination.total }}</strong> facture(s)
+          {% if q %} pour « {{ q }} »{% endif %}
+          {% if statut_filtre %} · statut : {{ libelle_statut_facture(statut_filtre) }}{% endif %}
+          {% if pagination.pages > 1 %} · page {{ pagination.page }}/{{ pagination.pages }}{% endif %}
+        {% else %}
+          Aucune facture ne correspond aux critères.
+        {% endif %}
+      </p>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Numéro</th>
+              <th>Client</th>
+              <th>Date</th>
+              <th class="text-end">Total TTC</th>
+              <th class="text-end">Reste à payer</th>
+              <th>Statut</th>
+              <th class="text-end" style="min-width:200px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in factures %}
+              <tr>
+                <td>
+                  <a href="{{ url_for('ventes.facture_detail', id=f.id) }}" class="fw-semibold text-decoration-none">
+                    {{ f.numero }}
+                  </a>
+                </td>
+                <td>{{ f.client.raison_sociale if f.client else '—' }}</td>
+                <td>{{ f.date_emission.strftime('%d/%m/%Y') if f.date_emission else '' }}</td>
+                <td class="text-end">{{ "%.0f"|format(f.total_ttc) if f.total_ttc is not none else '—' }}</td>
+                <td class="text-end">{{ "%.0f"|format(f.reste_a_payer) if f.reste_a_payer is not none else '—' }}</td>
+                <td>{{ badge_statut_facture(f.statut) }}</td>
+                <td class="text-end">
+                  <div class="btn-group btn-group-sm" role="group">
+                    <a class="btn btn-outline-secondary" href="{{ url_for('ventes.facture_detail', id=f.id) }}" title="Voir">
+                      <i class="bi bi-eye"></i>
+                    </a>
+                    {% if f.statut == 'brouillon' %}
+                      <a class="btn btn-outline-primary" href="{{ url_for('ventes.modifier_facture', id=f.id) }}" title="Modifier">
+                        <i class="bi bi-pencil"></i>
+                      </a>
+                    {% endif %}
+                    <a class="btn btn-outline-primary js-facture-print"
+                       href="{{ url_for('ventes.facture_imprimer', id=f.id) }}"
+                       data-print-url="{{ url_for('ventes.facture_imprimer', id=f.id) }}"
+                       data-has-bl="{{ '1' if bl_par_facture.get(f.id) else '0' }}"
+                       {% if bl_par_facture.get(f.id) %}data-bl-num="{{ bl_par_facture[f.id].numero }}"{% endif %}
+                       title="Imprimer">
+                      <i class="bi bi-printer"></i>
+                    </a>
+                    <a class="btn btn-outline-secondary" href="{{ url_for('ventes.facture_pdf', id=f.id) }}" target="_blank" rel="noopener" title="PDF">
+                      <i class="bi bi-file-earmark-pdf"></i>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="7" class="text-center text-muted py-5">
+                  <i class="bi bi-inbox d-block fs-2 mb-2 opacity-50"></i>
+                  {% if q or statut_filtre %}
+                    Aucune facture ne correspond aux filtres.
+                    <div class="mt-2"><a href="{{ url_for('ventes.factures') }}">Voir toutes les factures</a></div>
+                  {% else %}
+                    Aucune facture. Créez une <a href="{{ url_for('ventes.nouvelle_vente') }}">nouvelle vente</a> ou une
+                    <a href="{{ url_for('ventes.nouveau_facture') }}">facture seule</a>.
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if pagination.pages > 1 %}
+        <nav class="d-flex flex-wrap justify-content-between align-items-center gap-2 px-3 py-3 border-top" aria-label="Pagination factures">
+          <span class="small text-muted mb-0">
+            Affichage {{ ((pagination.page - 1) * pagination.per_page) + 1 }}
+            – {{ [pagination.page * pagination.per_page, pagination.total]|min }}
+            sur {{ pagination.total }}
+          </span>
+          <ul class="pagination pagination-sm mb-0">
+            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+              <a class="page-link" href="{{ url_for('ventes.factures', page=pagination.prev_num, **filtres_url) if pagination.has_prev else '#' }}" aria-label="Page précédente">
+                <i class="bi bi-chevron-left"></i>
+              </a>
+            </li>
+            {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+              {% if p %}
+                <li class="page-item {% if p == pagination.page %}active{% endif %}">
+                  <a class="page-link" href="{{ url_for('ventes.factures', page=p, **filtres_url) }}">{{ p }}</a>
+                </li>
+              {% else %}
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+              {% endif %}
+            {% endfor %}
+            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+              <a class="page-link" href="{{ url_for('ventes.factures', page=pagination.next_num, **filtres_url) if pagination.has_next else '#' }}" aria-label="Page suivante">
+                <i class="bi bi-chevron-right"></i>
+              </a>
+            </li>
+          </ul>
+        </nav>
+      {% endif %}
+    </div>
+  </div>
+
+  {% include 'ventes/_modal_imprimer_facture.html' %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='public/js/facture-print.js') }}"></script>
+<script>
+  (function () {
+    var form = document.getElementById('facturesFiltersForm');
+    var search = document.getElementById('factQ');
+    if (!form || !search) return;
+    var t;
+    function submitForm() {
+      if (form.requestSubmit) form.requestSubmit();
+      else form.submit();
+    }
+    function scheduleSubmit() {
+      clearTimeout(t);
+      t = setTimeout(submitForm, 400);
+    }
+    search.addEventListener('input', scheduleSubmit);
+    search.addEventListener('search', function () {
+      clearTimeout(t);
+      submitForm();
+    });
+  })();
+</script>
+{% endblock %}

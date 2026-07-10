@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Nouveau Bon de Livraison - Medical ERP{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h4 mb-0">Nouveau Bon de Livraison</h1>
+    <a href="{{ url_for('ventes.bons_livraison') }}" class="btn btn-secondary btn-sm">Retour</a>
+  </div>
+
+  <form method="post" id="blForm">
+    <div class="row g-3 mb-3">
+      <div class="col-12 col-md-6">
+        {% include 'partials/_client_picker.html' %}
+      </div>
+
+      <div class="col-12 col-md-3">
+        <label class="form-label">Date livraison</label>
+        <input class="form-control" type="date" name="date_livraison" required>
+      </div>
+
+      <div class="col-12 col-md-3">
+        <label class="form-label">Livreur</label>
+        <input class="form-control" type="text" name="livreur">
+      </div>
+
+      <div class="col-12">
+        <label class="form-label">Adresse livraison</label>
+        <textarea class="form-control" name="adresse_livraison" rows="2"></textarea>
+      </div>
+
+      <div class="col-12">
+        <label class="form-label">Notes</label>
+        <textarea class="form-control" name="notes" rows="2"></textarea>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Lignes</span>
+        <button type="button" class="btn btn-outline-primary btn-sm" id="addLine">
+          <i class="bi bi-plus-lg me-1"></i> Ajouter une ligne
+        </button>
+      </div>
+
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Produit</th>
+                <th style="width:160px;">Quantité</th>
+                <th style="width:60px;"></th>
+              </tr>
+            </thead>
+            <tbody id="linesBody">
+              <tr class="line-row">
+                <td>
+                  <select class="form-select" name="produit_id[]" required>
+                    <option value="" disabled selected>Choisir...</option>
+                    {% for p in produits %}
+                      <option value="{{ p.id }}">{{ p.reference }} - {{ p.designation }}</option>
+                    {% else %}
+                      <option value="" disabled>Aucun produit</option>
+                    {% endfor %}
+                  </select>
+                </td>
+                <td>
+                  <input class="form-control" type="number" min="1" name="quantite[]" value="1" required>
+                </td>
+                <td>
+                  <button type="button" class="btn btn-sm btn-outline-danger removeLine" title="Supprimer">
+                    <i class="bi bi-x"></i>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">
+      <i class="bi bi-save me-1"></i> Enregistrer
+    </button>
+  </form>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    (function () {
+      const linesBody = document.getElementById("linesBody");
+      const addBtn = document.getElementById("addLine");
+
+      function attachRemoveHandlers() {
+        linesBody.querySelectorAll(".removeLine").forEach(btn => {
+          btn.addEventListener("click", function () {
+            const row = this.closest(".line-row");
+            if (row) row.remove();
+          });
+        });
+      }
+
+      attachRemoveHandlers();
+
+      addBtn.addEventListener("click", function () {
+        const firstRow = document.querySelector(".line-row");
+        const newRow = firstRow.cloneNode(true);
+        newRow.querySelectorAll("input").forEach(i => {
+          if (i.name === "quantite[]") i.value = 1;
+        });
+        newRow.querySelectorAll("select").forEach(s => { s.selectedIndex = 0; });
+        linesBody.appendChild(newRow);
+        attachRemoveHandlers();
+      });
+    })();
+  </script>
+{% endblock %}
+

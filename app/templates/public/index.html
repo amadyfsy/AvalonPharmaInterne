@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERP Medical - Tableau de Bord</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="css/styles.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <i class="bi bi-hospital"></i>
+                <span>Avalon Pharma</span>
+            </div>
+            <button class="btn-close-sidebar d-lg-none" id="closeSidebar">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <div class="nav-section">
+                <span class="nav-section-title">Principal</span>
+                <a href="#" class="nav-link active">
+                    <i class="bi bi-grid-1x2"></i>
+                    <span>Tableau de bord</span>
+                </a>
+            </div>
+            
+            <div class="nav-section">
+                <span class="nav-section-title">Ventes</span>
+                <a href="#" class="nav-link">
+                    <i class="bi bi-receipt"></i>
+                    <span>Facturation</span>
+                </a>
+                <a href="#" class="nav-link">
+                    <i class="bi bi-people"></i>
+                    <span>Clients</span>
+                </a>
+                <a href="#" class="nav-link">
+                    <i class="bi bi-file-earmark-text"></i>
+                    <span>Devis</span>
+                </a>
+                <a href="#" class="nav-link">
+                    <i class="bi bi-credit-card"></i>
+                    <span>Encaissements</span>
+                </a>
+            </div>
+            
+            <div class="nav-section">
+                <span class="nav-section-title">Stock</span>
+                <a href="#" class="nav-link">
+                    <i class="bi bi-box-seam"></i>
+                    <span>Produits</span>
+                </a>
+                <a href="approvisionnement.html" class="nav-link">
+                    <i class="bi bi-cart-plus"></i>
+                    <span>Approvisionnement</span>
+                </a>
+                <a href="#" class="nav-link">
+                    <i class="bi bi-arrow-down-circle"></i>
+                    <span>Entrees</span>
+                </a>
+                <a href="#" class="nav-link">
+                    <i class="bi bi-arrow-up-circle"></i>
+                    <span>Sorties</span>
+                </a>
+                <a href="#" class="nav-link">
+                    <i class="bi bi-clipboard-check"></i>
+                    <span>Inventaire</span>
+                </a>
+                <a href="#" class="nav-link">
+                    <i class="bi bi-truck"></i>
+                    <span>Fournisseurs</span>
+                </a>
+            </div>
+            
+            <div class="nav-section">
+                <span class="nav-section-title">Finances</span>
+                <a href="#" class="nav-link">
+                    <i class="bi bi-wallet2"></i>
+                    <span>Trésorerie</span>
+                </a>
+                <a href="#" class="nav-link">
+                    <i class="bi bi-graph-up"></i>
+                    <span>Dépenses</span>
+                </a>
+                <a href="#" class="nav-link">
+                    <i class="bi bi-bank"></i>
+                    <span>Banques</span>
+                </a>
+            </div>
+            
+            <div class="nav-section">
+                <span class="nav-section-title">RH</span>
+                <a href="#" class="nav-link">
+                    <i class="bi bi-person-badge"></i>
+                    <span>Employes</span>
+                </a>
+                <a href="#" class="nav-link">
+                    <i class="bi bi-calendar-check"></i>
+                    <span>Conges</span>
+                </a>
+                <a href="#" class="nav-link">
+                    <i class="bi bi-cash-stack"></i>
+                    <span>Paie</span>
+                </a>
+            </div>
+            
+            <div class="nav-section">
+                <span class="nav-section-title">Administration</span>
+                <a href="#" class="nav-link">
+                    <i class="bi bi-gear"></i>
+                    <span>Parametres</span>
+                </a>
+                <a href="#" class="nav-link">
+                    <i class="bi bi-shield-lock"></i>
+                    <span>Utilisateurs</span>
+                </a>
+                <a href="#" class="nav-link">
+                    <i class="bi bi-file-earmark-bar-graph"></i>
+                    <span>Rapports</span>
+                </a>
+            </div>
+        </nav>
+    </aside>
+    
+    <!-- Overlay mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Header -->
+        <header class="main-header">
+            <div class="header-left">
+                <button class="btn-menu d-lg-none" id="openSidebar">
+                    <i class="bi bi-list"></i>
+                </button>
+                <div class="search-box">
+                    <i class="bi bi-search"></i>
+                    <input type="text" placeholder="Rechercher...">
+                </div>
+            </div>
+            
+            <div class="header-right">
+                <button class="header-btn" title="Notifications">
+                    <i class="bi bi-bell"></i>
+                    <span class="badge-notification">5</span>
+                </button>
+                <button class="header-btn" title="Messages">
+                    <i class="bi bi-envelope"></i>
+                    <span class="badge-notification">3</span>
+                </button>
+                <div class="user-menu">
+                    <img src="https://ui-avatars.com/api/?name=Admin&background=0d6efd&color=fff" alt="Admin" class="user-avatar">
+                    <div class="user-info">
+                        <span class="user-name">Administrateur</span>
+                        <span class="user-role">Super Admin</span>
+                    </div>
+                    <i class="bi bi-chevron-down"></i>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Page Content -->
+        <div class="page-content">
+            <!-- Page Header -->
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Tableau de Bord</h1>
+                    <p class="page-subtitle">Bienvenue — aperçu de votre activité (FCFA, Côte d’Ivoire)</p>
+                </div>
+                <div class="page-actions">
+                    <button class="btn btn-outline-secondary">
+                        <i class="bi bi-download me-2"></i>Exporter
+                    </button>
+                    <button class="btn btn-primary">
+                        <i class="bi bi-plus-lg me-2"></i>Nouvelle Facture
+                    </button>
+                </div>
+            </div>
+            
+            <!-- KPI Cards -->
+            <div class="row g-4 mb-4">
+                <div class="col-12 col-sm-6 col-xl-3">
+                    <div class="kpi-card kpi-primary">
+                        <div class="kpi-icon">
+                            <i class="bi bi-currency-dollar"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <span class="kpi-label">CA Mensuel</span>
+                            <span class="kpi-value">2 450 000 FCFA</span>
+                            <span class="kpi-change positive">
+                                <i class="bi bi-arrow-up"></i> +12.5%
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-sm-6 col-xl-3">
+                    <div class="kpi-card kpi-danger">
+                        <div class="kpi-icon">
+                            <i class="bi bi-graph-down"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <span class="kpi-label">Dépenses</span>
+                            <span class="kpi-value">890 000 FCFA</span>
+                            <span class="kpi-change negative">
+                                <i class="bi bi-arrow-up"></i> +8.2%
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-sm-6 col-xl-3">
+                    <div class="kpi-card kpi-success">
+                        <div class="kpi-icon">
+                            <i class="bi bi-graph-up-arrow"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <span class="kpi-label">Bénéfice net</span>
+                            <span class="kpi-value">1 560 000 FCFA</span>
+                            <span class="kpi-change positive">
+                                <i class="bi bi-arrow-up"></i> +15.3%
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-sm-6 col-xl-3">
+                    <div class="kpi-card kpi-warning">
+                        <div class="kpi-icon">
+                            <i class="bi bi-exclamation-triangle"></i>
+                        </div>
+                        <div class="kpi-content">
+                            <span class="kpi-label">Factures impayées</span>
+                            <span class="kpi-value">345 000 FCFA</span>
+                            <span class="kpi-badge">12 factures</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Charts Row -->
+            <div class="row g-4 mb-4">
+                <!-- Revenue Chart -->
+                <div class="col-12 col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title">Evolution du Chiffre d'Affaires</h5>
+                            <div class="card-actions">
+                                <select class="form-select form-select-sm">
+                                    <option>Cette annee</option>
+                                    <option>Annee precedente</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container">
+                                <div class="chart-bars">
+                                    <div class="chart-bar-wrapper">
+                                        <div class="chart-bar" style="--height: 45%"></div>
+                                        <span class="chart-label">Jan</span>
+                                    </div>
+                                    <div class="chart-bar-wrapper">
+                                        <div class="chart-bar" style="--height: 65%"></div>
+                                        <span class="chart-label">Fev</span>
+                                    </div>
+                                    <div class="chart-bar-wrapper">
+                                        <div class="chart-bar" style="--height: 55%"></div>
+                                        <span class="chart-label">Mar</span>
+                                    </div>
+                                    <div class="chart-bar-wrapper">
+                                        <div class="chart-bar" style="--height: 70%"></div>
+                                        <span class="chart-label">Avr</span>
+                                    </div>
+                                    <div class="chart-bar-wrapper">
+                                        <div class="chart-bar" style="--height: 60%"></div>
+                                        <span class="chart-label">Mai</span>
+                                    </div>
+                                    <div class="chart-bar-wrapper">
+                                        <div class="chart-bar" style="--height: 80%"></div>
+                                        <span class="chart-label">Juin</span>
+                                    </div>
+                                    <div class="chart-bar-wrapper">
+                                        <div class="chart-bar" style="--height: 75%"></div>
+                                        <span class="chart-label">Juil</span>
+                                    </div>
+                                    <div class="chart-bar-wrapper">
+                                        <div class="chart-bar" style="--height: 90%"></div>
+                                        <span class="chart-label">Aout</span>
+                                    </div>
+                                    <div class="chart-bar-wrapper">
+                                        <div class="chart-bar" style="--height: 85%"></div>
+                                        <span class="chart-label">Sep</span>
+                                    </div>
+                                    <div class="chart-bar-wrapper">
+                                        <div class="chart-bar" style="--height: 95%"></div>
+                                        <span class="chart-label">Oct</span>
+                                    </div>
+                                    <div class="chart-bar-wrapper">
+                                        <div class="chart-bar" style="--height: 88%"></div>
+                                        <span class="chart-label">Nov</span>
+                                    </div>
+                                    <div class="chart-bar-wrapper">
+                                        <div class="chart-bar active" style="--height: 100%"></div>
+                                        <span class="chart-label">Dec</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Alerts -->
+                <div class="col-12 col-lg-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="card-title">Alertes & Notifications</h5>
+                            <span class="badge bg-danger">5</span>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="alert-list">
+                                <div class="alert-item alert-danger">
+                                    <div class="alert-icon">
+                                        <i class="bi bi-exclamation-circle"></i>
+                                    </div>
+                                    <div class="alert-content">
+                                        <span class="alert-title">Stock critique</span>
+                                        <span class="alert-text">Paracetamol 500mg - 15 unites</span>
+                                    </div>
+                                </div>
+                                <div class="alert-item alert-warning">
+                                    <div class="alert-icon">
+                                        <i class="bi bi-clock"></i>
+                                    </div>
+                                    <div class="alert-content">
+                                        <span class="alert-title">Peremption proche</span>
+                                        <span class="alert-text">Amoxicilline - Expire dans 30j</span>
+                                    </div>
+                                </div>
+                                <div class="alert-item alert-info">
+                                    <div class="alert-icon">
+                                        <i class="bi bi-receipt"></i>
+                                    </div>
+                                    <div class="alert-content">
+                                        <span class="alert-title">Facture en retard</span>
+                                        <span class="alert-text">Client: Clinique St Jean</span>
+                                    </div>
+                                </div>
+                                <div class="alert-item alert-success">
+                                    <div class="alert-icon">
+                                        <i class="bi bi-check-circle"></i>
+                                    </div>
+                                    <div class="alert-content">
+                                        <span class="alert-title">Paiement recu</span>
+                                        <span class="alert-text">125 000 FCFA - Pharmacie Centrale</span>
+                                    </div>
+                                </div>
+                                <div class="alert-item alert-primary">
+                                    <div class="alert-icon">
+                                        <i class="bi bi-calendar-event"></i>
+                                    </div>
+                                    <div class="alert-content">
+                                        <span class="alert-title">Conge approuve</span>
+                                        <span class="alert-text">Marie Dupont - 15 au 20 Dec</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tables Row -->
+            <div class="row g-4 mb-4">
+                <!-- Recent Invoices -->
+                <div class="col-12 col-xl-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title">Factures Recentes</h5>
+                            <a href="#" class="btn btn-sm btn-outline-primary">Voir tout</a>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>N Facture</th>
+                                            <th>Client</th>
+                                            <th>Date</th>
+                                            <th>Montant</th>
+                                            <th>Statut</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><strong>FAC-2024-0156</strong></td>
+                                            <td>Clinique St Jean</td>
+                                            <td>15/12/2024</td>
+                                            <td>245 000 FCFA</td>
+                                            <td><span class="badge bg-success">Payee</span></td>
+                                            <td>
+                                                <button class="btn btn-sm btn-icon" title="Voir">
+                                                    <i class="bi bi-eye"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-icon" title="Imprimer">
+                                                    <i class="bi bi-printer"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>FAC-2024-0155</strong></td>
+                                            <td>Pharmacie Centrale</td>
+                                            <td>14/12/2024</td>
+                                            <td>125 000 FCFA</td>
+                                            <td><span class="badge bg-warning text-dark">En attente</span></td>
+                                            <td>
+                                                <button class="btn btn-sm btn-icon" title="Voir">
+                                                    <i class="bi bi-eye"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-icon" title="Imprimer">
+                                                    <i class="bi bi-printer"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>FAC-2024-0154</strong></td>
+                                            <td>Hopital Regional</td>
+                                            <td>13/12/2024</td>
+                                            <td>890 000 FCFA</td>
+                                            <td><span class="badge bg-danger">Impayee</span></td>
+                                            <td>
+                                                <button class="btn btn-sm btn-icon" title="Voir">
+                                                    <i class="bi bi-eye"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-icon" title="Imprimer">
+                                                    <i class="bi bi-printer"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>FAC-2024-0153</strong></td>
+                                            <td>Dr. Martin Cabinet</td>
+                                            <td>12/12/2024</td>
+                                            <td>78 500 FCFA</td>
+                                            <td><span class="badge bg-success">Payee</span></td>
+                                            <td>
+                                                <button class="btn btn-sm btn-icon" title="Voir">
+                                                    <i class="bi bi-eye"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-icon" title="Imprimer">
+                                                    <i class="bi bi-printer"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>FAC-2024-0152</strong></td>
+                                            <td>Centre Medical Plus</td>
+                                            <td>11/12/2024</td>
+                                            <td>156 000 FCFA</td>
+                                            <td><span class="badge bg-info">Partielle</span></td>
+                                            <td>
+                                                <button class="btn btn-sm btn-icon" title="Voir">
+                                                    <i class="bi bi-eye"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-icon" title="Imprimer">
+                                                    <i class="bi bi-printer"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Top Products -->
+                <div class="col-12 col-xl-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="card-title">Top 5 Produits Vendus</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="product-list">
+                                <div class="product-item">
+                                    <div class="product-rank">1</div>
+                                    <div class="product-info">
+                                        <span class="product-name">Paracetamol 500mg</span>
+                                        <span class="product-sales">1,250 unites</span>
+                                    </div>
+                                    <div class="product-amount">625 000 FCFA</div>
+                                </div>
+                                <div class="product-item">
+                                    <div class="product-rank">2</div>
+                                    <div class="product-info">
+                                        <span class="product-name">Amoxicilline 250mg</span>
+                                        <span class="product-sales">890 unites</span>
+                                    </div>
+                                    <div class="product-amount">445 000 FCFA</div>
+                                </div>
+                                <div class="product-item">
+                                    <div class="product-rank">3</div>
+                                    <div class="product-info">
+                                        <span class="product-name">Ibuprofene 400mg</span>
+                                        <span class="product-sales">756 unites</span>
+                                    </div>
+                                    <div class="product-amount">378 000 FCFA</div>
+                                </div>
+                                <div class="product-item">
+                                    <div class="product-rank">4</div>
+                                    <div class="product-info">
+                                        <span class="product-name">Vitamine C 1000mg</span>
+                                        <span class="product-sales">620 unites</span>
+                                    </div>
+                                    <div class="product-amount">310 000 FCFA</div>
+                                </div>
+                                <div class="product-item">
+                                    <div class="product-rank">5</div>
+                                    <div class="product-info">
+                                        <span class="product-name">Doliprane 1000mg</span>
+                                        <span class="product-sales">540 unites</span>
+                                    </div>
+                                    <div class="product-amount">270 000 FCFA</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quick Actions & Stats -->
+            <div class="row g-4">
+                <!-- Quick Actions -->
+                <div class="col-12 col-md-6 col-xl-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title">Actions Rapides</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="quick-actions">
+                                <a href="#" class="quick-action-btn">
+                                    <i class="bi bi-plus-circle"></i>
+                                    <span>Nouvelle Facture</span>
+                                </a>
+                                <a href="#" class="quick-action-btn">
+                                    <i class="bi bi-box-arrow-in-down"></i>
+                                    <span>Entree Stock</span>
+                                </a>
+                                <a href="#" class="quick-action-btn">
+                                    <i class="bi bi-person-plus"></i>
+                                    <span>Nouveau Client</span>
+                                </a>
+                                <a href="#" class="quick-action-btn">
+                                    <i class="bi bi-file-earmark-plus"></i>
+                                    <span>Nouveau Devis</span>
+                                </a>
+                                <a href="#" class="quick-action-btn">
+                                    <i class="bi bi-cash"></i>
+                                    <span>Encaissement</span>
+                                </a>
+                                <a href="#" class="quick-action-btn">
+                                    <i class="bi bi-printer"></i>
+                                    <span>Rapport</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Expense Distribution -->
+                <div class="col-12 col-md-6 col-xl-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="card-title">Répartition des dépenses</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="donut-chart">
+                                <div class="donut-ring"></div>
+                                <div class="donut-center">
+                                    <span class="donut-value">890K</span>
+                                    <span class="donut-label">FCFA</span>
+                                </div>
+                            </div>
+                            <div class="chart-legend">
+                                <div class="legend-item">
+                                    <span class="legend-color" style="background: #0d6efd;"></span>
+                                    <span class="legend-text">Achats (45%)</span>
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-color" style="background: #198754;"></span>
+                                    <span class="legend-text">Salaires (30%)</span>
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-color" style="background: #ffc107;"></span>
+                                    <span class="legend-text">Loyer (15%)</span>
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-color" style="background: #6c757d;"></span>
+                                    <span class="legend-text">Autres (10%)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- HR Stats -->
+                <div class="col-12 col-xl-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="card-title">Statistiques RH</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="hr-stats">
+                                <div class="hr-stat-item">
+                                    <div class="hr-stat-icon bg-primary">
+                                        <i class="bi bi-people"></i>
+                                    </div>
+                                    <div class="hr-stat-info">
+                                        <span class="hr-stat-value">24</span>
+                                        <span class="hr-stat-label">Employes Total</span>
+                                    </div>
+                                </div>
+                                <div class="hr-stat-item">
+                                    <div class="hr-stat-icon bg-success">
+                                        <i class="bi bi-person-check"></i>
+                                    </div>
+                                    <div class="hr-stat-info">
+                                        <span class="hr-stat-value">21</span>
+                                        <span class="hr-stat-label">Presents Aujourd'hui</span>
+                                    </div>
+                                </div>
+                                <div class="hr-stat-item">
+                                    <div class="hr-stat-icon bg-warning">
+                                        <i class="bi bi-calendar-x"></i>
+                                    </div>
+                                    <div class="hr-stat-info">
+                                        <span class="hr-stat-value">2</span>
+                                        <span class="hr-stat-label">En Conge</span>
+                                    </div>
+                                </div>
+                                <div class="hr-stat-item">
+                                    <div class="hr-stat-icon bg-danger">
+                                        <i class="bi bi-person-x"></i>
+                                    </div>
+                                    <div class="hr-stat-info">
+                                        <span class="hr-stat-value">1</span>
+                                        <span class="hr-stat-label">Absent</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src="js/main.js"></script>
+</body>
+</html>

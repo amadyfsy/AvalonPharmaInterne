@@ -1,0 +1,114 @@
+{# Pages BL (facture.css) — inclure dans invoice-shell après la facture si besoin #}
+{% set bl_lignes = bl.lignes|sort(attribute='id')|list %}
+{% set bl_page_size = 16 %}
+{% set bl_n = bl_lignes|length %}
+{% set bl_n_chunks = ((bl_n - 1) // bl_page_size + 1) if bl_n > 0 else 1 %}
+
+{% for bl_page_idx in range(bl_n_chunks) %}
+  {% set bl_page_lignes = bl_lignes[bl_page_idx * bl_page_size : (bl_page_idx + 1) * bl_page_size] %}
+  {% set bl_page_num = bl_page_idx + 1 %}
+
+  <div class="invoice-page invoice-page--bl">
+    <div class="invoice-container">
+      <div class="invoice-accent-bar" aria-hidden="true"></div>
+
+      <div class="invoice-main">
+        <header class="invoice-header">
+          <div class="invoice-header-grid">
+            <div class="invoice-header-logo">
+              {% if logo_url %}
+                <img src="{{ logo_url }}" alt="Logo" class="invoice-logo">
+              {% else %}
+                <div class="invoice-logo-fallback" aria-hidden="true">A</div>
+              {% endif %}
+            </div>
+            {% if doc_params and (doc_params.raison_sociale or doc_params.adresse_ligne) %}
+              <div class="invoice-header-company">
+                {% if doc_params.raison_sociale %}
+                  <strong>{{ doc_params.raison_sociale }}</strong>
+                {% endif %}
+                {% if doc_params.adresse_ligne %}
+                  <span>{{ doc_params.adresse_ligne }}</span>
+                {% endif %}
+              </div>
+            {% endif %}
+            <div class="invoice-header-qr-row">
+              <p class="invoice-slogan">Serving those who care for others</p>
+              <div class="invoice-header-qr__canvas" data-qr-url="{{ site_web_url }}" aria-label="QR code vers {{ site_web_label }}"></div>
+            </div>
+          </div>
+        </header>
+
+        <div class="invoice-info-grid">
+          <div class="invoice-info-card invoice-info-card--facture">
+            <div class="invoice-info-card__label">Bon de livraison</div>
+            <div class="invoice-doc-number">N° {{ bl.numero }}</div>
+            {% if bl.date_livraison %}
+              <div class="invoice-doc-date">Livraison le {{ bl.date_livraison.strftime('%d/%m/%Y') }}</div>
+            {% endif %}
+
+            <div class="invoice-info-card__divider"></div>
+
+            <div class="invoice-info-card__label">Client</div>
+            <div class="invoice-info-card__name">
+              {{ bl.client.raison_sociale if bl.client else '—' }}
+            </div>
+            {% if bl.adresse_livraison %}
+              <p class="invoice-info-card__detail">{{ bl.adresse_livraison }}</p>
+            {% endif %}
+            {% if bl.livreur %}
+              <p class="invoice-info-card__detail">Livreur : {{ bl.livreur }}</p>
+            {% endif %}
+          </div>
+
+          <div class="invoice-info-card">
+            <div class="invoice-info-card__label">Informations</div>
+            {% if doc_params and doc_params.telephone %}
+              <p class="invoice-info-card__detail">Tél. {{ doc_params.telephone }}</p>
+            {% endif %}
+            {% if doc_params and doc_params.email %}
+              <p class="invoice-info-card__detail">Email {{ doc_params.email }}</p>
+            {% endif %}
+            {% if bl.notes %}
+              <p class="invoice-info-card__detail">{{ bl.notes }}</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="invoice-table">
+            <thead>
+              <tr>
+                <th class="col-left">Désignation</th>
+                <th class="col-center" style="width:18%;">Quantité</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for l in bl_page_lignes %}
+                <tr>
+                  <td class="col-left">
+                    <span class="line-designation">{{ l.produit.designation if l.produit else '—' }}</span>
+                    {% if l.lot %}
+                      <span class="line-meta">Lot : {{ l.lot.numero_lot }}</span>
+                    {% endif %}
+                  </td>
+                  <td class="col-center">{{ l.quantite_commandee }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        {% if bl_page_idx == bl_n_chunks - 1 %}
+          <div class="invoice-closure">
+            <div class="invoice-signature">
+              <p>{{ date_signature_bl_fr }}</p>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="invoice-page-number">BL — Page {{ bl_page_num }} / {{ bl_n_chunks }}</div>
+    </div>
+  </div>
+{% endfor %}

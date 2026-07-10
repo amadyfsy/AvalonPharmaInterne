@@ -1,0 +1,26 @@
+<div class="modal fade" id="modalImprimerFacture" tabindex="-1" aria-labelledby="modalImprimerFactureLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title" id="modalImprimerFactureLabel">
+          <i class="bi bi-printer me-2 text-primary"></i>Imprimer la facture
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-3 text-muted small" id="modalImprimerFactureDesc">
+          Choisissez le contenu du document à imprimer.
+        </p>
+        <div class="d-grid gap-2">
+          <button type="button" class="btn btn-outline-primary text-start js-facture-print-choice" data-avec-bl="0">
+            <i class="bi bi-file-earmark-text me-2"></i>Facture seule
+          </button>
+          <button type="button" class="btn btn-primary text-start js-facture-print-choice d-none" id="btnFactureAvecBl" data-avec-bl="1">
+            <i class="bi bi-files me-2"></i>Facture + bon de livraison
+            <span class="d-block small fw-normal opacity-75" id="modalImprimerBlNum"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
