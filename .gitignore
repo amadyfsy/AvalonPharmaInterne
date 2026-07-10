@@ -12,6 +12,8 @@ venv/
 *.db
 *.sqlite
 *.sqlite3
+/FACTURE*.pdf
+/*.pdf
 
 # Logs & uploads
 logs/
