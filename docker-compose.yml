@@ -27,7 +27,7 @@ services:
       DATABASE_URL: mysql+pymysql://${MYSQL_USER}:${MYSQL_PASSWORD}@db:3306/${MYSQL_DATABASE:-medical_erp}?charset=utf8mb4
       FLASK_CONFIG: production
       TALISMAN_FORCE_HTTPS: ${TALISMAN_FORCE_HTTPS:-false}
-      PUBLIC_CORS_ORIGINS: ${PUBLIC_CORS_ORIGINS:-http://localhost:8080}
+      PUBLIC_CORS_ORIGINS: ${PUBLIC_CORS_ORIGINS:-https://votre-site.vercel.app}
     depends_on:
       db:
         condition: service_healthy
@@ -35,19 +35,6 @@ services:
       - uploads_data:/app/instance/uploads
     ports:
       - "${API_PORT:-5050}:5000"
-    expose:
-      - "5000"
-
-  web:
-    build:
-      context: ./site-public
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    ports:
-      - "${WEB_PORT:-8080}:80"
-    depends_on:
-      api:
-        condition: service_healthy
 
 volumes:
   mysql_data:

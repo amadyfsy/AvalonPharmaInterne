@@ -1,71 +1,87 @@
-# AvalonPharmapublic
+# AvalonPharmaInterne
 
-Plateforme ERP **Avalon Pharma Senegal** (GestAvalon) — déploiement privé dockerisé avec site catalogue public.
+ERP privé **Avalon Pharma Senegal** (GestAvalon) — ventes, stock, RH, dépenses, sécurité.
 
-## Stack
+> Le **site catalogue public** est dans le dépôt séparé [AvalonPharmapublic](https://github.com/amadyfsy/AvalonPharmapublic) et se déploie sur **Vercel**.
 
-| Service | Description | Port |
-|---------|-------------|------|
-| `api` | Flask ERP (gunicorn) | interne 5000 |
-| `web` | Site public React + nginx | `8080` (configurable) |
-| `db` | MySQL 8 | interne uniquement |
+## Déploiement cible
 
-## Déploiement rapide
+| Composant | Hébergement |
+|-----------|-------------|
+| ERP interne | **PythonAnywhere** (ou Docker local) |
+| Site public | **Vercel** (autre dépôt) |
 
-### 1. Prérequis
+## PythonAnywhere — première installation
 
-- Docker & Docker Compose
-- Git
+### 1. Cloner sur PythonAnywhere
 
-### 2. Configuration sécurisée
+Dans une console Bash PA :
+
+```bash
+cd ~
+git clone https://github.com/amadyfsy/AvalonPharmaInterne.git
+cd AvalonPharmaInterne
+```
+
+### 2. Environnement virtuel
+
+```bash
+mkvirtualenv --python=/usr/bin/python3.10 avalon-interne
+pip install -r requirements.txt
+```
+
+### 3. Variables d'environnement
 
 ```bash
 cp .env.example .env
+nano .env
 ```
 
-Éditez `.env` et **remplacez toutes les valeurs par défaut** :
+Renseignez au minimum :
+
+- `SECRET_KEY`, `SECURITY_PASSWORD_SALT`, `ENCRYPTION_KEY`
+- `DATABASE_URL` (MySQL PythonAnywhere : voir onglet Databases)
+- `PUBLIC_CORS_ORIGINS` = URL Vercel du site public (ex. `https://avalon-pharma.vercel.app`)
+- `TALISMAN_FORCE_HTTPS=true`
+
+### 4. Web app (onglet Web)
+
+- **Source code** : `/home/VOTRE_USER/AvalonPharmaInterne`
+- **WSGI** : pointer vers `wsgi.py` du projet (voir fichier modèle `deploy/pythonanywhere_wsgi.py.example`)
+- **Virtualenv** : `/home/VOTRE_USER/.virtualenvs/avalon-interne`
+- **Static files** : `/static/` → `/home/VOTRE_USER/AvalonPharmaInterne/app/static`
+
+### 5. Base de données
+
+Créez une base MySQL sur PA, puis :
 
 ```bash
-# Clé secrète Flask (sessions, CSRF)
-python -c "import secrets; print(secrets.token_hex(32))"
-
-# Clé Fernet (données RH chiffrées)
-python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+workon avalon-interne
+cd ~/AvalonPharmaInterne
+python -c "from app import create_app; from app.extensions import db; import app.models; app=create_app('production'); ctx=app.app_context(); ctx.push(); db.create_all(); print('OK')"
 ```
 
-Variables **obligatoires** en production :
-
-- `SECRET_KEY`
-- `SECURITY_PASSWORD_SALT`
-- `ENCRYPTION_KEY` (recommandé pour le module RH)
-- `MYSQL_ROOT_PASSWORD`, `MYSQL_USER`, `MYSQL_PASSWORD`
-
-### 3. Lancer
+### 6. Recharger l'application
 
 ```bash
+# Depuis une console PA (API_TOKEN est déjà dans l'environnement)
+curl -X POST \
+  -H "Authorization: Token $API_TOKEN" \
+  "https://www.pythonanywhere.com/api/v0/user/$USER/webapps/$USER.pythonanywhere.com/reload/"
+```
+
+> **Ne commitez jamais** votre token API PythonAnywhere. Utilisez les secrets GitHub pour la CI.
+
+## Docker (local / serveur privé)
+
+```bash
+cp .env.example .env
 docker compose up -d --build
 ```
 
-- **ERP (connexion)** : http://localhost:5050/auth/login
-- **Site public** : http://localhost:8080
+- ERP : http://localhost:5050/auth/login
 
-### 4. Premier accès
-
-Après le premier démarrage, créez un compte admin via la base ou connectez-vous avec un compte existant importé.
-
-> Changez immédiatement les mots de passe par défaut (`passer123`) sur tous les comptes.
-
-## Sécurité — checklist avant mise en production
-
-- [ ] `.env` rempli avec des secrets forts (jamais commité)
-- [ ] MySQL **non exposé** sur Internet (pas de port `3307` publié)
-- [ ] `TALISMAN_FORCE_HTTPS=true` derrière un reverse proxy HTTPS
-- [ ] `PUBLIC_CORS_ORIGINS` limité à votre domaine (pas `*`)
-- [ ] Mots de passe utilisateurs changés
-- [ ] Sauvegardes régulières du volume `mysql_data`
-- [ ] SMTP configuré pour la réinitialisation de mot de passe
-
-## Développement local (sans Docker)
+## Développement local
 
 ```bash
 python -m venv .venv
@@ -76,16 +92,28 @@ export FLASK_CONFIG=development
 python run.py
 ```
 
+## API publique (pour Vercel)
+
+L'ERP expose en lecture seule :
+
+`https://VOTRE_USER.pythonanywhere.com/api/public/v1`
+
+Configurez cette URL dans Vercel (`VITE_API_BASE`) sur le dépôt AvalonPharmapublic.
+
+## Sécurité
+
+- [ ] Secrets forts dans `.env` (jamais sur Git)
+- [ ] CORS limité au domaine Vercel
+- [ ] HTTPS activé sur PythonAnywhere
+- [ ] Mots de passe `passer123` changés
+- [ ] Token API PA régénéré si exposé
+
 ## Structure
 
 ```
-app/              # ERP Flask (modules ventes, stock, RH, etc.)
-site-public/      # Catalogue React (Vite)
-docker/           # Scripts d'entrée conteneur
-config.py         # Configuration
-run.py            # Point d'entrée WSGI / dev
+app/           # Modules ERP Flask
+deploy/        # Modèles WSGI / CI
+config.py
+run.py
+wsgi.py
 ```
-
-## Licence
-
-Usage privé — Avalon Pharma Senegal.

@@ -21,9 +21,8 @@ logs/
 instance/uploads/*
 !instance/uploads/.gitkeep
 
-# Frontend
-site-public/node_modules/
-site-public/dist/
+# Frontend public (dépôt séparé AvalonPharmapublic / Vercel)
+site-public/
 
 # OS / IDE
 .DS_Store

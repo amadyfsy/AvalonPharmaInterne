@@ -1,0 +1,24 @@
+name: Deploy PythonAnywhere
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reload web app
+        env:
+          PA_USERNAME: ${{ secrets.PA_USERNAME }}
+          PA_API_TOKEN: ${{ secrets.PA_API_TOKEN }}
+          PA_DOMAIN: ${{ secrets.PA_DOMAIN }}
+        run: |
+          if [ -z "$PA_USERNAME" ] || [ -z "$PA_API_TOKEN" ]; then
+            echo "Secrets PA_USERNAME / PA_API_TOKEN non configurés — étape ignorée."
+            exit 0
+          fi
+          DOMAIN="${PA_DOMAIN:-${PA_USERNAME}.pythonanywhere.com}"
+          curl -fsS -X POST \
+            -H "Authorization: Token ${PA_API_TOKEN}" \
+            "https://www.pythonanywhere.com/api/v0/user/${PA_USERNAME}/webapps/${DOMAIN}/reload/"

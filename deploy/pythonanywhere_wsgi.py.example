@@ -1,0 +1,11 @@
+# Modèle WSGI pour l'onglet Web de PythonAnywhere.
+# Copier le contenu dans : /var/www/VOTRE_USER_pythonanywhere_com_wsgi.py
+
+import sys
+
+# Remplacez VOTRE_USER par votre identifiant PythonAnywhere
+project_home = '/home/VOTRE_USER/AvalonPharmaInterne'
+if project_home not in sys.path:
+    sys.path.insert(0, project_home)
+
+from wsgi import application
