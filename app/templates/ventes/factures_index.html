@@ -2,17 +2,17 @@
 
 {% macro badge_statut_facture(st) -%}
   {% if st == 'payee' %}
-    <span class="badge bg-success">Payée</span>
+    <span class="badge rounded-pill fact-badge fact-badge--payee">Payée</span>
   {% elif st == 'partiellement_payee' %}
-    <span class="badge bg-info text-dark">Partielle</span>
+    <span class="badge rounded-pill fact-badge fact-badge--partielle">Partielle</span>
   {% elif st == 'emise' %}
-    <span class="badge bg-primary">Émise</span>
+    <span class="badge rounded-pill fact-badge fact-badge--emise">Émise</span>
   {% elif st == 'brouillon' %}
-    <span class="badge bg-secondary">Brouillon</span>
+    <span class="badge rounded-pill fact-badge fact-badge--brouillon">Brouillon</span>
   {% elif st == 'annulee' %}
-    <span class="badge bg-dark">Annulée</span>
+    <span class="badge rounded-pill fact-badge fact-badge--annulee">Annulée</span>
   {% else %}
-    <span class="badge bg-light text-dark">{{ st }}</span>
+    <span class="badge rounded-pill bg-light text-dark">{{ st }}</span>
   {% endif %}
 {%- endmacro %}
 
@@ -27,6 +27,79 @@
 {%- endmacro %}
 
 {% block title %}Factures — Avalon Pharma{% endblock %}
+
+{% block extra_css %}
+<style>
+  .fact-list-table thead th {
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #6c757d;
+    font-weight: 600;
+    border-bottom-width: 1px;
+    white-space: nowrap;
+  }
+  .fact-list-table tbody td {
+    vertical-align: middle;
+    padding-top: 0.85rem;
+    padding-bottom: 0.85rem;
+  }
+  .fact-list-table tbody tr {
+    transition: background 0.12s ease;
+  }
+  .fact-list-table tbody tr:hover {
+    background: rgba(176, 219, 221, 0.22);
+  }
+  .fact-num {
+    font-weight: 700;
+    color: #721818;
+    letter-spacing: -0.01em;
+    text-decoration: none;
+  }
+  .fact-num:hover { color: #5a1218; text-decoration: underline; }
+  .fact-client {
+    font-weight: 500;
+    color: #212529;
+    max-width: 280px;
+  }
+  .fact-date {
+    font-variant-numeric: tabular-nums;
+    color: #6c757d;
+    white-space: nowrap;
+  }
+  .fact-amount {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .fact-amount .unit {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: #adb5bd;
+    margin-left: 0.2rem;
+  }
+  .fact-reste {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .fact-reste.is-due { color: #b42318; font-weight: 600; }
+  .fact-reste.is-paid { color: #198754; font-weight: 600; }
+  .fact-badge {
+    font-weight: 600;
+    font-size: 0.72rem;
+    padding: 0.35em 0.75em;
+  }
+  .fact-badge--payee { background: #d1e7dd; color: #0f5132; }
+  .fact-badge--partielle { background: #cff4fc; color: #055160; }
+  .fact-badge--emise { background: #e2e3ff; color: #3d348b; }
+  .fact-badge--brouillon { background: #e9ecef; color: #495057; }
+  .fact-badge--annulee { background: #212529; color: #fff; }
+  .fact-filters {
+    background: linear-gradient(180deg, #fff 0%, #f7fbfb 100%);
+    border: 1px solid #e5eef0;
+  }
+</style>
+{% endblock %}
 
 {% block content %}
   <div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
@@ -44,13 +117,13 @@
     </div>
   </div>
 
-  <div class="card shadow-sm border-0 mb-4">
+  <div class="card shadow-sm border-0 mb-4 fact-filters">
     <div class="card-body">
       <form id="facturesFiltersForm" method="get" action="{{ url_for('ventes.factures') }}" class="row g-3 align-items-end" role="search">
         <div class="col-md-4 col-lg-4">
           <label class="form-label small text-muted mb-1" for="factQ">Rechercher</label>
           <div class="input-group">
-            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
             <input type="search" class="form-control" id="factQ" name="q" value="{{ q }}" placeholder="N° facture, client…" autocomplete="off">
           </div>
         </div>
@@ -92,35 +165,50 @@
     </div>
   </div>
 
-  <div class="card shadow-sm">
+  <div class="card shadow-sm border-0">
     <div class="card-body p-0">
       <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-          <thead class="table-light">
+        <table class="table fact-list-table align-middle mb-0">
+          <thead>
             <tr>
-              <th>Numéro</th>
+              <th class="ps-3">Numéro</th>
               <th>Client</th>
               <th>Date</th>
-              <th class="text-end">Total TTC</th>
+              <th class="text-end">Total</th>
               <th class="text-end">Reste à payer</th>
               <th>Statut</th>
-              <th class="text-end" style="min-width:200px;">Actions</th>
+              <th class="text-end pe-3" style="min-width:180px;">Actions</th>
             </tr>
           </thead>
           <tbody>
             {% for f in factures %}
+              {% set reste = f.reste_a_payer|float if f.reste_a_payer is not none else 0 %}
               <tr>
-                <td>
-                  <a href="{{ url_for('ventes.facture_detail', id=f.id) }}" class="fw-semibold text-decoration-none">
+                <td class="ps-3">
+                  <a href="{{ url_for('ventes.facture_detail', id=f.id) }}" class="fact-num">
                     {{ f.numero }}
                   </a>
                 </td>
-                <td>{{ f.client.raison_sociale if f.client else '—' }}</td>
-                <td>{{ f.date_emission.strftime('%d/%m/%Y') if f.date_emission else '' }}</td>
-                <td class="text-end">{{ "%.0f"|format(f.total_ttc) if f.total_ttc is not none else '—' }}</td>
-                <td class="text-end">{{ "%.0f"|format(f.reste_a_payer) if f.reste_a_payer is not none else '—' }}</td>
+                <td>
+                  <div class="fact-client text-truncate" title="{{ f.client.raison_sociale if f.client else '' }}">
+                    {{ f.client.raison_sociale if f.client else '—' }}
+                  </div>
+                </td>
+                <td class="fact-date">{{ f.date_emission.strftime('%d/%m/%Y') if f.date_emission else '—' }}</td>
+                <td class="text-end fact-amount">
+                  {{ format_fcfa(f.total_ttc) if f.total_ttc is not none else '—' }}
+                  <span class="unit">FCFA</span>
+                </td>
+                <td class="text-end fact-reste {% if reste > 0 %}is-due{% else %}is-paid{% endif %}">
+                  {% if f.reste_a_payer is not none %}
+                    {{ format_fcfa(f.reste_a_payer) }}
+                    <span class="unit" style="font-size:0.7rem;font-weight:500;color:#adb5bd;margin-left:0.15rem;">FCFA</span>
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
                 <td>{{ badge_statut_facture(f.statut) }}</td>
-                <td class="text-end">
+                <td class="text-end pe-3">
                   <div class="btn-group btn-group-sm" role="group">
                     <a class="btn btn-outline-secondary" href="{{ url_for('ventes.facture_detail', id=f.id) }}" title="Voir">
                       <i class="bi bi-eye"></i>
@@ -148,7 +236,7 @@
               <tr>
                 <td colspan="7" class="text-center text-muted py-5">
                   <i class="bi bi-inbox d-block fs-2 mb-2 opacity-50"></i>
-                  {% if q or statut_filtre %}
+                  {% if q or statut_filtre or annee_filtre %}
                     Aucune facture ne correspond aux filtres.
                     <div class="mt-2"><a href="{{ url_for('ventes.factures') }}">Voir toutes les factures</a></div>
                   {% else %}

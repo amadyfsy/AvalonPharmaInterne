@@ -172,8 +172,10 @@ def main() -> None:
                 lignes_data.append((produit, int(qty), money(pu), montant))
 
             remise = Decimal("0")
+            remise_pct_store = Decimal("0")
             if raw.get("remise_pct"):
-                remise = money(sous_total * Decimal(raw["remise_pct"]) / Decimal("100"))
+                remise_pct_store = Decimal(raw["remise_pct"])
+                remise = money(sous_total * remise_pct_store / Decimal("100"))
             total_ttc = money(sous_total - remise)
             d_emis = raw["date"]
             facture = Facture(
@@ -181,7 +183,7 @@ def main() -> None:
                 client_id=client.id,
                 date_emission=d_emis,
                 date_echeance=d_emis + timedelta(days=30),
-                remise_globale=remise,
+                remise_globale=remise_pct_store,
                 total_ht=total_ttc,
                 tva_montant=Decimal("0"),
                 total_ttc=total_ttc,

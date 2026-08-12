@@ -783,7 +783,14 @@ def build_facture_pdf_bytesio(
 
     lignes_sorted = sorted(getattr(facture, "lignes", None) or [], key=lambda x: x.id)
     sous_total = sum(float(l.montant_ht or 0) for l in lignes_sorted)
-    remise_pct = float(getattr(facture, "remise_globale", 0) or 0)
+    rem_raw = float(getattr(facture, "remise_globale", 0) or 0)
+    remise_montant = max(0.0, sous_total - float(facture.total_ht or 0))
+    if rem_raw > 0 and rem_raw <= 100:
+        remise_pct = rem_raw
+    elif sous_total > 0 and remise_montant > 0:
+        remise_pct = round(remise_montant / sous_total * 100)
+    else:
+        remise_pct = 0
     line_chunks = _chunk_facture_lines(lignes_sorted)
     needs_break_before_bottom = (
         len(lignes_sorted) > 0 and len(line_chunks[-1]) >= _FACTURE_LINES_PER_PAGE
@@ -843,17 +850,23 @@ def build_facture_pdf_bytesio(
     )
 
     totals_data: list[list] = []
-    if remise_pct > 0.001:
-        remise_montant = sous_total - float(facture.total_ht or 0)
+    if remise_montant > 0.5:
         totals_data.append(
             [
-                Paragraph("Sous-total HT", tot_lbl),
+                Paragraph("Sous-total", tot_lbl),
                 _pdf_amount_paragraph(format_fcfa(sous_total), tot_val),
             ]
         )
         totals_data.append(
             [
-                Paragraph(escape(f"Remise ({remise_pct:g} %)"), tot_lbl),
+                Paragraph(
+                    escape(
+                        f"Remise (−{remise_pct:g} %)"
+                        if remise_pct
+                        else "Remise"
+                    ),
+                    tot_lbl,
+                ),
                 _pdf_amount_paragraph(f"−{format_fcfa(remise_montant)}", tot_val),
             ]
         )

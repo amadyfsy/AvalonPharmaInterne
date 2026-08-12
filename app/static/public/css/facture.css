@@ -3,14 +3,14 @@
    ======================================== */
 
 :root {
-  --inv-primary: #0e7490;
-  --inv-primary-light: #0891b2;
-  --inv-primary-soft: #ecfeff;
-  --inv-accent: #06b6d4;
-  --inv-ink: #0f172a;
+  --inv-primary: #721818;
+  --inv-primary-light: #8f2222;
+  --inv-primary-soft: #f8ecec;
+  --inv-accent: #b0dbdd;
+  --inv-ink: #1a1a1a;
   --inv-muted: #64748b;
-  --inv-border: #e2e8f0;
-  --inv-surface: #f8fafc;
+  --inv-border: #e5eef0;
+  --inv-surface: #f7fbfb;
   --inv-white: #ffffff;
 
   --print-top-margin: 12mm;
@@ -345,8 +345,13 @@ body.invoice-body {
 .invoice-info-card {
   background: var(--inv-surface);
   border: 1px solid var(--inv-border);
-  border-radius: 0;
-  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  padding: 0.75rem 0.85rem;
+}
+
+.invoice-info-card--facture {
+  border-color: rgba(114, 24, 24, 0.22);
+  background: linear-gradient(165deg, #fff 0%, var(--inv-primary-soft) 140%);
 }
 
 .invoice-info-card__label {
@@ -433,7 +438,7 @@ body.invoice-body {
   border-spacing: 0;
   font-size: 0.875rem;
   border: 1px solid var(--inv-border);
-  border-radius: 0;
+  border-radius: 8px;
   overflow: hidden;
 }
 
@@ -529,14 +534,14 @@ body.invoice-body {
 
 .invoice-words {
   display: block;
-  background: #ecfeff;
-  border-left: none;
-  border-radius: 0;
-  padding: 6px 6px 6px 10px;
+  background: var(--inv-primary-soft);
+  border-left: 3px solid var(--inv-primary);
+  border-radius: 0 6px 6px 0;
+  padding: 8px 10px 8px 12px;
   font-size: 10.5pt;
   line-height: 14pt;
   font-weight: 400;
-  color: #164e63;
+  color: #4a1515;
 }
 
 .invoice-words strong {
@@ -553,7 +558,7 @@ body.invoice-body {
 .invoice-totals {
   min-width: 240px;
   border: 1px solid var(--inv-border);
-  border-radius: 0;
+  border-radius: 8px;
   overflow: hidden;
 }
 
@@ -580,6 +585,11 @@ body.invoice-body {
   font-weight: 600;
   margin: 0;
   font-variant-numeric: tabular-nums;
+}
+
+.invoice-totals__row--remise dt,
+.invoice-totals__row--remise dd {
+  color: #b42318;
 }
 
 .invoice-totals__row--grand {

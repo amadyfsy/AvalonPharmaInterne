@@ -33,7 +33,17 @@
   {% for l in sorted_lignes %}
     {% set ns.sous_total = ns.sous_total + (l.montant_ht|float) %}
   {% endfor %}
-  {% set remise_pct = (facture.remise_globale|float) if facture.remise_globale else 0 %}
+  {% set rem_raw = (facture.remise_globale|float) if facture.remise_globale else 0 %}
+  {% set remise_montant = ns.sous_total - (facture.total_ht|float) %}
+  {% if remise_montant < 0 %}{% set remise_montant = 0 %}{% endif %}
+  {% if rem_raw > 0 and rem_raw <= 100 %}
+    {% set remise_pct_affiche = rem_raw %}
+  {% elif ns.sous_total > 0 and remise_montant > 0 %}
+    {% set remise_pct_affiche = (remise_montant / ns.sous_total * 100) %}
+  {% else %}
+    {% set remise_pct_affiche = 0 %}
+  {% endif %}
+  {% set show_remise = remise_montant > 0.5 %}
 
   <div id="app">
     <div class="invoice-shell">
@@ -155,14 +165,13 @@
                   </div>
 
                   <dl class="invoice-totals">
-                    {% if remise_pct > 0 %}
-                      {% set remise_montant = ns.sous_total - (facture.total_ht|float) %}
+                    {% if show_remise %}
                       <div class="invoice-totals__row">
-                        <dt>Sous-total HT</dt>
+                        <dt>Sous-total</dt>
                         <dd>{{ format_fcfa(ns.sous_total) }}</dd>
                       </div>
-                      <div class="invoice-totals__row">
-                        <dt>Remise ({{ remise_pct }}&nbsp;%)</dt>
+                      <div class="invoice-totals__row invoice-totals__row--remise">
+                        <dt>Remise{% if remise_pct_affiche %} (−{{ '%.0f'|format(remise_pct_affiche) }}&nbsp;%){% endif %}</dt>
                         <dd>−{{ format_fcfa(remise_montant) }}</dd>
                       </div>
                     {% endif %}
@@ -223,7 +232,7 @@
           text: url,
           width: 38,
           height: 38,
-          colorDark: "#0f172a",
+          colorDark: "#721818",
           colorLight: "#ffffff",
           correctLevel: QRCode.CorrectLevel.H
         });

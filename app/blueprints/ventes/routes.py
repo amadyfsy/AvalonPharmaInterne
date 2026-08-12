@@ -768,6 +768,7 @@ def factures():
         filtres_url=filtres_url,
         statuts_facture=_STATUTS_FACTURE,
         bl_par_facture=bl_par_facture,
+        format_fcfa=format_montant_espace,
     )
 
 @ventes_bp.route('/bons-livraison')

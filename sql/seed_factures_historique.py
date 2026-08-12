@@ -649,8 +649,10 @@ def run(dry_run: bool = False) -> None:
                 lignes_data.append((produit, int(qty), money(pu), montant))
 
             remise = Decimal("0")
+            remise_pct_store = Decimal("0")
             if raw.get("remise_pct"):
-                remise = money(sous_total * Decimal(raw["remise_pct"]) / Decimal("100"))
+                remise_pct_store = Decimal(raw["remise_pct"])
+                remise = money(sous_total * remise_pct_store / Decimal("100"))
 
             base_ht = money(sous_total - remise)
             tva_pct = Decimal(raw.get("tva_pct") or 0)
@@ -666,7 +668,7 @@ def run(dry_run: bool = False) -> None:
                 client_id=client.id,
                 date_emission=d_emis,
                 date_echeance=d_emis + timedelta(days=30),
-                remise_globale=remise,
+                remise_globale=remise_pct_store,
                 total_ht=base_ht,
                 tva_montant=tva_montant,
                 total_ttc=total_ttc,
