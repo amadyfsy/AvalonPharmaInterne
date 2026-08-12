@@ -1,8 +1,30 @@
 import os
 
 from dotenv import load_dotenv
+from sqlalchemy.engine import URL
 
 load_dotenv()
+
+
+def _database_uri() -> str:
+    """Construit l'URI MySQL sans que bash mange le $ du nom de base PA (DMS07$…)."""
+    explicit = (os.environ.get("DATABASE_URL") or "").strip()
+    user = (os.environ.get("MYSQL_USER") or "").strip()
+    password = os.environ.get("MYSQL_PASSWORD") or ""
+    host = (os.environ.get("MYSQL_HOST") or "").strip()
+    database = (os.environ.get("MYSQL_DATABASE") or "").strip()
+    if user and host and database:
+        return URL.create(
+            drivername="mysql+pymysql",
+            username=user,
+            password=password,
+            host=host,
+            database=database,
+            query={"charset": "utf8mb4"},
+        ).render_as_string(hide_password=False)
+    if explicit:
+        return explicit
+    return "mysql+pymysql://root:root@localhost:3306/medical_erp?charset=utf8mb4"
 
 
 class BaseConfig:
@@ -18,10 +40,7 @@ class BaseConfig:
     UPLOAD_FOLDER = os.path.join(BASEDIR, "instance", "uploads")
     MAX_CONTENT_LENGTH = 8 * 1024 * 1024
 
-    SQLALCHEMY_DATABASE_URI = os.environ.get(
-        "DATABASE_URL",
-        "mysql+pymysql://root:root@localhost:3306/medical_erp?charset=utf8mb4",
-    )
+    SQLALCHEMY_DATABASE_URI = _database_uri()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     MAIL_SERVER = os.environ.get("MAIL_SERVER", "")
