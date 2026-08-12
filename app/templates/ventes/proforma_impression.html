@@ -96,24 +96,7 @@
                   {% endif %}
                 </div>
 
-                <div class="invoice-info-card">
-                  <div class="invoice-info-card__label">Informations</div>
-                  {% if doc_params and doc_params.telephone %}
-                    <p class="invoice-info-card__detail">Tél. {{ doc_params.telephone }}</p>
-                  {% endif %}
-                  {% if doc_params and doc_params.email %}
-                    <p class="invoice-info-card__detail">Email {{ doc_params.email }}</p>
-                  {% endif %}
-                  {% if doc_params and doc_params.rc %}
-                    <p class="invoice-info-card__detail">RC {{ doc_params.rc }}</p>
-                  {% endif %}
-                  {% if doc_params and doc_params.ninea %}
-                    <p class="invoice-info-card__detail">NINEA {{ doc_params.ninea }}</p>
-                  {% endif %}
-                  {% if doc_params and doc_params.compte_bancaire %}
-                    <p class="invoice-info-card__detail">Compte bancaire {{ doc_params.compte_bancaire }}</p>
-                  {% endif %}
-                </div>
+                {% include 'ventes/_invoice_company_infos.html' %}
               </div>
 
               {% if is_lines_page %}

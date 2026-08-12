@@ -27,10 +27,14 @@ class ParametresDocuments(db.Model):
     lieu_signature = db.Column(db.String(120), nullable=False, default="St Louis")
     adresse_ligne = db.Column(db.String(500), nullable=False, default="")
     telephone = db.Column(db.String(120), nullable=False, default="77 444 14 01 - 77 764 87 28")
-    rc = db.Column(db.String(120), nullable=False, default="")
-    ninea = db.Column(db.String(120), nullable=False, default="")
+    rc = db.Column(db.String(120), nullable=False, default="SN STL 2008B1250")
+    ninea = db.Column(db.String(120), nullable=False, default="30835902K2")
     email = db.Column(db.String(255), nullable=False, default="avalonpharmasenegal@gmail.com")
-    compte_bancaire = db.Column(db.String(255), nullable=False, default="")
+    compte_bancaire = db.Column(
+        db.String(255),
+        nullable=False,
+        default="CBAO : SN012 08274 036182246001 48",
+    )
     logo_filename = db.Column(db.String(255), nullable=True)
     slogan = db.Column(db.String(255), nullable=False, default="Serving those who care for others")
     site_web = db.Column(db.String(255), nullable=False, default="https://avalonpharmasenegal.com")
@@ -42,13 +46,34 @@ class ParametresDocuments(db.Model):
     def get_singleton(cls):
         """Retourne la ligne id=1 ; crée la table si elle n’existe pas encore (sans migration manuelle)."""
 
+        defaults = {
+            "telephone": "77 444 14 01 - 77 764 87 28",
+            "email": "avalonpharmasenegal@gmail.com",
+            "rc": "SN STL 2008B1250",
+            "ninea": "30835902K2",
+            "compte_bancaire": "CBAO : SN012 08274 036182246001 48",
+        }
+
+        def _ensure_company_coords(row):
+            """Complète les coordonnées Avalon si absentes (facture = BL)."""
+            changed = False
+            for key, value in defaults.items():
+                current = (getattr(row, key, None) or "").strip()
+                if not current:
+                    setattr(row, key, value)
+                    changed = True
+            if changed:
+                db.session.commit()
+            return row
+
         def _load_or_create():
             row = db.session.get(cls, 1)
             if row is None:
-                row = cls(id=1)
+                row = cls(id=1, **defaults)
                 db.session.add(row)
                 db.session.commit()
-            return row
+                return row
+            return _ensure_company_coords(row)
 
         try:
             return _load_or_create()

@@ -61,18 +61,9 @@
             {% endif %}
           </div>
 
-          <div class="invoice-info-card">
-            <div class="invoice-info-card__label">Informations</div>
-            {% if doc_params and doc_params.telephone %}
-              <p class="invoice-info-card__detail">Tél. {{ doc_params.telephone }}</p>
-            {% endif %}
-            {% if doc_params and doc_params.email %}
-              <p class="invoice-info-card__detail">Email {{ doc_params.email }}</p>
-            {% endif %}
-            {% if bl.notes %}
-              <p class="invoice-info-card__detail">{{ bl.notes }}</p>
-            {% endif %}
-          </div>
+          {% with notes_extra=bl.notes %}
+            {% include 'ventes/_invoice_company_infos.html' %}
+          {% endwith %}
         </div>
 
         <div class="table-wrapper">
