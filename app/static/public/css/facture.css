@@ -30,13 +30,18 @@ body {
   padding: 0;
   width: 100%;
   min-height: 100%;
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  font-family: "Times New Roman", Times, serif;
   color: var(--inv-ink);
   -webkit-font-smoothing: antialiased;
 }
 
 body.invoice-body {
   background: linear-gradient(145deg, #f1f5f9 0%, #e2e8f0 100%);
+}
+
+.invoice-toolbar,
+.invoice-toolbar * {
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
 }
 
 /* Toolbar (écran uniquement) */
@@ -615,7 +620,7 @@ body.invoice-body {
 
 /* Bas de document : signature */
 .invoice-closure {
-  padding: 0.25rem 0 0.5rem;
+  padding: 0 0 0.25rem;
   display: flex;
   justify-content: flex-end;
 }
@@ -632,7 +637,7 @@ body.invoice-body {
 }
 
 .invoice-signature--cachet p {
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.15rem;
 }
 
 .invoice-cachet {

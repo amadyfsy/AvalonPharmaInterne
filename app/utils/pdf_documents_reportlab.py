@@ -12,7 +12,6 @@ from datetime import date
 from typing import Any, Callable
 from xml.sax.saxutils import escape
 
-import reportlab
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.lib.pagesizes import A4
@@ -20,7 +19,6 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.graphics import renderPDF
 from reportlab.graphics.barcode.qr import QrCodeWidget
 from reportlab.graphics.shapes import Drawing
@@ -49,10 +47,14 @@ def _ensure_fonts() -> None:
     global _FONTS_OK
     if _FONTS_OK:
         return
-    fonts_dir = os.path.join(os.path.dirname(reportlab.__file__), "fonts")
-    pdfmetrics.registerFont(TTFont("Vera", os.path.join(fonts_dir, "Vera.ttf")))
-    pdfmetrics.registerFont(TTFont("Vera-Bold", os.path.join(fonts_dir, "VeraBd.ttf")))
-    pdfmetrics.registerFont(TTFont("Vera-Italic", os.path.join(fonts_dir, "VeraIt.ttf")))
+    # Polices PDF standard (Times) — comme l’aperçu Times New Roman
+    pdfmetrics.registerFontFamily(
+        "Times-Roman",
+        normal="Times-Roman",
+        bold="Times-Bold",
+        italic="Times-Italic",
+        boldItalic="Times-BoldItalic",
+    )
     _FONTS_OK = True
 
 
@@ -78,7 +80,7 @@ def _story_coords(doc_params: Any, date_doc: date | None) -> list:
     normal = ParagraphStyle(
         name="DocCoords",
         parent=styles["Normal"],
-        fontName="Vera",
+        fontName="Times-Roman",
         fontSize=10.5,
         leading=14,
         alignment=TA_LEFT,
@@ -117,7 +119,7 @@ def _header_flowable(logo_path: str | None, doc_params: Any, usable_width: float
         title_right = ParagraphStyle(
             "tr",
             parent=styles["Normal"],
-            fontName="Vera-Bold",
+            fontName="Times-Bold",
             fontSize=10,
             leading=12,
             alignment=TA_RIGHT,
@@ -127,7 +129,7 @@ def _header_flowable(logo_path: str | None, doc_params: Any, usable_width: float
         small_right = ParagraphStyle(
             "sr",
             parent=styles["Normal"],
-            fontName="Vera",
+            fontName="Times-Roman",
             fontSize=9,
             leading=11,
             alignment=TA_RIGHT,
@@ -192,7 +194,7 @@ def build_proforma_pdf_bytesio(
     title_style = ParagraphStyle(
         "pt",
         parent=styles["Normal"],
-        fontName="Vera-Bold",
+        fontName="Times-Bold",
         fontSize=13,
         leading=16,
         alignment=TA_CENTER,
@@ -201,7 +203,7 @@ def build_proforma_pdf_bytesio(
     body = ParagraphStyle(
         "pb",
         parent=styles["Normal"],
-        fontName="Vera",
+        fontName="Times-Roman",
         fontSize=10.5,
         leading=14,
         spaceAfter=5,
@@ -226,11 +228,11 @@ def build_proforma_pdf_bytesio(
     col_q = usable_w * 0.11
     col_pu = usable_w * 0.185
     col_mt = usable_w * 0.185
-    hdr = ParagraphStyle("h", parent=body, fontName="Vera-Bold", fontSize=10, leading=12)
+    hdr = ParagraphStyle("h", parent=body, fontName="Times-Bold", fontSize=10, leading=12)
     c_left = ParagraphStyle("l", parent=body, fontSize=10, leading=12)
     c_right = ParagraphStyle("r", parent=body, fontSize=10, leading=12, alignment=TA_RIGHT)
-    c_tot_l = ParagraphStyle("tl", parent=c_left, fontName="Vera-Bold")
-    c_tot_r = ParagraphStyle("tr", parent=c_right, fontName="Vera-Bold")
+    c_tot_l = ParagraphStyle("tl", parent=c_left, fontName="Times-Bold")
+    c_tot_r = ParagraphStyle("tr", parent=c_right, fontName="Times-Bold")
 
     data = [
         [
@@ -417,7 +419,7 @@ def _facture_draw_header(
     _draw_qr_on_canvas(canvas, qr_x, qr_y, site_web, qr_size)
 
     slogan = _DEFAULT_SLOGAN
-    canvas.setFont("Vera-Italic", 7.5)
+    canvas.setFont("Times-Italic", 7.5)
     canvas.setFillColor(_INV_PRIMARY)
     slogan_y = qr_y + (qr_size / 2) - 1.5 * mm
     canvas.drawRightString(qr_x - 3 * mm, slogan_y, slogan)
@@ -427,12 +429,12 @@ def _facture_draw_header(
     
     rs = (getattr(doc_params, "raison_sociale", None) or "").strip()
     if rs:
-        canvas.setFont("Vera-Bold", 10)
+        canvas.setFont("Times-Bold", 10)
         canvas.setFillColor(_INV_INK)
         canvas.drawRightString(rm, y, rs)
         y -= 6 * mm
 
-    canvas.setFont("Vera", 9)
+    canvas.setFont("Times-Roman", 9)
     canvas.setFillColor(_INV_MUTED)
     
     lines: list[str] = []
@@ -515,7 +517,7 @@ def _facture_pdf_lines_table(
         ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
         ("BACKGROUND", (0, 0), (-1, 0), _INV_PRIMARY),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("FONTNAME", (0, 0), (-1, 0), "Vera-Bold"),
+        ("FONTNAME", (0, 0), (-1, 0), "Times-Bold"),
         ("FONTSIZE", (0, 0), (-1, 0), 8),
         ("BOX", (0, 0), (-1, -1), 0.75, _INV_BORDER),
         ("INNERGRID", (0, 0), (-1, -1), 0.5, _INV_BORDER),
@@ -707,7 +709,7 @@ def build_facture_pdf_bytesio(
     def on_page(c: Any, d: Any) -> None:
         _facture_draw_header(c, d, doc_params, logo_path, site_web)
         c.saveState()
-        c.setFont("Vera", 8)
+        c.setFont("Times-Roman", 8)
         c.setFillColor(_INV_MUTED)
         c.drawCentredString(A4[0] / 2, 7 * mm, f"Page {d.page} / {page_info['total']}")
         c.restoreState()
@@ -739,7 +741,7 @@ def build_facture_pdf_bytesio(
     title_line = ParagraphStyle(
         "ft_pro",
         parent=styles["Normal"],
-        fontName="Vera-Bold",
+        fontName="Times-Bold",
         fontSize=14,
         leading=18,
         alignment=TA_CENTER,
@@ -749,7 +751,7 @@ def build_facture_pdf_bytesio(
     body = ParagraphStyle(
         "fb",
         parent=styles["Normal"],
-        fontName="Vera",
+        fontName="Times-Roman",
         fontSize=10.5,
         leading=14,
         spaceAfter=6,
@@ -761,7 +763,7 @@ def build_facture_pdf_bytesio(
     hdr_l = ParagraphStyle(
         "fh_l",
         parent=body,
-        fontName="Vera-Bold",
+        fontName="Times-Bold",
         fontSize=8,
         leading=10,
         textColor=colors.white,
@@ -770,7 +772,7 @@ def build_facture_pdf_bytesio(
     hdr_c = ParagraphStyle(
         "fh_c",
         parent=body,
-        fontName="Vera-Bold",
+        fontName="Times-Bold",
         fontSize=8,
         leading=10,
         textColor=colors.white,
@@ -779,7 +781,7 @@ def build_facture_pdf_bytesio(
     hdr_r = ParagraphStyle(
         "fh_r",
         parent=body,
-        fontName="Vera-Bold",
+        fontName="Times-Bold",
         fontSize=8,
         leading=10,
         textColor=colors.white,
@@ -791,7 +793,7 @@ def build_facture_pdf_bytesio(
     body_amount = ParagraphStyle(
         "fba",
         parent=body,
-        fontName="Vera",
+        fontName="Times-Roman",
         textColor=colors.HexColor("#164e63"),
         backColor=colors.HexColor("#ecfeff"),
         borderPadding=6,
@@ -801,7 +803,7 @@ def build_facture_pdf_bytesio(
     card_label = ParagraphStyle(
         "card_lbl",
         parent=body,
-        fontName="Vera-Bold",
+        fontName="Times-Bold",
         fontSize=6.5,
         leading=8,
         textColor=_INV_PRIMARY,
@@ -810,7 +812,7 @@ def build_facture_pdf_bytesio(
     card_title = ParagraphStyle(
         "card_doc",
         parent=body,
-        fontName="Vera-Bold",
+        fontName="Times-Bold",
         fontSize=10,
         leading=12,
         textColor=_INV_INK,
@@ -827,7 +829,7 @@ def build_facture_pdf_bytesio(
     card_name = ParagraphStyle(
         "card_name",
         parent=body,
-        fontName="Vera-Bold",
+        fontName="Times-Bold",
         fontSize=9,
         leading=11,
         textColor=_INV_INK,
@@ -836,7 +838,7 @@ def build_facture_pdf_bytesio(
     card_phone = ParagraphStyle(
         "card_phone",
         parent=body,
-        fontName="Vera-Bold",
+        fontName="Times-Bold",
         fontSize=8,
         leading=10,
         textColor=_INV_INK,
@@ -914,7 +916,7 @@ def build_facture_pdf_bytesio(
     tot_val = ParagraphStyle(
         "tot_val",
         parent=body,
-        fontName="Vera-Bold",
+        fontName="Times-Bold",
         fontSize=9,
         leading=11,
         alignment=TA_RIGHT,
@@ -922,7 +924,7 @@ def build_facture_pdf_bytesio(
     tot_grand_l = ParagraphStyle(
         "tot_grand_l",
         parent=tot_lbl,
-        fontName="Vera-Bold",
+        fontName="Times-Bold",
         fontSize=10,
         textColor=colors.white,
     )
@@ -1030,7 +1032,7 @@ def build_facture_pdf_bytesio(
     story.append(Spacer(1, 2 * mm))
     story.append(bottom_tbl)
 
-    story.append(Spacer(1, 15 * mm))
+    story.append(Spacer(1, 6 * mm))
     sig_style = ParagraphStyle("sig", parent=body, alignment=TA_CENTER)
     
     # Build signature layout aligned to the right
@@ -1047,7 +1049,7 @@ def build_facture_pdf_bytesio(
             scale = min(max_w / float(iw), max_h / float(ih), 1.0)
             img.drawWidth = iw * scale
             img.drawHeight = ih * scale
-            sig_data.append([Spacer(1, 3 * mm)])
+            sig_data.append([Spacer(1, 0.5 * mm)])
             sig_data.append([img])
         except Exception:
             sig_data.append([Spacer(1, 25 * mm)])
@@ -1082,7 +1084,7 @@ def build_bl_pdf_bytesio(
     body = ParagraphStyle(
         "bb",
         parent=styles["Normal"],
-        fontName="Vera",
+        fontName="Times-Roman",
         fontSize=10.5,
         leading=14,
         spaceAfter=5,
@@ -1091,7 +1093,7 @@ def build_bl_pdf_bytesio(
     card_label = ParagraphStyle(
         "bl_card_lbl",
         parent=body,
-        fontName="Vera-Bold",
+        fontName="Times-Bold",
         fontSize=7,
         leading=9,
         textColor=_INV_PRIMARY,
@@ -1100,7 +1102,7 @@ def build_bl_pdf_bytesio(
     card_title = ParagraphStyle(
         "bl_card_title",
         parent=body,
-        fontName="Vera-Bold",
+        fontName="Times-Bold",
         fontSize=11,
         leading=13,
     )
@@ -1114,7 +1116,7 @@ def build_bl_pdf_bytesio(
     card_name = ParagraphStyle(
         "bl_card_name",
         parent=body,
-        fontName="Vera-Bold",
+        fontName="Times-Bold",
         fontSize=10,
         leading=12,
     )
@@ -1137,7 +1139,7 @@ def build_bl_pdf_bytesio(
 
     col_d = usable_w * 0.72
     col_q = usable_w * 0.28
-    hdr_l = ParagraphStyle("bhl", parent=body, fontName="Vera-Bold", fontSize=10, leading=12)
+    hdr_l = ParagraphStyle("bhl", parent=body, fontName="Times-Bold", fontSize=10, leading=12)
     hdr_c = ParagraphStyle("bhc", parent=hdr_l, alignment=TA_CENTER)
     c_left = ParagraphStyle("bl", parent=body, fontSize=10, leading=12)
     c_right = ParagraphStyle("br", parent=body, fontSize=10, leading=12, alignment=TA_RIGHT)
@@ -1167,7 +1169,7 @@ def build_bl_pdf_bytesio(
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
                 ("BACKGROUND", (0, 0), (-1, 0), _INV_PRIMARY),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("FONTNAME", (0, 0), (-1, 0), "Vera-Bold"),
+                ("FONTNAME", (0, 0), (-1, 0), "Times-Bold"),
                 ("BOX", (0, 0), (-1, -1), 0.75, _INV_BORDER),
                 ("INNERGRID", (0, 0), (-1, -1), 0.5, _INV_BORDER),
             ]
@@ -1175,7 +1177,7 @@ def build_bl_pdf_bytesio(
     )
     story.append(tbl)
 
-    story.append(Spacer(1, 15 * mm))
+    story.append(Spacer(1, 6 * mm))
     sig_style = ParagraphStyle("sig", parent=body, alignment=TA_CENTER)
 
     mois = [
@@ -1210,7 +1212,7 @@ def build_bl_pdf_bytesio(
             scale = min(max_w / float(iw), max_h / float(ih), 1.0)
             img.drawWidth = iw * scale
             img.drawHeight = ih * scale
-            sig_data.append([Spacer(1, 3 * mm)])
+            sig_data.append([Spacer(1, 0.5 * mm)])
             sig_data.append([img])
         except Exception:
             sig_data.append([Spacer(1, 25 * mm)])
