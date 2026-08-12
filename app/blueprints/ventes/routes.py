@@ -23,6 +23,7 @@ from ...utils.document_numero import (
 from ...utils.nombre_lettres import format_montant_espace
 from ...utils.parametres_pdf import get_logo_filepath, merge_browser_print_logo, pdf_company_context
 from ...utils.ventes_totaux import document_affiche_tva, montant_document_lettres
+from ...utils.pdf_merge import merge_pdf_bytes
 from ...utils.pdf_documents_reportlab import (
     build_bl_pdf_bytesio,
     build_facture_pdf_bytesio,
@@ -1803,7 +1804,8 @@ def proforma_pdf(id):
 @login_required
 @permission_required("ventes", "read")
 def facture_pdf(id):
-    """PDF ReportLab : en-tête / pied sur chaque page, zone pied 5 cm."""
+    """Téléchargement PDF direct — option avec_bl=1 pour joindre le BL."""
+    avec_bl = request.args.get("avec_bl", "0").lower() in ("1", "true", "oui", "yes")
     facture = (
         Facture.query.options(
             joinedload(Facture.client),
@@ -1812,6 +1814,18 @@ def facture_pdf(id):
         .filter_by(id=id)
         .first_or_404()
     )
+    bl = None
+    if avec_bl:
+        bl = (
+            BonLivraison.query.options(
+                joinedload(BonLivraison.client),
+                joinedload(BonLivraison.lignes).joinedload(LigneBL.produit),
+                joinedload(BonLivraison.lignes).joinedload(LigneBL.lot),
+            )
+            .filter_by(facture_id=id)
+            .first()
+        )
+
     ctx = _ctx_pdf_vente_ht(facture)
     dp = ctx["doc_params"]
     lieu = (getattr(dp, "lieu_signature", None) or "St Louis").strip()
@@ -1825,14 +1839,22 @@ def facture_pdf(id):
             logo_path,
             _date_lieu_fr(facture.date_emission, lieu),
         )
+        if bl:
+            bl_io = build_bl_pdf_bytesio(bl, dp, logo_path)
+            pdf_io = merge_pdf_bytes(pdf_io, bl_io)
     except Exception as e:
         current_app.logger.exception("PDF facture ReportLab échoué : %s", e)
-        flash("Impossible de générer le PDF de la facture. Réessayez ou contactez l’administrateur.", "danger")
+        flash(
+            "Impossible de générer le PDF de la facture. Réessayez ou contactez l’administrateur.",
+            "danger",
+        )
         return redirect(url_for("ventes.facture_detail", id=id))
+
+    prefix = "Facture+BL" if bl else "Facture"
     return send_file(
         pdf_io,
         download_name=download_name_document(
-            "Facture",
+            prefix,
             facture.numero,
             facture.client.raison_sociale if facture.client else None,
         ),

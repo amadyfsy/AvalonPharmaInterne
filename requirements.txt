@@ -20,4 +20,5 @@ Pillow==10.1.0
 bleach==6.1.0
 werkzeug==3.0.1
 num2words>=0.5.12
+pypdf>=5.0.0,<7
 gunicorn==22.0.0

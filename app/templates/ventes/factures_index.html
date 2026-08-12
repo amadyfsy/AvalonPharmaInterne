@@ -218,9 +218,11 @@
                         <i class="bi bi-pencil"></i>
                       </a>
                     {% endif %}
-                    <a class="btn btn-primary"
+                    <a class="btn btn-primary js-facture-download"
                        href="{{ url_for('ventes.facture_pdf', id=f.id) }}"
-                       download
+                       data-pdf-url="{{ url_for('ventes.facture_pdf', id=f.id) }}"
+                       data-has-bl="{{ '1' if bl_par_facture.get(f.id) else '0' }}"
+                       {% if bl_par_facture.get(f.id) %}data-bl-num="{{ bl_par_facture[f.id].numero }}"{% endif %}
                        title="Télécharger PDF">
                       <i class="bi bi-download"></i>
                     </a>

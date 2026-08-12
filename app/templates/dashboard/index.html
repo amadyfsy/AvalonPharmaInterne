@@ -221,8 +221,10 @@
                     <td>
                       <a href="{{ url_for('ventes.facture_detail', id=f.id) }}" class="btn btn-sm btn-icon" title="Voir"><i class="bi bi-eye"></i></a>
                       <a href="{{ url_for('ventes.facture_pdf', id=f.id) }}"
-                         class="btn btn-sm btn-icon btn-primary"
-                         download
+                         class="btn btn-sm btn-icon btn-primary js-facture-download"
+                         data-pdf-url="{{ url_for('ventes.facture_pdf', id=f.id) }}"
+                         data-has-bl="{{ '1' if bl_par_facture.get(f.id) else '0' }}"
+                         {% if bl_par_facture.get(f.id) %}data-bl-num="{{ bl_par_facture[f.id].numero }}"{% endif %}
                          title="Télécharger PDF"><i class="bi bi-download"></i></a>
                       <a href="{{ url_for('ventes.facture_imprimer', id=f.id) }}"
                          class="btn btn-sm btn-icon js-facture-print"
