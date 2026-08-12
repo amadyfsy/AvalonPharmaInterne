@@ -20,9 +20,10 @@ jobs:
           PA_PASSWORD: ${{ secrets.PA_PASSWORD }}
           PA_API_TOKEN: ${{ secrets.PA_API_TOKEN }}
           MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          PA_DOMAIN: ${{ secrets.PA_DOMAIN }}
         run: |
           missing=0
-          for name in PA_USERNAME PA_PASSWORD PA_API_TOKEN MYSQL_PASSWORD; do
+          for name in PA_USERNAME PA_PASSWORD PA_API_TOKEN MYSQL_PASSWORD PA_DOMAIN; do
             if [ -z "${!name}" ]; then
               echo "::error::Secret GitHub manquant : $name"
               missing=1
@@ -30,7 +31,7 @@ jobs:
           done
           if [ "$missing" -eq 1 ]; then
             echo "Ajoutez les secrets dans GitHub → Settings → Secrets → Actions"
-            echo "Voir deploy/register_secrets.md"
+            echo "Exemple DMS07 + Avalon : PA_DOMAIN=avalonpharma.pythonanywhere.com"
             exit 1
           fi
 
@@ -38,6 +39,7 @@ jobs:
         uses: appleboy/ssh-action@v1.2.0
         env:
           PA_USERNAME: ${{ secrets.PA_USERNAME }}
+          PA_DOMAIN: ${{ secrets.PA_DOMAIN }}
           MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
           SECURITY_PASSWORD_SALT: ${{ secrets.SECURITY_PASSWORD_SALT }}
@@ -48,18 +50,27 @@ jobs:
           username: ${{ secrets.PA_USERNAME }}
           password: ${{ secrets.PA_PASSWORD }}
           command_timeout: 20m
-          envs: PA_USERNAME,MYSQL_PASSWORD,SECRET_KEY,SECURITY_PASSWORD_SALT,ENCRYPTION_KEY,PUBLIC_CORS_ORIGINS
+          envs: PA_USERNAME,PA_DOMAIN,MYSQL_PASSWORD,SECRET_KEY,SECURITY_PASSWORD_SALT,ENCRYPTION_KEY,PUBLIC_CORS_ORIGINS
           script: |
             set -euo pipefail
 
             PROJECT_DIR="$HOME/AvalonPharmaInterne"
             VENV_DIR="$HOME/.virtualenvs/avalon-interne"
             REPO_URL="https://github.com/amadyfsy/AvalonPharmaInterne.git"
-            PYTHON_BIN="/usr/bin/python3.10"
             PA_USER="${PA_USERNAME}"
-            DB_NAME="${PA_DB_NAME:-${PA_USER}%24Avalon_pharma}"
+            DOMAIN="${PA_DOMAIN}"
+            # WSGI = domaine avec points → underscores (NE PAS utiliser DMS07_*.wsgi = DMS-Shoper)
+            WSGI_FILE="/var/www/$(echo "$DOMAIN" | tr '.' '_')_wsgi.py"
+            DB_NAME="${PA_USER}%24Avalon_pharma"
 
-            echo "=== AvalonPharmaInterne — $PA_USER ==="
+            for py in /usr/bin/python3.12 /usr/bin/python3.11 /usr/bin/python3.10; do
+              if [ -x "$py" ]; then PYTHON_BIN="$py"; break; fi
+            done
+            PYTHON_BIN="${PYTHON_BIN:-python3}"
+
+            echo "=== Avalon → $DOMAIN (compte $PA_USER) ==="
+            echo "WSGI: $WSGI_FILE"
+            echo "Python: $PYTHON_BIN"
 
             if [ ! -d "$PROJECT_DIR/.git" ]; then
               git clone "$REPO_URL" "$PROJECT_DIR"
@@ -116,16 +127,16 @@ jobs:
                 print("Tables MySQL OK.")
             PY
 
-            WSGI="/var/www/${PA_USER}_pythonanywhere_com_wsgi.py"
-            cat > "$WSGI" <<EOF
+            cat > "$WSGI_FILE" <<EOF
             import sys
             project_home = '/home/${PA_USER}/AvalonPharmaInterne'
             if project_home not in sys.path:
                 sys.path.insert(0, project_home)
             from wsgi import application
             EOF
+            sed -i 's/^[[:space:]]*//' "$WSGI_FILE"
 
-            echo "Déploiement terminé."
+            echo "Déploiement terminé → https://${DOMAIN}"
 
       - name: Configurer l'application Web (API)
         env:
@@ -135,7 +146,7 @@ jobs:
           PA_API_HOST: ${{ secrets.PA_API_HOST }}
         run: |
           API_HOST="${PA_API_HOST:-www.pythonanywhere.com}"
-          DOMAIN="${PA_DOMAIN:-${PA_USERNAME}.pythonanywhere.com}"
+          DOMAIN="${PA_DOMAIN}"
           USER="${PA_USERNAME}"
           curl -fsS -X PATCH \
             -H "Authorization: Token ${PA_API_TOKEN}" \
@@ -152,8 +163,8 @@ jobs:
           PA_API_HOST: ${{ secrets.PA_API_HOST }}
         run: |
           API_HOST="${PA_API_HOST:-www.pythonanywhere.com}"
-          DOMAIN="${PA_DOMAIN:-${PA_USERNAME}.pythonanywhere.com}"
+          DOMAIN="${PA_DOMAIN}"
           curl -fsS -X POST \
             -H "Authorization: Token ${PA_API_TOKEN}" \
             "https://${API_HOST}/api/v0/user/${PA_USERNAME}/webapps/${DOMAIN}/reload/"
-          echo "✓ https://${DOMAIN}"
+          echo "✓ https://${DOMAIN}/auth/login"
