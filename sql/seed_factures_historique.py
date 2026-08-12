@@ -29,11 +29,26 @@ if str(ROOT) not in sys.path:
 
 FACTURES = [
     {
+        "numero": "2025/10/03",
+        "date": date(2025, 10, 9),
+        "client": "Tambedou TSO Touba",
+        "lignes": [
+            ("Table Motorisée", 1, 360000),
+            ("Valise à monture de verres", 1, 100000),
+        ],
+    },
+    {
+        "numero": "2025/10/04",
+        "date": date(2025, 10, 23),
+        "client": "Hôpital Tivaouane",
+        "lignes": [("Boîte d'amputation", 1, 350000)],
+    },
+    {
         "numero": "2025/10/05",
         "date": date(2025, 10, 23),
         "client": "Hôpital Tivaouane",
         "lignes": [
-            ("Gants pour invasion utérine", 400, 650),
+            ("Gants de révision utérine", 400, 650),
             ("Kit de traction adulte", 20, 5000),
             ("Kit de traction enfant", 10, 5000),
         ],
@@ -42,7 +57,33 @@ FACTURES = [
         "numero": "2025/10/06",
         "date": date(2025, 10, 23),
         "client": "Hôpital Tivaouane",
-        "lignes": [("Filtre antibactérien HME", 100, 1820)],
+        "lignes": [("Filtre antibactérien", 100, 1820)],
+    },
+    {
+        "numero": "2025/10/08",
+        "date": date(2025, 10, 27),
+        "client": "Centre de Santé Keur Niang Touba",
+        "lignes": [("Autoclave 18L", 1, 800000)],
+        "remise_pct": Decimal("50"),
+    },
+    {
+        "numero": "2025/10/09",
+        "date": date(2025, 10, 29),
+        "client": "Centre de Santé Keur Niang Touba",
+        "lignes": [("Autoclave 18L", 1, 800000)],
+    },
+    {
+        "numero": "2025/11/01",
+        "date": date(2025, 11, 3),
+        "client": "CHR Saint-Louis",
+        "lignes": [
+            ("Gants Stériles T 7,5", 300, 6500),
+            ("Gants Stériles T 8", 150, 6500),
+            ("Gants pour invasion utérine", 10, 32500),
+            ("Trousse Universelle", 1200, 9860),
+            ("Surgicel", 25, 13985),
+            ("Kit de Fixation", 25, 10985),
+        ],
     },
     {
         "numero": "2026/01/02",

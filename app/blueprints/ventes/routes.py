@@ -1,7 +1,7 @@
 import datetime as dt
 from datetime import datetime
 
-from sqlalchemy import func, or_
+from sqlalchemy import extract, func, or_
 from ...extensions import db
 from ...models.bon_livraison import BonLivraison, LigneBL
 from ...models.client import Client
@@ -701,11 +701,24 @@ _STATUTS_FACTURE = (
 def factures():
     q = (request.args.get('q') or '').strip()
     statut = (request.args.get('statut') or '').strip()
+    annee = request.args.get('annee', type=int)
     page = request.args.get('page', 1, type=int)
     if page < 1:
         page = 1
     if statut and statut not in _STATUTS_FACTURE:
         statut = ''
+
+    annees_dispo = [
+        int(y)
+        for (y,) in db.session.query(extract('year', Facture.date_emission))
+        .filter(Facture.date_emission.isnot(None))
+        .distinct()
+        .order_by(extract('year', Facture.date_emission).desc())
+        .all()
+        if y is not None
+    ]
+    if annee and annee not in annees_dispo:
+        annee = None
 
     query = Facture.query.options(joinedload(Facture.client))
     if q:
@@ -718,6 +731,8 @@ def factures():
         )
     if statut:
         query = query.filter(Facture.statut == statut)
+    if annee:
+        query = query.filter(extract('year', Facture.date_emission) == annee)
 
     pagination = (
         query.order_by(
@@ -733,6 +748,8 @@ def factures():
         filtres_url['q'] = q
     if statut:
         filtres_url['statut'] = statut
+    if annee:
+        filtres_url['annee'] = annee
 
     bl_par_facture = {}
     if pagination.items:
@@ -746,6 +763,8 @@ def factures():
         pagination=pagination,
         q=q,
         statut_filtre=statut,
+        annee_filtre=annee,
+        annees_dispo=annees_dispo,
         filtres_url=filtres_url,
         statuts_facture=_STATUTS_FACTURE,
         bl_par_facture=bl_par_facture,

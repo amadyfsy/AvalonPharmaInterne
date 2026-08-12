@@ -47,14 +47,23 @@
   <div class="card shadow-sm border-0 mb-4">
     <div class="card-body">
       <form id="facturesFiltersForm" method="get" action="{{ url_for('ventes.factures') }}" class="row g-3 align-items-end" role="search">
-        <div class="col-md-5 col-lg-6">
+        <div class="col-md-4 col-lg-4">
           <label class="form-label small text-muted mb-1" for="factQ">Rechercher</label>
           <div class="input-group">
             <span class="input-group-text"><i class="bi bi-search"></i></span>
             <input type="search" class="form-control" id="factQ" name="q" value="{{ q }}" placeholder="N° facture, client…" autocomplete="off">
           </div>
         </div>
-        <div class="col-md-4 col-lg-3">
+        <div class="col-md-3 col-lg-2">
+          <label class="form-label small text-muted mb-1" for="factAnnee">Année</label>
+          <select class="form-select" id="factAnnee" name="annee" onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()">
+            <option value="" {% if not annee_filtre %}selected{% endif %}>Toutes</option>
+            {% for y in annees_dispo %}
+              <option value="{{ y }}" {% if annee_filtre == y %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3 col-lg-3">
           <label class="form-label small text-muted mb-1" for="factStatut">Statut</label>
           <select class="form-select" id="factStatut" name="statut" onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()">
             <option value="" {% if not statut_filtre %}selected{% endif %}>Tous les statuts</option>
@@ -63,8 +72,8 @@
             {% endfor %}
           </select>
         </div>
-        <div class="col-md-3 col-lg-3 d-flex align-items-end">
-          {% if q or statut_filtre %}
+        <div class="col-md-2 col-lg-3 d-flex align-items-end">
+          {% if q or statut_filtre or annee_filtre %}
             <a href="{{ url_for('ventes.factures') }}" class="btn btn-outline-secondary">Tout afficher</a>
           {% endif %}
         </div>
@@ -73,6 +82,7 @@
         {% if pagination.total %}
           <strong>{{ pagination.total }}</strong> facture(s)
           {% if q %} pour « {{ q }} »{% endif %}
+          {% if annee_filtre %} · année {{ annee_filtre }}{% endif %}
           {% if statut_filtre %} · statut : {{ libelle_statut_facture(statut_filtre) }}{% endif %}
           {% if pagination.pages > 1 %} · page {{ pagination.page }}/{{ pagination.pages }}{% endif %}
         {% else %}
