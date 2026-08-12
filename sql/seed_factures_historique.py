@@ -181,7 +181,7 @@ FACTURES = [
     {
         "numero": "2026/03/05",
         "date": date(2026, 3, 31),
-        "client": "Centre de Santé Keur Niang",
+        "client": "Centre de Santé Keur Niang Touba",
         "lignes": [("Réfrigérateur médical 400L", 1, 510000)],
     },
     {
@@ -462,7 +462,7 @@ FACTURES = [
     {
         "numero": "2026/07/12",
         "date": date(2026, 7, 29),
-        "client": "Hôpital Linguère",
+        "client": "CH Maguette Lo de Linguère",
         "lignes": [("Lampe à fente", 1, 950000)],
     },
     {
@@ -504,6 +504,20 @@ FACTURES = [
         ],
     },
 ]
+
+
+# Alias → nom canonique (évite les doublons clients)
+CLIENT_ALIASES = {
+    "Hôpital Linguère": "CH Maguette Lo de Linguère",
+    "Hopital Linguère": "CH Maguette Lo de Linguère",
+    "Hôpital Linguere": "CH Maguette Lo de Linguère",
+    "C H Magatte Lo de Linguère": "CH Maguette Lo de Linguère",
+    "CH Magatte Lo de Linguère": "CH Maguette Lo de Linguère",
+    "Centre Hospitalier Maguette Lo de Linguere": "CH Maguette Lo de Linguère",
+    "Centre de Santé Keur Niang": "Centre de Santé Keur Niang Touba",
+    "Centre de santé Keur Niang": "Centre de Santé Keur Niang Touba",
+    "CENTRE DE SANTE KEUR NIANG TOUBA": "Centre de Santé Keur Niang Touba",
+}
 
 
 def slugify(text: str) -> str:
@@ -556,7 +570,7 @@ def run(dry_run: bool = False) -> None:
                 print(f"  skip {numero} (existe déjà)")
                 continue
 
-            client_name = raw["client"]
+            client_name = CLIENT_ALIASES.get(raw["client"], raw["client"])
             client = clients_by_name.get(client_name)
             if not client:
                 code = "CLI-" + slugify(client_name)[:20]
