@@ -1,24 +1,19 @@
-{# Bloc « Informations » société — facture, BL, proforma #}
+{# Bloc « Informations » société — facture, BL, proforma (toujours visible) #}
+{% set _tel = ((doc_params.telephone if doc_params else none) or '77 444 14 01 - 77 764 87 28')|trim %}
+{% set _email = ((doc_params.email if doc_params else none) or 'avalonpharmasenegal@gmail.com')|trim %}
+{% set _rc = ((doc_params.rc if doc_params else none) or 'SN STL 2008B1250')|trim %}
+{% set _ninea = ((doc_params.ninea if doc_params else none) or '30835902K2')|trim %}
+{% set _cb = ((doc_params.compte_bancaire if doc_params else none) or 'CBAO : SN012 08274 036182246001 48')|trim %}
 <div class="invoice-info-card">
   <div class="invoice-info-card__label">Informations</div>
-  {% if doc_params and doc_params.telephone %}
-    <p class="invoice-info-card__detail">Tél. {{ doc_params.telephone }}</p>
-  {% endif %}
-  {% if doc_params and doc_params.email %}
-    <p class="invoice-info-card__detail">Email {{ doc_params.email }}</p>
-  {% endif %}
-  {% if doc_params and doc_params.rc %}
-    <p class="invoice-info-card__detail">RC {{ doc_params.rc }}</p>
-  {% endif %}
-  {% if doc_params and doc_params.ninea %}
-    <p class="invoice-info-card__detail">NINEA {{ doc_params.ninea }}</p>
-  {% endif %}
+  <p class="invoice-info-card__detail">Tél. {{ _tel }}</p>
+  <p class="invoice-info-card__detail">Email {{ _email }}</p>
+  <p class="invoice-info-card__detail">RC {{ _rc }}</p>
+  <p class="invoice-info-card__detail">NINEA {{ _ninea }}</p>
   {% if mode_paiement is defined and mode_paiement %}
     <p class="invoice-info-card__detail">Paiement {{ mode_paiement }}</p>
   {% endif %}
-  {% if doc_params and doc_params.compte_bancaire %}
-    <p class="invoice-info-card__detail">Compte bancaire {{ doc_params.compte_bancaire }}</p>
-  {% endif %}
+  <p class="invoice-info-card__detail">Compte bancaire {{ _cb }}</p>
   {% if notes_extra is defined and notes_extra %}
     <p class="invoice-info-card__detail">{{ notes_extra }}</p>
   {% endif %}

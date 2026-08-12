@@ -52,6 +52,18 @@ def get_logo_filepath() -> str | None:
 DEFAULT_COMPANY_SLOGAN = "Serving those who care for others"
 DEFAULT_SITE_WEB = "https://avalonpharmasenegal.com"
 DEFAULT_COMPANY_EMAIL = "avalonpharmasenegal@gmail.com"
+DEFAULT_COMPANY_TELEPHONE = "77 444 14 01 - 77 764 87 28"
+DEFAULT_COMPANY_RC = "SN STL 2008B1250"
+DEFAULT_COMPANY_NINEA = "30835902K2"
+DEFAULT_COMPANY_COMPTE = "CBAO : SN012 08274 036182246001 48"
+
+DEFAULT_COMPANY_COORDS = {
+    "telephone": DEFAULT_COMPANY_TELEPHONE,
+    "email": DEFAULT_COMPANY_EMAIL,
+    "rc": DEFAULT_COMPANY_RC,
+    "ninea": DEFAULT_COMPANY_NINEA,
+    "compte_bancaire": DEFAULT_COMPANY_COMPTE,
+}
 
 
 def resolve_company_email(row: ParametresDocuments | None) -> str:
@@ -60,9 +72,21 @@ def resolve_company_email(row: ParametresDocuments | None) -> str:
 
 
 def ensure_doc_params_email(row: ParametresDocuments | None) -> ParametresDocuments | None:
-    """Garantit l'email société sur les documents (affichage factures / PDF)."""
-    if row is not None and not (row.email or "").strip():
-        row.email = DEFAULT_COMPANY_EMAIL
+    """Garantit les coordonnées société sur facture / BL / PDF."""
+    if row is None:
+        return None
+    changed = False
+    for key, value in DEFAULT_COMPANY_COORDS.items():
+        if not (getattr(row, key, None) or "").strip():
+            setattr(row, key, value)
+            changed = True
+    if changed:
+        try:
+            from ..extensions import db
+
+            db.session.commit()
+        except Exception:
+            pass
     return row
 
 

@@ -326,7 +326,7 @@ def _facture_coords_line(doc_params: Any) -> str:
     return " ".join(parts)
 
 
-_INV_PRIMARY = colors.HexColor("#0891b2")
+_INV_PRIMARY = colors.HexColor("#721818")
 _INV_INK = colors.HexColor("#0f172a")
 _INV_MUTED = colors.HexColor("#64748b")
 _INV_BORDER = colors.HexColor("#e2e8f0")
@@ -527,6 +527,34 @@ def _facture_pdf_lines_table(
     return tbl
 
 
+def _company_info_rows(
+    doc_params: Any,
+    *,
+    card_label: ParagraphStyle,
+    card_sub: ParagraphStyle,
+    mode_paiement: str | None = None,
+    notes: str | None = None,
+) -> list:
+    """Lignes du bloc INFORMATIONS (facture / BL / proforma)."""
+    from .parametres_pdf import DEFAULT_COMPANY_COORDS
+
+    def _val(key: str) -> str:
+        raw = (getattr(doc_params, key, None) or "").strip() if doc_params else ""
+        return raw or DEFAULT_COMPANY_COORDS.get(key, "")
+
+    rows: list = [[Paragraph("INFORMATIONS", card_label)]]
+    rows.append([Paragraph(escape(f"Tél. {_val('telephone')}"), card_sub)])
+    rows.append([Paragraph(escape(f"Email {_val('email')}"), card_sub)])
+    rows.append([Paragraph(escape(f"RC {_val('rc')}"), card_sub)])
+    rows.append([Paragraph(escape(f"NINEA {_val('ninea')}"), card_sub)])
+    if mode_paiement:
+        rows.append([Paragraph(escape(f"Paiement {mode_paiement}"), card_sub)])
+    rows.append([Paragraph(escape(f"Compte bancaire {_val('compte_bancaire')}"), card_sub)])
+    if notes:
+        rows.append([Paragraph(escape(notes), card_sub)])
+    return rows
+
+
 def _facture_pdf_info_grid(
     facture: Any,
     doc_params: Any,
@@ -557,24 +585,77 @@ def _facture_pdf_info_grid(
     if client and getattr(client, "telephone", None):
         left_rows.append([Paragraph(escape(f"Tél. {client.telephone}"), card_phone)])
 
-    right_rows: list = [[Paragraph("INFORMATIONS", card_label)]]
-    tel = getattr(doc_params, "telephone", None)
-    email = getattr(doc_params, "email", None)
-    if tel:
-        right_rows.append([Paragraph(escape(f"Tél. {tel}"), card_sub)])
-    if email:
-        right_rows.append([Paragraph(escape(f"Email {email}"), card_sub)])
-    rc = getattr(doc_params, "rc", None)
-    ninea = getattr(doc_params, "ninea", None)
-    if rc:
-        right_rows.append([Paragraph(escape(f"RC {rc}"), card_sub)])
-    if ninea:
-        right_rows.append([Paragraph(escape(f"NINEA {ninea}"), card_sub)])
-    if getattr(facture, "mode_paiement", None):
-        right_rows.append([Paragraph(escape(f"Paiement {facture.mode_paiement}"), card_sub)])
-    cb = (getattr(doc_params, "compte_bancaire", None) or "").strip()
-    if cb:
-        right_rows.append([Paragraph(escape(f"Compte bancaire {cb}"), card_sub)])
+    right_rows = _company_info_rows(
+        doc_params,
+        card_label=card_label,
+        card_sub=card_sub,
+        mode_paiement=getattr(facture, "mode_paiement", None),
+    )
+
+    left_tbl = Table(left_rows, colWidths=[usable_w * 0.46])
+    right_tbl = Table(right_rows, colWidths=[usable_w * 0.46])
+    card_style = TableStyle(
+        [
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("BOX", (0, 0), (-1, -1), 0.75, _INV_BORDER),
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
+        ]
+    )
+    left_tbl.setStyle(card_style)
+    right_tbl.setStyle(card_style)
+    info_grid = Table(
+        [[left_tbl, Spacer(usable_w * 0.04, 1), right_tbl]],
+        colWidths=[usable_w * 0.48, usable_w * 0.04, usable_w * 0.48],
+    )
+    info_grid.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]))
+    return info_grid
+
+
+def _bl_pdf_info_grid(
+    bl: Any,
+    doc_params: Any,
+    usable_w: float,
+    *,
+    card_label: ParagraphStyle,
+    card_title: ParagraphStyle,
+    card_sub: ParagraphStyle,
+    card_name: ParagraphStyle,
+) -> Table:
+    left_rows: list = [
+        [Paragraph("BON DE LIVRAISON", card_label)],
+        [Paragraph(escape(f"N° {bl.numero}"), card_title)],
+    ]
+    if getattr(bl, "date_livraison", None):
+        left_rows.append(
+            [
+                Paragraph(
+                    escape(f"Livraison le {bl.date_livraison.strftime('%d/%m/%Y')}"),
+                    card_sub,
+                )
+            ]
+        )
+    left_rows.append([Spacer(1, 1 * mm)])
+    left_rows.append([Paragraph("CLIENT", card_label)])
+    cn = bl.client.raison_sociale if getattr(bl, "client", None) else "—"
+    left_rows.append([Paragraph(escape(cn), card_name)])
+    adr = (getattr(bl, "adresse_livraison", None) or "").strip()
+    if adr:
+        left_rows.append([Paragraph(escape(adr), card_sub)])
+    livreur = (getattr(bl, "livreur", None) or "").strip()
+    if livreur:
+        left_rows.append([Paragraph(escape(f"Livreur : {livreur}"), card_sub)])
+
+    notes = (getattr(bl, "notes", None) or "").strip()
+    right_rows = _company_info_rows(
+        doc_params,
+        card_label=card_label,
+        card_sub=card_sub,
+        notes=notes or None,
+    )
 
     left_tbl = Table(left_rows, colWidths=[usable_w * 0.46])
     right_tbl = Table(right_rows, colWidths=[usable_w * 0.46])
@@ -973,15 +1054,6 @@ def build_bl_pdf_bytesio(bl: Any, doc_params: Any, logo_path: str | None) -> io.
     usable_w = A4[0] - LM - RM
 
     styles = getSampleStyleSheet()
-    title_style = ParagraphStyle(
-        "bt",
-        parent=styles["Normal"],
-        fontName="Vera-Bold",
-        fontSize=13,
-        leading=16,
-        alignment=TA_CENTER,
-        spaceAfter=10,
-    )
     body = ParagraphStyle(
         "bb",
         parent=styles["Normal"],
@@ -991,15 +1063,51 @@ def build_bl_pdf_bytesio(bl: Any, doc_params: Any, logo_path: str | None) -> io.
         spaceAfter=5,
     )
     small = ParagraphStyle("bs", parent=body, fontSize=9, leading=11)
+    card_label = ParagraphStyle(
+        "bl_card_lbl",
+        parent=body,
+        fontName="Vera-Bold",
+        fontSize=7,
+        leading=9,
+        textColor=_INV_PRIMARY,
+        spaceAfter=2,
+    )
+    card_title = ParagraphStyle(
+        "bl_card_title",
+        parent=body,
+        fontName="Vera-Bold",
+        fontSize=11,
+        leading=13,
+    )
+    card_sub = ParagraphStyle(
+        "bl_card_sub",
+        parent=body,
+        fontSize=8.5,
+        leading=11,
+        textColor=_INV_MUTED,
+    )
+    card_name = ParagraphStyle(
+        "bl_card_name",
+        parent=body,
+        fontName="Vera-Bold",
+        fontSize=10,
+        leading=12,
+    )
 
     story: list = []
     story.extend(_header_flowable(logo_path, doc_params, usable_w))
-    story.append(Paragraph(escape(f"Bordereau de Livraison No {bl.numero}"), title_style))
-    cn = bl.client.raison_sociale if getattr(bl, "client", None) else ""
-    story.append(Paragraph(f"<b>CLIENT :</b> {escape(cn)}", body))
-    adr = (getattr(bl, "adresse_livraison", None) or "").strip()
-    if adr:
-        story.append(Paragraph(escape(adr), body))
+    story.append(Spacer(1, 2 * mm))
+    story.append(
+        _bl_pdf_info_grid(
+            bl,
+            doc_params,
+            usable_w,
+            card_label=card_label,
+            card_title=card_title,
+            card_sub=card_sub,
+            card_name=card_name,
+        )
+    )
     story.append(Spacer(1, 4 * mm))
 
     col_d = usable_w * 0.72
@@ -1032,36 +1140,46 @@ def build_bl_pdf_bytesio(bl: Any, doc_params: Any, logo_path: str | None) -> io.
                 ("RIGHTPADDING", (0, 0), (-1, -1), 5),
                 ("TOPPADDING", (0, 0), (-1, -1), 4),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#D3D3D3")), 
+                ("BACKGROUND", (0, 0), (-1, 0), _INV_PRIMARY),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                 ("FONTNAME", (0, 0), (-1, 0), "Vera-Bold"),
-                ("BOX", (0, 0), (-1, -1), 1.5, colors.black),
-                ("INNERGRID", (0, 0), (-1, -1), 1.5, colors.black),
+                ("BOX", (0, 0), (-1, -1), 0.75, _INV_BORDER),
+                ("INNERGRID", (0, 0), (-1, -1), 0.5, _INV_BORDER),
             ]
         )
     )
     story.append(tbl)
-    
-    notes = (getattr(bl, "notes", None) or "").strip()
-    if notes:
-        story.append(Spacer(1, 4 * mm))
-        story.append(Paragraph(f"<b>Notes :</b> {escape(notes)}", small))
-        
+
     story.append(Spacer(1, 15 * mm))
-    # Add signature block for BL
     sig_style = ParagraphStyle("sig", parent=body, alignment=TA_CENTER)
-    
-    mois = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
+
+    mois = [
+        "janvier",
+        "février",
+        "mars",
+        "avril",
+        "mai",
+        "juin",
+        "juillet",
+        "août",
+        "septembre",
+        "octobre",
+        "novembre",
+        "décembre",
+    ]
     lieu = (getattr(doc_params, "lieu_signature", None) or "St Louis").strip()
     d = bl.date_livraison
-    date_str = f"{lieu}, le {d.day} {mois[d.month - 1].capitalize()} {d.year}" if d else ""
-    
+    date_str = (
+        f"{lieu}, le {d.day} {mois[d.month - 1].capitalize()} {d.year}" if d else ""
+    )
+
     sig_data = []
     if date_str:
         sig_data.append([Paragraph(escape(date_str), sig_style)])
-    sig_data.append([Spacer(1, 25 * mm)]) # space for stamp/signature
-    
+    sig_data.append([Spacer(1, 25 * mm)])
+
     sig_table = Table(sig_data, colWidths=[65 * mm])
-    sig_table.hAlign = 'RIGHT'
+    sig_table.hAlign = "RIGHT"
     story.append(sig_table)
     pied = (getattr(doc_params, "pied_de_page", None) or "").strip()
     if pied:

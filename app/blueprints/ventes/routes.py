@@ -15,6 +15,7 @@ from ...utils.categorie_depense_registry import CODE_VENTE_LIEE, get_categorie_b
 from ...utils.decorators import permission_required, user_has_permission
 from ...utils.depense_justificatif import remove_justificatif_file, upload_depense_justificatif
 from ...utils.depense_reference import prochaine_reference_depense
+from ...utils.document_numero import numero_bl_pour_facture, prochain_numero_document
 from ...utils.nombre_lettres import format_montant_espace
 from ...utils.parametres_pdf import get_logo_filepath, merge_browser_print_logo, pdf_company_context
 from ...utils.ventes_totaux import document_affiche_tva, montant_document_lettres
@@ -471,10 +472,7 @@ def nouvelle_vente():
                     )
                 )
 
-            count_bl = BonLivraison.query.filter(
-                db.extract('year', BonLivraison.created_at) == date_livraison.year
-            ).count()
-            numero_bl = f'BL-{date_livraison.year}-{count_bl + 1:04d}'
+            numero_bl = numero_bl_pour_facture(facture)
 
             bl = BonLivraison(
                 numero=numero_bl,
@@ -567,7 +565,7 @@ def nouvelle_vente():
 
             db.session.commit()
             flash(
-                f'Vente enregistrée : facture {numero_fact} (émise) et bon de livraison {numero_bl} créés. '
+                f'Vente enregistrée : facture et BL n° {numero_fact} créés. '
                 'PDF disponibles ci-dessous ou depuis les listes.',
                 'success',
             )
@@ -995,10 +993,7 @@ def convertir_proforma(id):
             )
 
         adresse_liv = _adresse_livraison_client(client, None)
-        count_bl = BonLivraison.query.filter(
-            db.extract('year', BonLivraison.created_at) == today.year
-        ).count()
-        numero_bl = f'BL-{today.year}-{count_bl + 1:04d}'
+        numero_bl = numero_bl_pour_facture(facture)
 
         bl = BonLivraison(
             numero=numero_bl,
@@ -1026,7 +1021,7 @@ def convertir_proforma(id):
         proforma.statut = 'converti'
         db.session.commit()
         flash(
-            f'Proforma convertie : facture {numero_fact} et BL {numero_bl} créés (statut préparé).',
+            f'Proforma convertie : facture et BL n° {numero_fact} créés (statut préparé).',
             'success',
         )
         return redirect(
@@ -1045,19 +1040,10 @@ FACTURE_EDITABLE_STATUTS = frozenset({"brouillon", "emise", "partiellement_payee
 
 def _prochain_numero_facture(d_emission, exclude_facture_id=None):
     """
-    Numéro FACT-YYYY-MM-NNNN : année et mois calendaires (date d'émission),
-    NNNN = rang dans le mois (toutes factures confondues).
+    Numéro YYYY/MM/NN (ex. 2026/06/02) : année/mois d'émission,
+    NN = prochain rang libre du mois (partagé avec les BL).
     """
-    y = d_emission.year
-    m = d_emission.month
-    q = Facture.query.filter(
-        db.extract("year", Facture.date_emission) == y,
-        db.extract("month", Facture.date_emission) == m,
-    )
-    if exclude_facture_id is not None:
-        q = q.filter(Facture.id != exclude_facture_id)
-    n = q.count()
-    return f"FACT-{y}-{m:02d}-{n + 1:04d}"
+    return prochain_numero_document(d_emission, exclude_facture_id=exclude_facture_id)
 
 
 def _clients_for_facture_form(facture=None):
@@ -1383,6 +1369,14 @@ def modifier_facture(id):
             _apply_totals_to_facture(facture, data)
             db.session.flush()
             bl_lie = BonLivraison.query.filter_by(facture_id=facture.id).first()
+            if bl_lie and bl_lie.numero != facture.numero:
+                # Facture et BL portent toujours le même numéro
+                conflit = BonLivraison.query.filter(
+                    BonLivraison.numero == facture.numero,
+                    BonLivraison.id != bl_lie.id,
+                ).first()
+                if not conflit:
+                    bl_lie.numero = facture.numero
             if _sync_bl_depuis_facture(facture, bl_lie):
                 flash("Le bon de livraison lié a été aligné sur les lignes de la facture.", "info")
             if facture.statut != "brouillon":
@@ -1506,9 +1500,8 @@ def nouveau_bl():
                 flash("Veuillez ajouter au moins un produit.", "danger")
                 return redirect(request.url)
 
-            annee = date_livraison.year
-            count = BonLivraison.query.filter(db.extract('year', BonLivraison.created_at) == annee).count()
-            numero = f"BL-{annee}-{count+1:04d}"
+            # BL seul : même nomenclature YYYY/MM/NN (séquence partagée)
+            numero = prochain_numero_document(date_livraison)
             
             bl = BonLivraison(
                 numero=numero,
