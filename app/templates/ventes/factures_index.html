@@ -218,16 +218,19 @@
                         <i class="bi bi-pencil"></i>
                       </a>
                     {% endif %}
-                    <a class="btn btn-outline-primary js-facture-print"
+                    <a class="btn btn-primary"
+                       href="{{ url_for('ventes.facture_pdf', id=f.id) }}"
+                       download
+                       title="Télécharger PDF">
+                      <i class="bi bi-download"></i>
+                    </a>
+                    <a class="btn btn-outline-secondary js-facture-print"
                        href="{{ url_for('ventes.facture_imprimer', id=f.id) }}"
                        data-print-url="{{ url_for('ventes.facture_imprimer', id=f.id) }}"
                        data-has-bl="{{ '1' if bl_par_facture.get(f.id) else '0' }}"
                        {% if bl_par_facture.get(f.id) %}data-bl-num="{{ bl_par_facture[f.id].numero }}"{% endif %}
-                       title="Imprimer">
+                       title="Aperçu">
                       <i class="bi bi-printer"></i>
-                    </a>
-                    <a class="btn btn-outline-secondary" href="{{ url_for('ventes.facture_pdf', id=f.id) }}" target="_blank" rel="noopener" title="PDF">
-                      <i class="bi bi-file-earmark-pdf"></i>
                     </a>
                   </div>
                 </td>

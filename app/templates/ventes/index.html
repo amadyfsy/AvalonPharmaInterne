@@ -136,18 +136,22 @@
         </div>
       </div>
       <div class="d-flex flex-wrap gap-2">
-        <a class="btn btn-sm btn-outline-primary js-facture-print"
+        <a class="btn btn-sm btn-primary"
+           href="{{ url_for('ventes.facture_pdf', id=derniere_facture.id) }}"
+           download>
+          <i class="bi bi-download me-1"></i> Télécharger facture
+        </a>
+        <a class="btn btn-sm btn-outline-secondary"
+           href="{{ url_for('ventes.bl_pdf', id=dernier_bl.id) }}"
+           download>
+          <i class="bi bi-truck me-1"></i> Télécharger BL
+        </a>
+        <a class="btn btn-sm btn-outline-secondary js-facture-print"
            href="{{ url_for('ventes.facture_imprimer', id=derniere_facture.id) }}"
            data-print-url="{{ url_for('ventes.facture_imprimer', id=derniere_facture.id) }}"
            data-has-bl="1"
            data-bl-num="{{ dernier_bl.numero }}">
-          <i class="bi bi-printer me-1"></i> Imprimer (navigateur)
-        </a>
-        <a class="btn btn-sm btn-primary" href="{{ url_for('ventes.facture_pdf', id=derniere_facture.id) }}" target="_blank" rel="noopener">
-          <i class="bi bi-file-earmark-pdf me-1"></i> PDF facture
-        </a>
-        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('ventes.bl_pdf', id=dernier_bl.id) }}" target="_blank" rel="noopener">
-          <i class="bi bi-truck me-1"></i> PDF BL
+          <i class="bi bi-printer me-1"></i> Aperçu
         </a>
         <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('ventes.factures') }}">Factures</a>
         <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('ventes.bons_livraison') }}">BL</a>

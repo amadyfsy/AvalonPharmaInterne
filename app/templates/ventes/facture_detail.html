@@ -50,18 +50,21 @@
       </p>
     </div>
     <div class="d-flex flex-wrap gap-2">
+      <a href="{{ url_for('ventes.facture_pdf', id=facture.id) }}"
+         class="btn btn-primary"
+         download
+         title="Télécharger la facture PDF">
+        <i class="bi bi-download me-1"></i> Télécharger
+      </a>
       <a href="{{ url_for('ventes.facture_imprimer', id=facture.id) }}"
-         class="btn btn-outline-primary js-facture-print"
+         class="btn btn-outline-secondary js-facture-print"
          data-print-url="{{ url_for('ventes.facture_imprimer', id=facture.id) }}"
          data-has-bl="{{ '1' if bl else '0' }}"
          {% if bl %}data-bl-num="{{ bl.numero }}"{% endif %}>
-        <i class="bi bi-printer me-1"></i> Aperçu / Imprimer
-      </a>
-      <a href="{{ url_for('ventes.facture_pdf', id=facture.id) }}" class="btn btn-outline-secondary" target="_blank" rel="noopener" title="PDF ReportLab">
-        <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+        <i class="bi bi-printer me-1"></i> Aperçu
       </a>
       {% if facture.statut in ['brouillon', 'emise', 'partiellement_payee'] %}
-        <a href="{{ url_for('ventes.modifier_facture', id=facture.id) }}" class="btn btn-primary">
+        <a href="{{ url_for('ventes.modifier_facture', id=facture.id) }}" class="btn btn-outline-primary">
           <i class="bi bi-pencil-square me-1"></i> Modifier
         </a>
       {% endif %}

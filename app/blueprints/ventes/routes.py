@@ -1826,9 +1826,9 @@ def facture_pdf(id):
             _date_lieu_fr(facture.date_emission, lieu),
         )
     except Exception as e:
-        current_app.logger.warning("PDF facture ReportLab → redirection impression : %s", e)
-        flash("Génération PDF indisponible, ouverture de l’aperçu navigateur.", "warning")
-        return redirect(url_for("ventes.facture_imprimer", id=id))
+        current_app.logger.exception("PDF facture ReportLab échoué : %s", e)
+        flash("Impossible de générer le PDF de la facture. Réessayez ou contactez l’administrateur.", "danger")
+        return redirect(url_for("ventes.facture_detail", id=id))
     return send_file(
         pdf_io,
         download_name=download_name_document(
