@@ -638,8 +638,8 @@ body.invoice-body {
 .invoice-cachet {
   display: block;
   margin: 0 auto;
-  max-width: 35mm;
-  max-height: 35mm;
+  max-width: 48mm;
+  max-height: 48mm;
   object-fit: contain;
 }
 

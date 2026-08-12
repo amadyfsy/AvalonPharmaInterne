@@ -1041,8 +1041,8 @@ def build_facture_pdf_bytesio(
         try:
             img = Image(cachet_path)
             img.hAlign = "CENTER"
-            # max ~35mm wide
-            max_w, max_h = 35 * mm, 35 * mm
+            # max ~48mm wide
+            max_w, max_h = 48 * mm, 48 * mm
             iw, ih = img.imageWidth, img.imageHeight
             scale = min(max_w / float(iw), max_h / float(ih), 1.0)
             img.drawWidth = iw * scale
@@ -1205,7 +1205,7 @@ def build_bl_pdf_bytesio(
         try:
             img = Image(cachet_path)
             img.hAlign = "CENTER"
-            max_w, max_h = 35 * mm, 35 * mm
+            max_w, max_h = 48 * mm, 48 * mm
             iw, ih = img.imageWidth, img.imageHeight
             scale = min(max_w / float(iw), max_h / float(ih), 1.0)
             img.drawWidth = iw * scale
