@@ -446,6 +446,15 @@ FACTURES = [
         "remise_pct": Decimal("10"),
     },
     {
+        "numero": "2026/07/06",
+        "date": date(2026, 7, 7),
+        "client": "Clinique Abdou Lahad",
+        "lignes": [
+            ("Table motorisée", 1, 300000),
+            ("Implant", 29, 4000),
+        ],
+    },
+    {
         "numero": "2026/07/11",
         "date": date(2026, 7, 29),
         "client": "CHR Saint-Louis",
