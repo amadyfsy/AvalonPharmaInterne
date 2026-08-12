@@ -15,7 +15,11 @@ from ...utils.categorie_depense_registry import CODE_VENTE_LIEE, get_categorie_b
 from ...utils.decorators import permission_required, user_has_permission
 from ...utils.depense_justificatif import remove_justificatif_file, upload_depense_justificatif
 from ...utils.depense_reference import prochaine_reference_depense
-from ...utils.document_numero import numero_bl_pour_facture, prochain_numero_document
+from ...utils.document_numero import (
+    download_name_document,
+    numero_bl_pour_facture,
+    prochain_numero_document,
+)
 from ...utils.nombre_lettres import format_montant_espace
 from ...utils.parametres_pdf import get_logo_filepath, merge_browser_print_logo, pdf_company_context
 from ...utils.ventes_totaux import document_affiche_tva, montant_document_lettres
@@ -1786,8 +1790,12 @@ def proforma_pdf(id):
             return redirect(url_for("ventes.proformas"))
     return send_file(
         pdf_io,
-        download_name=f"Proforma_{proforma.numero}.pdf",
-        as_attachment=False,
+        download_name=download_name_document(
+            "Proforma",
+            proforma.numero,
+            proforma.client.raison_sociale if proforma.client else None,
+        ),
+        as_attachment=True,
         mimetype="application/pdf",
     )
 
@@ -1823,8 +1831,12 @@ def facture_pdf(id):
         return redirect(url_for("ventes.facture_imprimer", id=id))
     return send_file(
         pdf_io,
-        download_name=f"Facture_{facture.numero}.pdf",
-        as_attachment=False,
+        download_name=download_name_document(
+            "Facture",
+            facture.numero,
+            facture.client.raison_sociale if facture.client else None,
+        ),
+        as_attachment=True,
         mimetype="application/pdf",
     )
 
@@ -1856,7 +1868,11 @@ def bl_pdf(id):
             return redirect(url_for("ventes.bons_livraison"))
     return send_file(
         pdf_io,
-        download_name=f"BL_{bl.numero}.pdf",
-        as_attachment=False,
+        download_name=download_name_document(
+            "BL",
+            bl.numero,
+            bl.client.raison_sociale if bl.client else None,
+        ),
+        as_attachment=True,
         mimetype="application/pdf",
     )

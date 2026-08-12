@@ -90,3 +90,96 @@ def prochain_numero_document(
 def numero_bl_pour_facture(facture: Facture) -> str:
     """Le BL lié à une facture reprend exactement le numéro de la facture."""
     return (facture.numero or "").strip()
+
+
+def is_format_yyyy_mm_nn(numero: str | None) -> bool:
+    return parse_numero_seq(numero) is not None
+
+
+def slug_client_filename(client_name: str | None) -> str:
+    """Nom client sûr pour un nom de fichier (conserve accents et espaces)."""
+    name = (client_name or "Client").strip()
+    name = re.sub(r'[\\:*?"<>|\x00]+', " ", name)
+    name = re.sub(r"\s+", " ", name).strip()
+    return name or "Client"
+
+
+def download_name_document(prefix: str, numero: str | None, client_name: str | None) -> str:
+    """
+    Nom de téléchargement : « Facture 2026/08/03_Nom du client.pdf ».
+    """
+    num = (numero or "").strip() or "sans-numero"
+    client = slug_client_filename(client_name)
+    return f"{prefix} {num}_{client}.pdf"
+
+
+def migrer_numeros_vers_yyyy_mm_nn(*, dry_run: bool = True) -> list[tuple[str, str, str]]:
+    """
+    Renomme factures (et BL liés) hors format YYYY/MM/NN.
+
+    Retourne la liste des changements [(type, ancien, nouveau), ...].
+    """
+    from ..extensions import db
+
+    changes: list[tuple[str, str, str]] = []
+    reserved: set[str] = set()
+
+    def _allouer(d, *, exclude_facture_id=None, exclude_bl_id=None) -> str:
+        y, m = d.year, d.month
+        seq = _max_seq_mois(y, m, exclude_facture_id, exclude_bl_id) + 1
+        used = _numeros_utilises_mois(y, m) | reserved
+        while format_numero(y, m, seq) in used:
+            seq += 1
+        num = format_numero(y, m, seq)
+        reserved.add(num)
+        return num
+
+    factures = (
+        Facture.query.order_by(Facture.date_emission.asc(), Facture.id.asc()).all()
+    )
+    for f in factures:
+        if is_format_yyyy_mm_nn(f.numero):
+            reserved.add(f.numero)
+            for bl in BonLivraison.query.filter_by(facture_id=f.id).all():
+                if bl.numero != f.numero:
+                    changes.append(("BL", bl.numero or "", f.numero))
+                    if not dry_run:
+                        bl.numero = f.numero
+            continue
+
+        d = f.date_emission
+        if not d:
+            continue
+        new_num = _allouer(d, exclude_facture_id=f.id)
+        old = f.numero or ""
+        changes.append(("Facture", old, new_num))
+        if not dry_run:
+            f.numero = new_num
+            db.session.flush()
+            for bl in BonLivraison.query.filter_by(facture_id=f.id).all():
+                if bl.numero != new_num:
+                    changes.append(("BL", bl.numero or "", new_num))
+                    bl.numero = new_num
+        else:
+            for bl in BonLivraison.query.filter_by(facture_id=f.id).all():
+                if (bl.numero or "") != new_num:
+                    changes.append(("BL", bl.numero or "", new_num))
+
+    for bl in BonLivraison.query.filter(BonLivraison.facture_id.is_(None)).order_by(
+        BonLivraison.date_livraison.asc(), BonLivraison.id.asc()
+    ).all():
+        if is_format_yyyy_mm_nn(bl.numero):
+            reserved.add(bl.numero or "")
+            continue
+        d = bl.date_livraison
+        if not d:
+            continue
+        new_num = _allouer(d, exclude_bl_id=bl.id)
+        changes.append(("BL", bl.numero or "", new_num))
+        if not dry_run:
+            bl.numero = new_num
+            db.session.flush()
+
+    if not dry_run:
+        db.session.commit()
+    return changes
