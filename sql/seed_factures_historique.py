@@ -436,6 +436,32 @@ FACTURES = [
         "client": "Pharmacie MIFTAH S. Alioune Gueye",
         "lignes": [("Flacon de Redon 600 ml", 150, 2800)],
     },
+    {
+        "numero": "2026/08/03",
+        "date": date(2026, 8, 8),
+        "client": "Demba Thioubou",
+        "lignes": [
+            ("Tonomètre", 1, 2250000),
+            ("Imprimante Sony", 1, 500000),
+        ],
+    },
+    {
+        "numero": "2026/08/04",
+        "date": date(2026, 8, 8),
+        "client": "Centre de Santé de Vélingara",
+        "lignes": [("Kit pour cataracte", 2, 50000)],
+    },
+    {
+        "numero": "2026/08/05",
+        "date": date(2026, 8, 11),
+        "client": "CHR Saint-Louis",
+        "lignes": [
+            ("Kit pour cataracte", 10, 50000),
+            ("Boîte de bandelettes fluorescéine", 5, 16000),
+            ("Boîte fil 8/0", 3, 45000),
+            ("Boîte fil 10/0", 5, 35000),
+        ],
+    },
 ]
 
 
