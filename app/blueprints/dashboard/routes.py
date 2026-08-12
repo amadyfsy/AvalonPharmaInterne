@@ -15,6 +15,7 @@ from sqlalchemy.orm import joinedload
 from flask import render_template
 
 from ...utils.nombre_lettres import format_montant_espace
+from ...utils.parametres_pdf import has_cachet
 
 from . import dashboard_bp
 
@@ -253,6 +254,7 @@ def index():
         pct_depenses_variable=pct_depenses_variable,
         alerts_count=alerts_count,
         format_fcfa=format_montant_espace,
+        has_cachet=has_cachet(),
     )
 
 @dashboard_bp.route('/export')

@@ -108,10 +108,20 @@
                     <a class="btn btn-outline-secondary" href="{{ url_for('ventes.bl_detail', id=bl.id) }}" title="Voir">
                       <i class="bi bi-eye"></i>
                     </a>
-                    <a class="btn btn-outline-primary" href="{{ url_for('ventes.bl_imprimer', id=bl.id) }}" target="_blank" rel="noopener" title="Imprimer">
+                    <a class="btn btn-outline-primary js-bl-print"
+                       href="{{ url_for('ventes.bl_imprimer', id=bl.id) }}"
+                       data-print-url="{{ url_for('ventes.bl_imprimer', id=bl.id) }}"
+                       data-doc-type="bl"
+                       data-has-cachet="{{ '1' if has_cachet else '0' }}"
+                       title="Imprimer">
                       <i class="bi bi-printer"></i>
                     </a>
-                    <a class="btn btn-outline-secondary" href="{{ url_for('ventes.bl_pdf', id=bl.id) }}" target="_blank" rel="noopener" title="PDF">
+                    <a class="btn btn-outline-secondary js-bl-download"
+                       href="{{ url_for('ventes.bl_pdf', id=bl.id) }}"
+                       data-pdf-url="{{ url_for('ventes.bl_pdf', id=bl.id) }}"
+                       data-doc-type="bl"
+                       data-has-cachet="{{ '1' if has_cachet else '0' }}"
+                       title="PDF">
                       <i class="bi bi-file-earmark-pdf"></i>
                     </a>
                     {% if bl.statut != 'livre' %}
@@ -176,6 +186,8 @@
 {% endblock %}
 
 {% block scripts %}
+  {% include 'ventes/_modal_imprimer_facture.html' %}
+  <script src="{{ url_for('static', filename='public/js/facture-print.js') }}"></script>
 <script>
   (function () {
     var form = document.getElementById('blFiltersForm');

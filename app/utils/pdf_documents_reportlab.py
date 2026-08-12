@@ -687,6 +687,9 @@ def build_facture_pdf_bytesio(
     format_fcfa: Callable[[Any], str],
     logo_path: str | None,
     date_lieu_fr: str,
+    *,
+    cachet_path: str | None = None,
+    avec_cachet: bool = False,
 ) -> io.BytesIO:
     """
     Facture PDF avec en-tête répété (logo à gauche, informations entreprise à droite),
@@ -1034,7 +1037,22 @@ def build_facture_pdf_bytesio(
     sig_data = []
     if date_lieu_fr:
         sig_data.append([Paragraph(escape(date_lieu_fr), sig_style)])
-    sig_data.append([Spacer(1, 25 * mm)]) # space for stamp/signature
+    if avec_cachet and cachet_path and os.path.isfile(cachet_path):
+        try:
+            img = Image(cachet_path)
+            img.hAlign = "CENTER"
+            # max ~35mm wide
+            max_w, max_h = 35 * mm, 35 * mm
+            iw, ih = img.imageWidth, img.imageHeight
+            scale = min(max_w / float(iw), max_h / float(ih), 1.0)
+            img.drawWidth = iw * scale
+            img.drawHeight = ih * scale
+            sig_data.append([Spacer(1, 3 * mm)])
+            sig_data.append([img])
+        except Exception:
+            sig_data.append([Spacer(1, 25 * mm)])
+    else:
+        sig_data.append([Spacer(1, 25 * mm)])  # space for stamp/signature
     
     sig_table = Table(sig_data, colWidths=[65 * mm])
     sig_table.hAlign = 'RIGHT'
@@ -1045,7 +1063,14 @@ def build_facture_pdf_bytesio(
     return buffer
 
 
-def build_bl_pdf_bytesio(bl: Any, doc_params: Any, logo_path: str | None) -> io.BytesIO:
+def build_bl_pdf_bytesio(
+    bl: Any,
+    doc_params: Any,
+    logo_path: str | None,
+    *,
+    cachet_path: str | None = None,
+    avec_cachet: bool = False,
+) -> io.BytesIO:
     _ensure_fonts()
     buffer = io.BytesIO()
     LM = RM = 16 * mm
@@ -1176,7 +1201,21 @@ def build_bl_pdf_bytesio(bl: Any, doc_params: Any, logo_path: str | None) -> io.
     sig_data = []
     if date_str:
         sig_data.append([Paragraph(escape(date_str), sig_style)])
-    sig_data.append([Spacer(1, 25 * mm)])
+    if avec_cachet and cachet_path and os.path.isfile(cachet_path):
+        try:
+            img = Image(cachet_path)
+            img.hAlign = "CENTER"
+            max_w, max_h = 35 * mm, 35 * mm
+            iw, ih = img.imageWidth, img.imageHeight
+            scale = min(max_w / float(iw), max_h / float(ih), 1.0)
+            img.drawWidth = iw * scale
+            img.drawHeight = ih * scale
+            sig_data.append([Spacer(1, 3 * mm)])
+            sig_data.append([img])
+        except Exception:
+            sig_data.append([Spacer(1, 25 * mm)])
+    else:
+        sig_data.append([Spacer(1, 25 * mm)])
 
     sig_table = Table(sig_data, colWidths=[65 * mm])
     sig_table.hAlign = "RIGHT"

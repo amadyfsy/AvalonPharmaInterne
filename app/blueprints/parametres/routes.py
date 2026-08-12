@@ -30,16 +30,31 @@ def _parametres_upload_dir():
     return d
 
 
-def _save_logo_file(storage) -> str | None:
+def _save_image_file(storage, prefix: str = "") -> str | None:
     if not storage or not storage.filename:
         return None
     ext = storage.filename.rsplit(".", 1)[-1].lower()
     if ext not in ("png", "jpg", "jpeg", "gif"):
         raise ValueError("Format d’image non autorisé (png, jpg, gif).")
-    name = f"{uuid.uuid4().hex}.{ext}"
+    name = f"{prefix}{uuid.uuid4().hex}.{ext}" if prefix else f"{uuid.uuid4().hex}.{ext}"
     path = os.path.join(_parametres_upload_dir(), name)
     storage.save(path)
     return name
+
+
+def _save_logo_file(storage) -> str | None:
+    return _save_image_file(storage)
+
+
+def _remove_param_file(filename: str | None) -> None:
+    if not filename:
+        return
+    old = os.path.join(_parametres_upload_dir(), filename)
+    if os.path.isfile(old):
+        try:
+            os.remove(old)
+        except OSError:
+            pass
 
 
 @parametres_bp.route("/documents", methods=["GET", "POST"])
@@ -66,26 +81,29 @@ def documents():
         row.pied_de_page = form.pied_de_page.data or None
 
         if form.supprimer_logo.data and row.logo_filename:
-            old = os.path.join(_parametres_upload_dir(), row.logo_filename)
-            if os.path.isfile(old):
-                try:
-                    os.remove(old)
-                except OSError:
-                    pass
+            _remove_param_file(row.logo_filename)
             row.logo_filename = None
 
         if form.logo.data and form.logo.data.filename:
             try:
                 new_name = _save_logo_file(form.logo.data)
                 if new_name:
-                    if row.logo_filename:
-                        old = os.path.join(_parametres_upload_dir(), row.logo_filename)
-                        if os.path.isfile(old):
-                            try:
-                                os.remove(old)
-                            except OSError:
-                                pass
+                    _remove_param_file(row.logo_filename)
                     row.logo_filename = new_name
+            except ValueError as e:
+                flash(str(e), "danger")
+                return render_template("parametres/documents.html", form=form, row=row)
+
+        if form.supprimer_cachet.data and getattr(row, "cachet_filename", None):
+            _remove_param_file(row.cachet_filename)
+            row.cachet_filename = None
+
+        if form.cachet.data and form.cachet.data.filename:
+            try:
+                new_name = _save_image_file(form.cachet.data, prefix="cachet_")
+                if new_name:
+                    _remove_param_file(getattr(row, "cachet_filename", None))
+                    row.cachet_filename = new_name
             except ValueError as e:
                 flash(str(e), "danger")
                 return render_template("parametres/documents.html", form=form, row=row)
@@ -101,7 +119,7 @@ def documents():
 @parametres_bp.route("/documents/logo/<path:filename>")
 @login_required
 def logo_file(filename):
-    """Aperçu du logo (navigateur)."""
+    """Aperçu du logo ou du cachet (navigateur)."""
     safe = secure_filename(filename)
     if safe != filename or ".." in filename:
         abort(404)

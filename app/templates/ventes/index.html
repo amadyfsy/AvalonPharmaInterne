@@ -140,18 +140,22 @@
            href="{{ url_for('ventes.facture_pdf', id=derniere_facture.id) }}"
            data-pdf-url="{{ url_for('ventes.facture_pdf', id=derniere_facture.id) }}"
            data-has-bl="1"
+           data-has-cachet="{{ '1' if has_cachet else '0' }}"
            data-bl-num="{{ dernier_bl.numero }}">
           <i class="bi bi-download me-1"></i> Télécharger facture
         </a>
-        <a class="btn btn-sm btn-outline-secondary"
+        <a class="btn btn-sm btn-outline-secondary js-bl-download"
            href="{{ url_for('ventes.bl_pdf', id=dernier_bl.id) }}"
-           download>
+           data-pdf-url="{{ url_for('ventes.bl_pdf', id=dernier_bl.id) }}"
+           data-doc-type="bl"
+           data-has-cachet="{{ '1' if has_cachet else '0' }}">
           <i class="bi bi-truck me-1"></i> Télécharger BL
         </a>
         <a class="btn btn-sm btn-outline-secondary js-facture-print"
            href="{{ url_for('ventes.facture_imprimer', id=derniere_facture.id) }}"
            data-print-url="{{ url_for('ventes.facture_imprimer', id=derniere_facture.id) }}"
            data-has-bl="1"
+           data-has-cachet="{{ '1' if has_cachet else '0' }}"
            data-bl-num="{{ dernier_bl.numero }}">
           <i class="bi bi-printer me-1"></i> Aperçu
         </a>

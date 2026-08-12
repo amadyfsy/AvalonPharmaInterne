@@ -21,7 +21,13 @@ from ...utils.document_numero import (
     prochain_numero_document,
 )
 from ...utils.nombre_lettres import format_montant_espace
-from ...utils.parametres_pdf import get_logo_filepath, merge_browser_print_logo, pdf_company_context
+from ...utils.parametres_pdf import (
+    get_cachet_filepath,
+    get_logo_filepath,
+    has_cachet,
+    merge_browser_print_logo,
+    pdf_company_context,
+)
 from ...utils.ventes_totaux import document_affiche_tva, montant_document_lettres
 from ...utils.pdf_merge import merge_pdf_bytes
 from ...utils.pdf_documents_reportlab import (
@@ -286,6 +292,7 @@ def index():
         dernier_bl=dernier_bl,
         dernier_proforma=dernier_proforma,
         hub_stats=hub_stats,
+        has_cachet=has_cachet(),
     )
 
 
@@ -698,6 +705,22 @@ _STATUTS_FACTURE = (
 )
 
 
+_MOIS_FILTRE = (
+    (1, "Janvier"),
+    (2, "Février"),
+    (3, "Mars"),
+    (4, "Avril"),
+    (5, "Mai"),
+    (6, "Juin"),
+    (7, "Juillet"),
+    (8, "Août"),
+    (9, "Septembre"),
+    (10, "Octobre"),
+    (11, "Novembre"),
+    (12, "Décembre"),
+)
+
+
 @ventes_bp.route('/factures')
 @login_required
 @permission_required('ventes', 'read')
@@ -705,11 +728,14 @@ def factures():
     q = (request.args.get('q') or '').strip()
     statut = (request.args.get('statut') or '').strip()
     annee = request.args.get('annee', type=int)
+    mois = request.args.get('mois', type=int)
     page = request.args.get('page', 1, type=int)
     if page < 1:
         page = 1
     if statut and statut not in _STATUTS_FACTURE:
         statut = ''
+    if mois is not None and (mois < 1 or mois > 12):
+        mois = None
 
     annees_dispo = [
         int(y)
@@ -736,6 +762,8 @@ def factures():
         query = query.filter(Facture.statut == statut)
     if annee:
         query = query.filter(extract('year', Facture.date_emission) == annee)
+    if mois:
+        query = query.filter(extract('month', Facture.date_emission) == mois)
 
     pagination = (
         query.order_by(
@@ -753,6 +781,8 @@ def factures():
         filtres_url['statut'] = statut
     if annee:
         filtres_url['annee'] = annee
+    if mois:
+        filtres_url['mois'] = mois
 
     bl_par_facture = {}
     if pagination.items:
@@ -767,11 +797,14 @@ def factures():
         q=q,
         statut_filtre=statut,
         annee_filtre=annee,
+        mois_filtre=mois,
         annees_dispo=annees_dispo,
+        mois_dispo=_MOIS_FILTRE,
         filtres_url=filtres_url,
         statuts_facture=_STATUTS_FACTURE,
         bl_par_facture=bl_par_facture,
         format_fcfa=format_montant_espace,
+        has_cachet=has_cachet(),
     )
 
 @ventes_bp.route('/bons-livraison')
@@ -821,6 +854,7 @@ def bons_livraison():
         statut_filtre=statut,
         filtres_url=filtres_url,
         statuts_bl=_STATUTS_BL,
+        has_cachet=has_cachet(),
     )
 
 
@@ -837,7 +871,7 @@ def bl_detail(id):
         .filter_by(id=id)
         .first_or_404()
     )
-    return render_template('ventes/bl_detail.html', bl=bl)
+    return render_template('ventes/bl_detail.html', bl=bl, has_cachet=has_cachet())
 
 
 # --- API AJAX pour les Lignes Dynamiques ---
@@ -1241,6 +1275,7 @@ def facture_detail(id):
         peut_ajouter_depense=peut_ajouter_depense,
         format_fcfa=format_montant_espace,
         affiche_tva=document_affiche_tva(facture),
+        has_cachet=has_cachet(),
     )
 
 
@@ -1671,12 +1706,17 @@ def _date_lieu_fr(d, lieu: str) -> str:
     return f"{(lieu or 'St Louis').strip()}, le {d.day} {m_cap} {d.year}"
 
 
+def _arg_bool(name: str) -> bool:
+    return request.args.get(name, "0").lower() in ("1", "true", "oui", "yes")
+
+
 @ventes_bp.route("/factures/<int:id>/imprimer")
 @login_required
 @permission_required("ventes", "read")
 def facture_imprimer(id):
     """Aperçu navigateur + impression (window.print), style document papier."""
-    avec_bl = request.args.get('avec_bl', '0').lower() in ('1', 'true', 'oui', 'yes')
+    avec_bl = _arg_bool("avec_bl")
+    avec_cachet = _arg_bool("avec_cachet") and has_cachet()
     facture = (
         Facture.query.options(
             joinedload(Facture.client),
@@ -1702,6 +1742,7 @@ def facture_imprimer(id):
         facture=facture,
         bl=bl if inclure_bl else None,
         avec_bl=inclure_bl,
+        avec_cachet=avec_cachet,
         date_signature_fr=_date_lieu_fr(facture.date_emission, lieu),
         date_signature_bl_fr=_date_lieu_fr(bl.date_livraison, lieu) if bl else "",
     )
@@ -1712,6 +1753,7 @@ def facture_imprimer(id):
 @permission_required("ventes", "read")
 def bl_imprimer(id):
     """Aperçu navigateur + impression BL (même modèle visuel que facture/proforma)."""
+    avec_cachet = _arg_bool("avec_cachet") and has_cachet()
     bl = (
         BonLivraison.query.options(
             joinedload(BonLivraison.client),
@@ -1729,6 +1771,7 @@ def bl_imprimer(id):
         "ventes/bl_impression.html",
         **ctx,
         bl=bl,
+        avec_cachet=avec_cachet,
         date_signature_bl_fr=_date_lieu_fr(bl.date_livraison, lieu),
     )
 
@@ -1805,7 +1848,8 @@ def proforma_pdf(id):
 @permission_required("ventes", "read")
 def facture_pdf(id):
     """Téléchargement PDF direct — option avec_bl=1 pour joindre le BL."""
-    avec_bl = request.args.get("avec_bl", "0").lower() in ("1", "true", "oui", "yes")
+    avec_bl = _arg_bool("avec_bl")
+    avec_cachet = _arg_bool("avec_cachet")
     facture = (
         Facture.query.options(
             joinedload(Facture.client),
@@ -1830,6 +1874,7 @@ def facture_pdf(id):
     dp = ctx["doc_params"]
     lieu = (getattr(dp, "lieu_signature", None) or "St Louis").strip()
     logo_path = get_logo_filepath()
+    cachet_path = get_cachet_filepath() if avec_cachet else None
     try:
         pdf_io = build_facture_pdf_bytesio(
             facture,
@@ -1838,9 +1883,17 @@ def facture_pdf(id):
             format_montant_espace,
             logo_path,
             _date_lieu_fr(facture.date_emission, lieu),
+            cachet_path=cachet_path,
+            avec_cachet=bool(cachet_path),
         )
         if bl:
-            bl_io = build_bl_pdf_bytesio(bl, dp, logo_path)
+            bl_io = build_bl_pdf_bytesio(
+                bl,
+                dp,
+                logo_path,
+                cachet_path=cachet_path,
+                avec_cachet=bool(cachet_path),
+            )
             pdf_io = merge_pdf_bytes(pdf_io, bl_io)
     except Exception as e:
         current_app.logger.exception("PDF facture ReportLab échoué : %s", e)
@@ -1866,6 +1919,7 @@ def facture_pdf(id):
 @login_required
 @permission_required('ventes', 'read')
 def bl_pdf(id):
+    avec_cachet = _arg_bool("avec_cachet")
     bl = (
         BonLivraison.query.options(
             joinedload(BonLivraison.client),
@@ -1878,8 +1932,15 @@ def bl_pdf(id):
     ctx = pdf_company_context()
     ctx["bl"] = bl
     logo_path = get_logo_filepath()
+    cachet_path = get_cachet_filepath() if avec_cachet else None
     try:
-        pdf_io = build_bl_pdf_bytesio(bl, ctx["doc_params"], logo_path)
+        pdf_io = build_bl_pdf_bytesio(
+            bl,
+            ctx["doc_params"],
+            logo_path,
+            cachet_path=cachet_path,
+            avec_cachet=bool(cachet_path),
+        )
     except Exception as e:
         current_app.logger.warning("PDF BL ReportLab → HTML : %s", e)
         try:

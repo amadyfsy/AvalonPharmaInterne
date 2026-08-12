@@ -36,6 +36,7 @@ class ParametresDocuments(db.Model):
         default="CBAO : SN012 08274 036182246001 48",
     )
     logo_filename = db.Column(db.String(255), nullable=True)
+    cachet_filename = db.Column(db.String(255), nullable=True)
     slogan = db.Column(db.String(255), nullable=False, default="Serving those who care for others")
     site_web = db.Column(db.String(255), nullable=False, default="https://avalonpharmasenegal.com")
     pied_de_page = db.Column(db.Text, nullable=True)
@@ -54,6 +55,27 @@ class ParametresDocuments(db.Model):
             "compte_bancaire": "CBAO : SN012 08274 036182246001 48",
         }
 
+        def _ensure_cachet_column():
+            """Ajoute cachet_filename si la colonne n’existe pas encore."""
+            from sqlalchemy import inspect, text
+
+            try:
+                cols = {c["name"] for c in inspect(db.engine).get_columns("parametres_documents")}
+            except Exception:
+                return
+            if "cachet_filename" in cols:
+                return
+            try:
+                db.session.execute(
+                    text(
+                        "ALTER TABLE parametres_documents "
+                        "ADD COLUMN cachet_filename VARCHAR(255)"
+                    )
+                )
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+
         def _ensure_company_coords(row):
             """Complète les coordonnées Avalon si absentes (facture = BL)."""
             changed = False
@@ -67,6 +89,7 @@ class ParametresDocuments(db.Model):
             return row
 
         def _load_or_create():
+            _ensure_cachet_column()
             row = db.session.get(cls, 1)
             if row is None:
                 row = cls(id=1, **defaults)

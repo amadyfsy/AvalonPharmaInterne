@@ -49,6 +49,29 @@ def get_logo_filepath() -> str | None:
     return path if os.path.isfile(path) else None
 
 
+def get_cachet_filepath() -> str | None:
+    """Chemin fichier cachet pour ReportLab."""
+    p = get_parametres_documents()
+    fn = (getattr(p, "cachet_filename", None) or "").strip()
+    if not fn:
+        return None
+    upload = current_app.config.get("UPLOAD_FOLDER") or ""
+    path = os.path.join(upload, "parametres", fn)
+    return path if os.path.isfile(path) else None
+
+
+def has_cachet() -> bool:
+    return get_cachet_filepath() is not None
+
+
+def cachet_url() -> str | None:
+    p = get_parametres_documents()
+    fn = (getattr(p, "cachet_filename", None) or "").strip()
+    if not fn or not get_cachet_filepath():
+        return None
+    return url_for("parametres.logo_file", filename=fn)
+
+
 DEFAULT_COMPANY_SLOGAN = "Serving those who care for others"
 DEFAULT_SITE_WEB = "https://avalonpharmasenegal.com"
 DEFAULT_COMPANY_EMAIL = "avalonpharmasenegal@gmail.com"
@@ -121,6 +144,8 @@ def pdf_company_context():
         "site_web_url": site_web_url,
         "site_web_label": site_web_display(site_web_url),
         "company_slogan": resolve_company_slogan(row),
+        "has_cachet": has_cachet(),
+        "cachet_url": cachet_url(),
     }
 
 
@@ -133,6 +158,8 @@ def merge_browser_print_logo(ctx: dict) -> dict:
     row = ctx.get("doc_params")
     if row is None:
         ctx["logo_url"] = None
+        ctx["cachet_url"] = None
+        ctx["has_cachet"] = False
         return ctx
     logo_url = None
     fn = (getattr(row, "logo_filename", None) or "").strip()
@@ -142,4 +169,6 @@ def merge_browser_print_logo(ctx: dict) -> dict:
     ctx["site_web_url"] = normalize_site_web_url(getattr(row, "site_web", None) if row else None)
     ctx["site_web_label"] = site_web_display(ctx["site_web_url"])
     ctx["company_slogan"] = resolve_company_slogan(row) if row else DEFAULT_COMPANY_SLOGAN
+    ctx["has_cachet"] = has_cachet()
+    ctx["cachet_url"] = cachet_url()
     return ctx

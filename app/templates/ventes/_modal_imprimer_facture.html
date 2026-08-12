@@ -11,8 +11,14 @@
         <p class="mb-3 text-muted small" id="modalImprimerFactureDesc">
           Choisissez le contenu du PDF à télécharger.
         </p>
+        <div class="form-check mb-3 d-none" id="modalCachetWrap">
+          <input class="form-check-input" type="checkbox" id="modalAvecCachet" checked>
+          <label class="form-check-label" for="modalAvecCachet">
+            Inclure le cachet (sous la date)
+          </label>
+        </div>
         <div class="d-grid gap-2">
-          <button type="button" class="btn btn-outline-primary text-start js-facture-print-choice" data-avec-bl="0">
+          <button type="button" class="btn btn-outline-primary text-start js-facture-print-choice" id="btnFactureSeule" data-avec-bl="0">
             <i class="bi bi-file-earmark-text me-2"></i>Facture seule
           </button>
           <button type="button" class="btn btn-primary text-start js-facture-print-choice d-none" id="btnFactureAvecBl" data-avec-bl="1">

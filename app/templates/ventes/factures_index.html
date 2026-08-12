@@ -120,19 +120,28 @@
   <div class="card shadow-sm border-0 mb-4 fact-filters">
     <div class="card-body">
       <form id="facturesFiltersForm" method="get" action="{{ url_for('ventes.factures') }}" class="row g-3 align-items-end" role="search">
-        <div class="col-md-4 col-lg-4">
+        <div class="col-md-4 col-lg-3">
           <label class="form-label small text-muted mb-1" for="factQ">Rechercher</label>
           <div class="input-group">
             <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
             <input type="search" class="form-control" id="factQ" name="q" value="{{ q }}" placeholder="N° facture, client…" autocomplete="off">
           </div>
         </div>
-        <div class="col-md-3 col-lg-2">
+        <div class="col-6 col-md-2 col-lg-2">
           <label class="form-label small text-muted mb-1" for="factAnnee">Année</label>
           <select class="form-select" id="factAnnee" name="annee" onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()">
             <option value="" {% if not annee_filtre %}selected{% endif %}>Toutes</option>
             {% for y in annees_dispo %}
               <option value="{{ y }}" {% if annee_filtre == y %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-md-2 col-lg-2">
+          <label class="form-label small text-muted mb-1" for="factMois">Mois</label>
+          <select class="form-select" id="factMois" name="mois" onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()">
+            <option value="" {% if not mois_filtre %}selected{% endif %}>Tous</option>
+            {% for m, label in mois_dispo %}
+              <option value="{{ m }}" {% if mois_filtre == m %}selected{% endif %}>{{ label }}</option>
             {% endfor %}
           </select>
         </div>
@@ -145,8 +154,8 @@
             {% endfor %}
           </select>
         </div>
-        <div class="col-md-2 col-lg-3 d-flex align-items-end">
-          {% if q or statut_filtre or annee_filtre %}
+        <div class="col-md-2 col-lg-2 d-flex align-items-end">
+          {% if q or statut_filtre or annee_filtre or mois_filtre %}
             <a href="{{ url_for('ventes.factures') }}" class="btn btn-outline-secondary">Tout afficher</a>
           {% endif %}
         </div>
@@ -156,6 +165,7 @@
           <strong>{{ pagination.total }}</strong> facture(s)
           {% if q %} pour « {{ q }} »{% endif %}
           {% if annee_filtre %} · année {{ annee_filtre }}{% endif %}
+          {% if mois_filtre %} · {{ mois_dispo[mois_filtre - 1][1]|lower }}{% endif %}
           {% if statut_filtre %} · statut : {{ libelle_statut_facture(statut_filtre) }}{% endif %}
           {% if pagination.pages > 1 %} · page {{ pagination.page }}/{{ pagination.pages }}{% endif %}
         {% else %}
@@ -222,6 +232,7 @@
                        href="{{ url_for('ventes.facture_pdf', id=f.id) }}"
                        data-pdf-url="{{ url_for('ventes.facture_pdf', id=f.id) }}"
                        data-has-bl="{{ '1' if bl_par_facture.get(f.id) else '0' }}"
+                       data-has-cachet="{{ '1' if has_cachet else '0' }}"
                        {% if bl_par_facture.get(f.id) %}data-bl-num="{{ bl_par_facture[f.id].numero }}"{% endif %}
                        title="Télécharger PDF">
                       <i class="bi bi-download"></i>
@@ -230,6 +241,7 @@
                        href="{{ url_for('ventes.facture_imprimer', id=f.id) }}"
                        data-print-url="{{ url_for('ventes.facture_imprimer', id=f.id) }}"
                        data-has-bl="{{ '1' if bl_par_facture.get(f.id) else '0' }}"
+                       data-has-cachet="{{ '1' if has_cachet else '0' }}"
                        {% if bl_par_facture.get(f.id) %}data-bl-num="{{ bl_par_facture[f.id].numero }}"{% endif %}
                        title="Aperçu">
                       <i class="bi bi-printer"></i>

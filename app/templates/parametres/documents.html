@@ -79,6 +79,20 @@
               </div>
             {% endif %}
           </div>
+          <div class="col-12">
+            {{ form.cachet.label(class="form-label") }}
+            {{ form.cachet(class="form-control") }}
+            <div class="form-text">Affiché sous la date (St Louis, le …) si vous l’activez au téléchargement / impression.</div>
+            {% if row.cachet_filename %}
+              <div class="mt-2 d-flex align-items-center gap-3 flex-wrap">
+                <img src="{{ url_for('parametres.logo_file', filename=row.cachet_filename) }}" alt="Cachet" style="max-height:90px;max-width:160px;object-fit:contain;">
+                <div class="form-check">
+                  {{ form.supprimer_cachet(class="form-check-input") }}
+                  {{ form.supprimer_cachet.label(class="form-check-label") }}
+                </div>
+              </div>
+            {% endif %}
+          </div>
         </div>
 
         <div class="mt-4">

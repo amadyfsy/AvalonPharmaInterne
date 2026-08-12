@@ -92,8 +92,11 @@
 
         {% if bl_page_idx == bl_n_chunks - 1 %}
           <div class="invoice-closure">
-            <div class="invoice-signature">
+            <div class="invoice-signature{% if avec_cachet and cachet_url %} invoice-signature--cachet{% endif %}">
               <p>{{ date_signature_bl_fr }}</p>
+              {% if avec_cachet and cachet_url %}
+                <img class="invoice-cachet" src="{{ cachet_url }}" alt="Cachet">
+              {% endif %}
             </div>
           </div>
         {% endif %}

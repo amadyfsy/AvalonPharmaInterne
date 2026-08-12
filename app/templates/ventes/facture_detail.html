@@ -54,6 +54,7 @@
          class="btn btn-primary js-facture-download"
          data-pdf-url="{{ url_for('ventes.facture_pdf', id=facture.id) }}"
          data-has-bl="{{ '1' if bl else '0' }}"
+         data-has-cachet="{{ '1' if has_cachet else '0' }}"
          {% if bl %}data-bl-num="{{ bl.numero }}"{% endif %}
          title="Télécharger la facture PDF">
         <i class="bi bi-download me-1"></i> Télécharger
@@ -62,6 +63,7 @@
          class="btn btn-outline-secondary js-facture-print"
          data-print-url="{{ url_for('ventes.facture_imprimer', id=facture.id) }}"
          data-has-bl="{{ '1' if bl else '0' }}"
+         data-has-cachet="{{ '1' if has_cachet else '0' }}"
          {% if bl %}data-bl-num="{{ bl.numero }}"{% endif %}>
         <i class="bi bi-printer me-1"></i> Aperçu
       </a>
@@ -217,8 +219,16 @@
               <a href="{{ url_for('ventes.bl_detail', id=bl.id) }}" class="fw-semibold text-decoration-none">{{ bl.numero }}</a>
               {{ badge_statut_bl(bl.statut) }}
               <span class="ms-2">
-                <a href="{{ url_for('ventes.bl_imprimer', id=bl.id) }}" class="btn btn-sm btn-outline-primary py-0" target="_blank" rel="noopener">Imprimer</a>
-                <a href="{{ url_for('ventes.bl_pdf', id=bl.id) }}" class="btn btn-sm btn-outline-secondary py-0" target="_blank" rel="noopener">PDF</a>
+                <a href="{{ url_for('ventes.bl_imprimer', id=bl.id) }}"
+                   class="btn btn-sm btn-outline-primary py-0 js-bl-print"
+                   data-print-url="{{ url_for('ventes.bl_imprimer', id=bl.id) }}"
+                   data-doc-type="bl"
+                   data-has-cachet="{{ '1' if has_cachet else '0' }}">Imprimer</a>
+                <a href="{{ url_for('ventes.bl_pdf', id=bl.id) }}"
+                   class="btn btn-sm btn-outline-secondary py-0 js-bl-download"
+                   data-pdf-url="{{ url_for('ventes.bl_pdf', id=bl.id) }}"
+                   data-doc-type="bl"
+                   data-has-cachet="{{ '1' if has_cachet else '0' }}">PDF</a>
                 <a href="{{ url_for('ventes.bons_livraison') }}" class="small text-muted">Liste BL</a>
               </span>
             </li>

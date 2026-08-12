@@ -22,4 +22,9 @@ class ParametresDocumentsForm(FlaskForm):
         validators=[Optional(), FileAllowed(["png", "jpg", "jpeg", "gif"], "Images uniquement")],
     )
     supprimer_logo = BooleanField("Supprimer le logo actuel")
+    cachet = FileField(
+        "Cachet / tampon (sous la date)",
+        validators=[Optional(), FileAllowed(["png", "jpg", "jpeg", "gif"], "Images uniquement")],
+    )
+    supprimer_cachet = BooleanField("Supprimer le cachet actuel")
     submit = SubmitField("Enregistrer")

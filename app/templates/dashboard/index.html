@@ -224,12 +224,14 @@
                          class="btn btn-sm btn-icon btn-primary js-facture-download"
                          data-pdf-url="{{ url_for('ventes.facture_pdf', id=f.id) }}"
                          data-has-bl="{{ '1' if bl_par_facture.get(f.id) else '0' }}"
+                         data-has-cachet="{{ '1' if has_cachet else '0' }}"
                          {% if bl_par_facture.get(f.id) %}data-bl-num="{{ bl_par_facture[f.id].numero }}"{% endif %}
                          title="Télécharger PDF"><i class="bi bi-download"></i></a>
                       <a href="{{ url_for('ventes.facture_imprimer', id=f.id) }}"
                          class="btn btn-sm btn-icon js-facture-print"
                          data-print-url="{{ url_for('ventes.facture_imprimer', id=f.id) }}"
                          data-has-bl="{{ '1' if bl_par_facture.get(f.id) else '0' }}"
+                         data-has-cachet="{{ '1' if has_cachet else '0' }}"
                          {% if bl_par_facture.get(f.id) %}data-bl-num="{{ bl_par_facture[f.id].numero }}"{% endif %}
                          title="Aperçu"><i class="bi bi-printer"></i></a>
                     </td>

@@ -631,6 +631,18 @@ body.invoice-body {
   color: var(--inv-muted);
 }
 
+.invoice-signature--cachet p {
+  margin-bottom: 0.5rem;
+}
+
+.invoice-cachet {
+  display: block;
+  margin: 0 auto;
+  max-width: 35mm;
+  max-height: 35mm;
+  object-fit: contain;
+}
+
 .footer-section {
   display: none !important;
 }
