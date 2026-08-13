@@ -85,68 +85,15 @@
   {% endif %}
 
   <div class="row g-3 mb-4">
-    <div class="col-lg-7">
-      <div class="card shadow-sm border-0 h-100">
-        <div class="card-header bg-white py-3">
-          <strong><i class="bi bi-person-plus me-2 text-primary"></i>Créer un compte</strong>
-        </div>
-        <div class="card-body">
-          <form method="post" class="row g-2 align-items-end">
-            {{ form.hidden_tag() }}
-            <input type="hidden" name="admin_action" value="create_user">
-            <div class="col-md-4">
-              <label class="form-label small mb-0">Prénom</label>
-              <input type="text" name="new_first_name" class="form-control form-control-sm" required>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label small mb-0">Nom</label>
-              <input type="text" name="new_last_name" class="form-control form-control-sm" required>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label small mb-0">Email</label>
-              <input type="email" name="new_email" class="form-control form-control-sm" required>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label small mb-0">Rôle</label>
-              <select name="new_role" class="form-select form-select-sm" required>
-                {% for role in role_options %}
-                  <option value="{{ role }}">{{ role|capitalize }}</option>
-                {% endfor %}
-              </select>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label small mb-0">Téléphone (connexion)</label>
-              <input type="tel" name="new_telephone" class="form-control form-control-sm" placeholder="77 123 45 67">
-            </div>
-            <div class="col-md-4">
-              <label class="form-label small mb-0">Mot de passe</label>
-              <input type="password" name="new_password" class="form-control form-control-sm" placeholder="passer123 si vide" autocomplete="new-password">
-            </div>
-            <div class="col-md-4">
-              <div class="form-check mt-4">
-                <input class="form-check-input" type="checkbox" name="new_is_active" id="new_is_active" checked>
-                <label class="form-check-label small" for="new_is_active">Compte actif</label>
-              </div>
-            </div>
-            <div class="col-12">
-              <button type="submit" class="btn btn-primary btn-sm">
-                <i class="bi bi-check-lg me-1"></i> Créer
-              </button>
-              <span class="small text-muted ms-2">Mot de passe vide → <code>passer123</code></span>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-    <div class="col-lg-5">
-      <div class="card shadow-sm border-0 h-100">
+    <div class="col-12">
+      <div class="card shadow-sm border-0">
         <div class="card-header bg-white py-3">
           <strong><i class="bi bi-key me-2 text-warning"></i>Rôles & permissions</strong>
         </div>
         <div class="card-body small">
           <div class="row g-2">
             {% for role in role_options %}
-              <div class="col-12">
+              <div class="col-md-6 col-xl-3">
                 <div class="role-card">
                   <div class="d-flex justify-content-between align-items-center mb-1">
                     <span class="fw-semibold text-capitalize">{{ role }}</span>
@@ -163,9 +110,14 @@
   </div>
 
   <div class="card shadow-sm border-0 mb-4">
-    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
       <strong><i class="bi bi-people me-2"></i>Comptes utilisateurs</strong>
-      <span class="small text-muted">{{ users|length }} compte(s)</span>
+      <div class="d-flex align-items-center gap-2">
+        <span class="small text-muted">{{ users|length }} compte(s)</span>
+        <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#createUserModal">
+          <i class="bi bi-person-plus me-1"></i> Nouvel utilisateur
+        </button>
+      </div>
     </div>
     <div class="table-responsive">
       <table class="table table-hover align-middle mb-0">
@@ -301,6 +253,62 @@
             <li class="list-group-item text-muted text-center py-3">Aucune activité enregistrée.</li>
           {% endfor %}
         </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="createUserModal" tabindex="-1" aria-labelledby="createUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <form method="post">
+          <div class="modal-header">
+            <h2 class="modal-title h5" id="createUserModalLabel">Nouvel utilisateur</h2>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+          </div>
+          <div class="modal-body">
+            <p class="small text-muted mb-3">Mot de passe vide → <code>passer123</code></p>
+            {{ form.hidden_tag() }}
+            <input type="hidden" name="admin_action" value="create_user">
+            <div class="mb-3">
+              <label class="form-label" for="new_first_name">Prénom</label>
+              <input type="text" class="form-control" name="new_first_name" id="new_first_name" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="new_last_name">Nom</label>
+              <input type="text" class="form-control" name="new_last_name" id="new_last_name" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="new_email">Email</label>
+              <input type="email" class="form-control" name="new_email" id="new_email" required autocomplete="off">
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="new_telephone">Téléphone</label>
+              <input type="tel" class="form-control" name="new_telephone" id="new_telephone" placeholder="77 123 45 67">
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="new_role">Rôle</label>
+              <select class="form-select" name="new_role" id="new_role" required>
+                {% for role in role_options %}
+                  <option value="{{ role }}">{{ role|capitalize }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="new_password">Mot de passe (optionnel)</label>
+              <input type="password" class="form-control" name="new_password" id="new_password" placeholder="passer123 si vide" autocomplete="new-password">
+            </div>
+            <div class="form-check mb-0">
+              <input class="form-check-input" type="checkbox" name="new_is_active" id="new_is_active" checked>
+              <label class="form-check-label" for="new_is_active">Compte actif</label>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Annuler</button>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-person-plus me-1"></i> Créer l'utilisateur
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
