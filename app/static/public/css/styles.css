@@ -1380,3 +1380,175 @@ span.badge.bg-primary {
     font-size: 0.875rem;
     color: var(--text-secondary);
 }
+
+/* ==========================================
+   Modales admin utilisateurs
+   ========================================== */
+.user-admin-modal .modal-dialog {
+    max-width: 640px;
+}
+
+.user-admin-modal__content {
+    border: 0;
+    border-radius: 1rem;
+    overflow: hidden;
+    box-shadow: 0 1.25rem 2.5rem rgba(30, 41, 59, 0.28);
+}
+
+.user-admin-modal__hero {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.35rem 1.5rem;
+    background: linear-gradient(135deg, #721818 0%, #4f1014 70%, #3a0c10 100%);
+    color: #fff;
+    position: relative;
+}
+
+.user-admin-modal__hero::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #b0dbdd 0%, rgba(176, 219, 221, 0.35) 100%);
+}
+
+.user-admin-modal__hero--edit {
+    background: linear-gradient(135deg, #5a1218 0%, #721818 45%, #3f0e12 100%);
+}
+
+.user-admin-modal__hero-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(176, 219, 221, 0.22);
+    border: 1px solid rgba(176, 219, 221, 0.45);
+    color: #e8f7f8;
+    font-size: 1.35rem;
+    flex-shrink: 0;
+}
+
+.user-admin-modal__title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin: 0 0 0.2rem;
+    letter-spacing: -0.01em;
+    color: #fff;
+}
+
+.user-admin-modal__subtitle {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.78);
+}
+
+.user-admin-modal__body {
+    padding: 1.35rem 1.5rem 0.5rem;
+    background: #f8fbfb;
+}
+
+.user-admin-section {
+    background: #fff;
+    border: 1px solid #e5eef0;
+    border-radius: 0.85rem;
+    padding: 1.1rem 1.15rem 1.2rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.user-admin-section__label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--brand-burgundy);
+    margin-bottom: 0.85rem;
+}
+
+.user-admin-modal .form-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 0.35rem;
+}
+
+.user-admin-input,
+.user-admin-modal .input-group-text {
+    border-color: #d7e4e6;
+}
+
+.user-admin-modal .input-group-text {
+    background: rgba(176, 219, 221, 0.28);
+    color: var(--brand-burgundy);
+}
+
+.user-admin-modal .form-control:focus,
+.user-admin-modal .form-select:focus {
+    border-color: rgba(114, 24, 24, 0.45);
+    box-shadow: 0 0 0 0.2rem rgba(114, 24, 24, 0.12);
+}
+
+.user-admin-modal .form-control,
+.user-admin-modal .form-select {
+    border-radius: 0.55rem;
+    padding: 0.55rem 0.75rem;
+}
+
+.user-admin-modal .input-group .form-control {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+.user-admin-modal .input-group-text {
+    border-top-left-radius: 0.55rem;
+    border-bottom-left-radius: 0.55rem;
+}
+
+.user-admin-switch {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+    padding: 0.75rem 0.9rem;
+    border-radius: 0.65rem;
+    background: rgba(176, 219, 221, 0.22);
+    border: 1px solid rgba(176, 219, 221, 0.55);
+}
+
+.user-admin-switch .form-check-input {
+    width: 2.4em;
+    height: 1.25em;
+    cursor: pointer;
+}
+
+.user-admin-switch .form-check-input:checked {
+    background-color: var(--brand-burgundy);
+    border-color: var(--brand-burgundy);
+}
+
+.user-admin-switch .form-check-label {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.user-admin-switch__hint {
+    font-size: 0.78rem;
+    color: #64748b;
+}
+
+.user-admin-modal__footer {
+    border-top: 1px solid #e5eef0;
+    background: #fff;
+    padding: 1rem 1.5rem 1.2rem;
+    gap: 0.5rem;
+}
+
+.user-admin-modal__footer .btn-primary {
+    min-width: 160px;
+}
+
