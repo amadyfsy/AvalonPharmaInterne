@@ -121,23 +121,45 @@
   {# Graphique barres + alertes — structure identique à la maquette #}
   <div class="row g-4 mb-4">
     <div class="col-12 col-lg-8">
-      <div class="card">
-        <div class="card-header">
-          <h5 class="card-title">Évolution du chiffre d'affaires</h5>
-          <div class="card-actions">
-            <span class="badge bg-light text-muted">12 derniers mois</span>
+      <div class="card ca-chart-card">
+        <div class="card-header align-items-start">
+          <div>
+            <h5 class="card-title mb-1">Évolution du chiffre d'affaires</h5>
+            <p class="ca-chart-subtitle mb-0">12 derniers mois · total {{ montant_fcfa(ca_evolution_total) }}</p>
+          </div>
+          <div class="card-actions d-flex flex-column align-items-end gap-1">
+            {% if ca_evolution_mom > 0 %}
+              <span class="badge ca-mom ca-mom--up"><i class="bi bi-arrow-up-short"></i> {{ "%.1f"|format(ca_evolution_mom) }} % vs mois préc.</span>
+            {% elif ca_evolution_mom < 0 %}
+              <span class="badge ca-mom ca-mom--down"><i class="bi bi-arrow-down-short"></i> {{ "%.1f"|format(ca_evolution_mom|abs) }} % vs mois préc.</span>
+            {% else %}
+              <span class="badge ca-mom ca-mom--flat">Stable vs mois préc.</span>
+            {% endif %}
           </div>
         </div>
         <div class="card-body">
-          <div class="chart-container">
+          <div class="chart-container ca-chart">
+            <div class="chart-grid" aria-hidden="true">
+              <span></span><span></span><span></span><span></span>
+            </div>
             <div class="chart-bars">
-              {% for i in range(ca_evolution_labels|length) %}
-                <div class="chart-bar-wrapper">
-                  <div class="chart-bar{% if i == ca_evolution_active_i %} active{% endif %}" style="--height: {{ ca_evolution_pct[i] }}%"></div>
-                  <span class="chart-label">{{ ca_evolution_labels[i] }}</span>
+              {% for row in ca_evolution %}
+                <div class="chart-bar-wrapper{% if row.is_current %} is-current{% endif %}{% if row.is_peak %} is-peak{% endif %}"
+                     title="{{ row.label }} {{ row.year }} — {{ row.value_full }} FCFA">
+                  <span class="chart-value{% if row.value <= 0 %} is-zero{% endif %}">{{ row.value_label if row.value > 0 else '—' }}</span>
+                  <div class="chart-bar{% if row.is_current %} active{% elif row.is_peak %} peak{% endif %}"
+                       style="--height: {{ row.pct if row.pct > 0 else 2 }}%"></div>
+                  <span class="chart-label">
+                    <span class="chart-label__m">{{ row.label }}</span>
+                    <span class="chart-label__y">’{{ row.year_short }}</span>
+                  </span>
                 </div>
               {% endfor %}
             </div>
+          </div>
+          <div class="ca-chart-legend">
+            <span><i class="ca-dot ca-dot--current"></i> Mois en cours</span>
+            <span><i class="ca-dot ca-dot--peak"></i> Pic de la période</span>
           </div>
         </div>
       </div>

@@ -141,24 +141,73 @@ def index():
         benefice_variation = 100.0
 
     # Evolution CA (12 derniers mois)
-    ca_evolution_labels = []
-    ca_evolution_data = []
+    _mois_fr = (
+        "janv.", "févr.", "mars", "avr.", "mai", "juin",
+        "juil.", "août", "sept.", "oct.", "nov.", "déc.",
+    )
+
+    def _ca_compact(v: float) -> str:
+        """Libellé court pour les barres (ex. 1,2 M / 850 k)."""
+        x = float(v or 0)
+        if x >= 1_000_000:
+            n = x / 1_000_000
+            s = f"{n:.1f}".replace(".", ",").rstrip("0").rstrip(",")
+            return f"{s} M"
+        if x >= 1_000:
+            n = x / 1_000
+            s = f"{n:.0f}" if n >= 10 else f"{n:.1f}".replace(".", ",").rstrip("0").rstrip(",")
+            return f"{s} k"
+        return format_montant_espace(int(round(x))) or "0"
+
+    ca_evolution = []
     for i in range(11, -1, -1):
         m = today - relativedelta(months=i)
-        ca_evolution_labels.append(m.strftime('%b %Y'))
-        m_ca = db.session.query(func.sum(Facture.total_ttc)).filter(
-            Facture.statut != 'annulee',
-            Facture.statut != 'brouillon',
-            extract('month', Facture.date_emission) == m.month,
-            extract('year', Facture.date_emission) == m.year
-        ).scalar() or 0.0
-        ca_evolution_data.append(float(m_ca))
+        m_ca = float(
+            db.session.query(func.sum(Facture.total_ttc)).filter(
+                Facture.statut != "annulee",
+                Facture.statut != "brouillon",
+                extract("month", Facture.date_emission) == m.month,
+                extract("year", Facture.date_emission) == m.year,
+            ).scalar()
+            or 0.0
+        )
+        ca_evolution.append(
+            {
+                "month": m.month,
+                "year": m.year,
+                "label": _mois_fr[m.month - 1],
+                "year_short": str(m.year)[2:],
+                "value": m_ca,
+                "value_label": _ca_compact(m_ca),
+                "value_full": format_montant_espace(m_ca),
+                "is_current": m.month == today.month and m.year == today.year,
+            }
+        )
 
-    max_ca = max(ca_evolution_data) if ca_evolution_data else 0.0
+    max_ca = max((row["value"] for row in ca_evolution), default=0.0)
     max_ca = max(max_ca, 1.0)
-    ca_evolution_pct = [round((v / max_ca) * 100, 2) for v in ca_evolution_data]
-    ca_evolution_active_i = (
-        ca_evolution_data.index(max(ca_evolution_data)) if ca_evolution_data else 0
+    for row in ca_evolution:
+        row["pct"] = round((row["value"] / max_ca) * 100, 2)
+        row["is_peak"] = row["value"] == max(r["value"] for r in ca_evolution) and row["value"] > 0
+
+    ca_evolution_total = sum(row["value"] for row in ca_evolution)
+    # Variation mois courant vs mois précédent
+    ca_evolution_mom = 0.0
+    if len(ca_evolution) >= 2:
+        prev_v = ca_evolution[-2]["value"]
+        cur_v = ca_evolution[-1]["value"]
+        if prev_v > 0:
+            ca_evolution_mom = ((cur_v - prev_v) / prev_v) * 100.0
+        elif cur_v > 0:
+            ca_evolution_mom = 100.0
+
+    # Compatibilité éventuelle anciens templates
+    ca_evolution_labels = [f'{r["label"]} {r["year"]}' for r in ca_evolution]
+    ca_evolution_data = [r["value"] for r in ca_evolution]
+    ca_evolution_pct = [r["pct"] for r in ca_evolution]
+    ca_evolution_active_i = next(
+        (i for i, r in enumerate(ca_evolution) if r["is_current"]),
+        len(ca_evolution) - 1,
     )
 
     # Factures récentes
@@ -242,6 +291,9 @@ def index():
         depenses_variation=float(depenses_variation),
         benefice_net=float(benefice_net),
         benefice_variation=float(benefice_variation),
+        ca_evolution=ca_evolution,
+        ca_evolution_total=ca_evolution_total,
+        ca_evolution_mom=float(ca_evolution_mom),
         ca_evolution_labels=ca_evolution_labels,
         ca_evolution_data=ca_evolution_data,
         ca_evolution_pct=ca_evolution_pct,

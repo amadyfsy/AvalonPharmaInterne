@@ -572,44 +572,125 @@ img.sidebar-logo-img {
 }
 
 /* ==========================================
-   Chart Styles (CSS Only)
+   Chart Styles (CSS Only) — CA 12 mois
    ========================================== */
 .chart-container {
-    height: 250px;
+    height: 280px;
     display: flex;
     align-items: flex-end;
+    position: relative;
+}
+
+.ca-chart {
+    padding: 0.25rem 0 0;
+}
+
+.ca-chart-subtitle {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+}
+
+.ca-mom {
+    font-weight: 600;
+    font-size: 0.75rem;
+}
+
+.ca-mom--up {
+    background: rgba(40, 167, 69, 0.12);
+    color: #1e7e34;
+}
+
+.ca-mom--down {
+    background: rgba(220, 53, 69, 0.12);
+    color: #b02a37;
+}
+
+.ca-mom--flat {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.chart-grid {
+    position: absolute;
+    inset: 1.75rem 0 2.35rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.chart-grid span {
+    display: block;
+    border-top: 1px dashed rgba(15, 23, 42, 0.08);
 }
 
 .chart-bars {
+    position: relative;
+    z-index: 1;
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
     width: 100%;
     height: 100%;
-    gap: 8px;
+    gap: 6px;
 }
 
 .chart-bar-wrapper {
     flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     height: 100%;
     justify-content: flex-end;
+    cursor: default;
+}
+
+.chart-value {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--brand-burgundy);
+    line-height: 1.1;
+    margin-bottom: 6px;
+    white-space: nowrap;
+    letter-spacing: -0.02em;
+}
+
+.chart-value.is-zero {
+    color: #94a3b8;
+    font-weight: 500;
 }
 
 .chart-bar {
     width: 100%;
-    max-width: 40px;
-    background: linear-gradient(180deg, var(--brand-burgundy) 0%, #4f1014 100%);
-    border-radius: 6px 6px 0 0;
+    max-width: 36px;
+    background: linear-gradient(180deg, #9a2a2a 0%, var(--brand-burgundy) 55%, #4f1014 100%);
+    border-radius: 8px 8px 3px 3px;
     height: var(--height);
-    animation: growUp 1s ease-out forwards;
+    min-height: 4px;
+    animation: growUp 0.85s ease-out forwards;
     transform-origin: bottom;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+.chart-bar-wrapper:hover .chart-bar {
+    filter: brightness(1.08);
 }
 
 .chart-bar.active {
-    background: linear-gradient(180deg, var(--success-color) 0%, #28a745 100%);
+    background: linear-gradient(180deg, #34d399 0%, #16a34a 55%, #15803d 100%);
+    box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.chart-bar.peak:not(.active) {
+    background: linear-gradient(180deg, #c45c5c 0%, #8f2222 60%, #5c1216 100%);
+}
+
+.chart-bar-wrapper.is-current .chart-label {
+    color: #15803d;
+    font-weight: 700;
 }
 
 @keyframes growUp {
@@ -622,9 +703,53 @@ img.sidebar-logo-img {
 }
 
 .chart-label {
-    margin-top: 10px;
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    line-height: 1.15;
+    text-align: center;
+}
+
+.chart-label__m {
+    font-weight: 600;
+    color: #475569;
+}
+
+.chart-label__y {
+    font-size: 0.62rem;
+    color: #94a3b8;
+}
+
+.ca-chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(15, 23, 42, 0.06);
     font-size: 0.75rem;
     color: var(--text-secondary);
+}
+
+.ca-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 0.35rem;
+    vertical-align: middle;
+}
+
+.ca-dot--current {
+    background: #16a34a;
+}
+
+.ca-dot--peak {
+    background: #8f2222;
 }
 
 /* ==========================================
@@ -1091,11 +1216,23 @@ img.sidebar-logo-img {
     }
 
     .chart-bars {
-        gap: 4px;
+        gap: 3px;
+    }
+
+    .chart-value {
+        font-size: 0.55rem;
     }
 
     .chart-label {
-        font-size: 0.65rem;
+        font-size: 0.58rem;
+    }
+
+    .chart-label__y {
+        display: none;
+    }
+
+    .chart-container {
+        height: 240px;
     }
 }
 
