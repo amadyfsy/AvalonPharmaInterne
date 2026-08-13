@@ -15,22 +15,9 @@
 <body>
 {% set page_loader_logo = global_logo_url if global_logo_url else url_for('static', filename='public/img/avalon-logo.png') %}
 <div id="pageLoader" class="page-loader" role="status" aria-live="polite" aria-busy="true" aria-label="Chargement">
-  <div class="page-loader__glow page-loader__glow--a" aria-hidden="true"></div>
-  <div class="page-loader__glow page-loader__glow--b" aria-hidden="true"></div>
-  <div class="page-loader__stage">
-    <div class="page-loader__orbit page-loader__orbit--outer" aria-hidden="true"></div>
-    <div class="page-loader__orbit page-loader__orbit--mid" aria-hidden="true"></div>
-    <div class="page-loader__orbit page-loader__orbit--inner" aria-hidden="true"></div>
-    <div class="page-loader__spark page-loader__spark--1" aria-hidden="true"></div>
-    <div class="page-loader__spark page-loader__spark--2" aria-hidden="true"></div>
-    <div class="page-loader__spark page-loader__spark--3" aria-hidden="true"></div>
-    <div class="page-loader__logo-wrap">
-      <img src="{{ page_loader_logo }}" alt="Avalon Pharma" class="page-loader__logo" width="140" height="140">
-    </div>
-    <div class="page-loader__meta">
-      <span class="page-loader__brand">Avalon Pharma</span>
-      <span class="page-loader__label">Chargement<span class="page-loader__dots" aria-hidden="true"></span></span>
-    </div>
+  <div class="page-loader__box">
+    <img src="{{ page_loader_logo }}" alt="Avalon Pharma" class="page-loader__logo" width="180" height="180">
+    <div class="page-loader__bar" aria-hidden="true"><span></span></div>
   </div>
 </div>
 
