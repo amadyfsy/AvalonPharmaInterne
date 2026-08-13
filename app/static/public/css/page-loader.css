@@ -1,0 +1,94 @@
+/* Page loader — logo Avalon pendant le chargement */
+.page-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, #f4fbfb 0%, #eef4f5 45%, #f8f1f1 100%);
+  transition: opacity 0.35s ease, visibility 0.35s ease;
+}
+
+.page-loader.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.page-loader__inner {
+  position: relative;
+  width: 112px;
+  height: 112px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.page-loader__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid rgba(176, 219, 221, 0.35);
+  border-top-color: #721818;
+  border-right-color: #b0dbdd;
+  animation: pageLoaderSpin 0.9s linear infinite;
+}
+
+.page-loader__ring::after {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-bottom-color: rgba(114, 24, 24, 0.35);
+  animation: pageLoaderSpin 1.4s linear infinite reverse;
+}
+
+.page-loader__logo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  border-radius: 14px;
+  background: #fff;
+  padding: 8px;
+  box-shadow: 0 8px 28px rgba(114, 24, 24, 0.14);
+  animation: pageLoaderPulse 1.4s ease-in-out infinite;
+}
+
+.page-loader__label {
+  position: absolute;
+  top: calc(100% + 1.1rem);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #721818;
+  opacity: 0.85;
+}
+
+@keyframes pageLoaderSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pageLoaderPulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-loader__ring,
+  .page-loader__ring::after,
+  .page-loader__logo {
+    animation: none;
+  }
+}
