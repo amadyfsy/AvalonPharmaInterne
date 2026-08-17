@@ -430,7 +430,7 @@
           <div class="wizard-step-head">
             <div>
               <h2>Étape 3 — Tarifs &amp; alerte stock</h2>
-              <p>Prix d’achat et de vente HT, TVA et seuil d’alerte.</p>
+              <p>Prix facultatifs (0 accepté). Vous pourrez les ajuster plus tard.</p>
             </div>
             <span class="wizard-step-icon"><i class="bi bi-currency-exchange"></i></span>
           </div>
@@ -442,7 +442,6 @@
             <div class="card-body row g-3">
               <div class="col-md-4">
                 {{ form.prix_achat_ht.label(class="form-label") }}
-                <span class="text-danger">*</span>
                 <div class="input-group">
                   {{ form.prix_achat_ht(class="form-control", id="prix_achat_ht", placeholder="0", inputmode="decimal") }}
                   <span class="input-group-text">FCFA</span>
@@ -451,7 +450,6 @@
               </div>
               <div class="col-md-4">
                 {{ form.prix_vente_ht.label(class="form-label") }}
-                <span class="text-danger">*</span>
                 <div class="input-group">
                   {{ form.prix_vente_ht(class="form-control", placeholder="0", id="prixVenteHt", inputmode="decimal") }}
                   <span class="input-group-text">FCFA</span>
@@ -483,9 +481,8 @@
             <div class="card-body row g-3">
               <div class="col-md-6 col-lg-5">
                 {{ form.seuil_alerte_stock.label(class="form-label") }}
-                <span class="text-danger">*</span>
-                {{ form.seuil_alerte_stock(class="form-control", id="seuil_alerte_stock", placeholder="10", min="0") }}
-                <div class="form-text">En dessous de ce seuil : signal « stock bas ».</div>
+                {{ form.seuil_alerte_stock(class="form-control", id="seuil_alerte_stock", placeholder="0", min="0") }}
+                <div class="form-text">0 = pas d’alerte. En dessous de ce seuil : signal « stock bas ».</div>
                 {% for e in form.seuil_alerte_stock.errors %}<div class="invalid-feedback d-block small">{{ e }}</div>{% endfor %}
               </div>
             </div>

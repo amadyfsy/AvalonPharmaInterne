@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 import os
 
 from sqlalchemy import func, or_
@@ -21,7 +22,7 @@ from ...utils.produit_photos import (
 from ...utils.produit_photos_api import photos_galerie_triees, produit_photos_payload
 from flask_login import current_user, login_required
 
-from flask import flash, jsonify, redirect, render_template, request, send_file, url_for
+from flask import abort, flash, jsonify, redirect, render_template, request, send_file, url_for
 
 from ...utils.produit_metier import (
     DM_SPECIALITES,
@@ -61,6 +62,89 @@ def _generate_produit_reference() -> str:
         except (TypeError, ValueError):
             seq = 1
     return f'{prefix}{seq:03d}'
+
+
+def _money(v) -> Decimal:
+    try:
+        return Decimal(str(v if v is not None else 0)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    except (InvalidOperation, TypeError, ValueError):
+        return Decimal('0.00')
+
+
+def _forme_for_categorie_enum(enum_key: str) -> str:
+    if enum_key in ('consommable', 'implant'):
+        return 'dispositif'
+    return 'autre'
+
+
+def _default_categorie_for_quick(enum_key: str | None = None) -> tuple[CategorieProduit | None, str]:
+    by_bucket = _ensure_enum_categories()
+    key = (enum_key or '').strip().lower()
+    if key not in dict(CATEGORIES_ENUM):
+        key = 'consommable' if by_bucket.get('consommable') else next(iter(by_bucket), '')
+    cat = by_bucket.get(key) if key else None
+    if cat is None and by_bucket:
+        key, cat = next(iter(by_bucket.items()))
+    return cat, key
+
+
+@stock_bp.route('/api/rapide', methods=['POST'])
+@login_required
+def api_produit_rapide():
+    """Création minimale : nom (+ prix / catégorie optionnels). Utilisable depuis le stock ou une vente."""
+    if not (
+        user_has_permission(current_user, 'stock', 'create')
+        or user_has_permission(current_user, 'ventes', 'create')
+    ):
+        abort(403)
+    if not request.is_json:
+        return jsonify({'ok': False, 'error': 'Requête JSON attendue.'}), 400
+    payload = request.get_json(silent=True) or {}
+    nom = (payload.get('designation') or '').strip()
+    if len(nom) < 2:
+        return jsonify(
+            {'ok': False, 'error': 'Indiquez le nom du produit (au moins 2 caractères).'}
+        ), 400
+    cat, enum_key = _default_categorie_for_quick(payload.get('categorie'))
+    if not cat:
+        return jsonify(
+            {'ok': False, 'error': "Aucune catégorie n'est disponible. Créez-en une d'abord."}
+        ), 400
+    prix_vente = _money(payload.get('prix_vente_ht') or 0)
+    prix_achat = _money(payload.get('prix_achat_ht') or 0)
+    try:
+        produit = Produit(
+            reference=_generate_produit_reference(),
+            designation=nom[:200],
+            description=None,
+            categorie_id=cat.id,
+            forme=_forme_for_categorie_enum(enum_key),
+            unite='unité',
+            prix_achat_ht=prix_achat,
+            prix_vente_ht=prix_vente,
+            tva=Decimal('0'),
+            prix_vente_ttc=prix_vente,
+            seuil_alerte_stock=0,
+            est_actif=True,
+        )
+        db.session.add(produit)
+        db.session.flush()
+        db.session.add(Stock(produit_id=produit.id, quantite_disponible=0, quantite_reservee=0))
+        db.session.commit()
+        return jsonify(
+            {
+                'ok': True,
+                'id': produit.id,
+                'reference': produit.reference,
+                'designation': produit.designation,
+                'prix_vente_ht': float(produit.prix_vente_ht or 0),
+                'stock_dispo': 0,
+                'categorie': cat.nom,
+            }
+        )
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
 
 def _sync_stock_from_lots(produit_id: int) -> Stock:
@@ -338,6 +422,7 @@ def index():
         specialites_filtre_flat=specialites_filtre_flat,
         specialites_filtre_grouped=specialites_filtre_grouped,
         has_filters=has_filters,
+        can_quick_add=user_has_permission(current_user, 'stock', 'create'),
     )
 
 @stock_bp.route('/produit/nouveau', methods=['GET', 'POST'])
@@ -349,6 +434,11 @@ def nouveau_produit():
     if request.method == 'GET':
         form.categorie_id.data = 0
         form.reference.data = _generate_produit_reference()
+        form.prix_achat_ht.data = Decimal('0')
+        form.prix_vente_ht.data = Decimal('0')
+        form.seuil_alerte_stock.data = 0
+        form.unite.data = 'unité'
+        form.forme.data = 'dispositif'
     cid_bind = (
         (request.form.get('categorie_id', type=int) or 0)
         if request.method == 'POST'
@@ -364,8 +454,9 @@ def nouveau_produit():
         return redirect(url_for('stock.index'))
 
     if form.validate_on_submit():
-        prix_vente_ht = form.prix_vente_ht.data
-        tva = form.tva.data
+        prix_vente_ht = form.prix_vente_ht.data if form.prix_vente_ht.data is not None else Decimal('0')
+        tva = form.tva.data if form.tva.data is not None else Decimal('0')
+        prix_achat_ht = form.prix_achat_ht.data if form.prix_achat_ht.data is not None else Decimal('0')
         prix_vente_ttc = prix_vente_ht * (1 + (tva / 100))
         lot_num = (form.numero_lot.data or '').strip()[:100]
         qte_lot_initiale = int(form.quantite_lot_initiale.data or 0)
@@ -394,13 +485,13 @@ def nouveau_produit():
                 designation=(form.designation.data or '').strip(),
                 description=(form.description.data or '').strip() or None,
                 categorie_id=form.categorie_id.data,
-                forme=form.forme.data,
-                unite=(form.unite.data or '').strip(),
-                prix_achat_ht=form.prix_achat_ht.data,
+                forme=form.forme.data or 'autre',
+                unite=(form.unite.data or '').strip() or 'unité',
+                prix_achat_ht=prix_achat_ht,
                 prix_vente_ht=prix_vente_ht,
                 tva=tva,
                 prix_vente_ttc=prix_vente_ttc,
-                seuil_alerte_stock=form.seuil_alerte_stock.data,
+                seuil_alerte_stock=int(form.seuil_alerte_stock.data or 0),
                 est_actif=form.est_actif.data,
                 donnees_metier=donnees_metier,
             )

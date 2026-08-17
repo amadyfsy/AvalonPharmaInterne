@@ -43,9 +43,16 @@
         Les filtres et la recherche s’appliquent <strong>automatiquement</strong> (catégorie, spécialité, texte).
       </p>
     </div>
-    <a href="{{ url_for('stock.nouveau_produit') }}" class="btn btn-light btn-sm">
-      <i class="bi bi-plus-lg me-1"></i> Nouveau produit
-    </a>
+    <div class="d-flex flex-wrap gap-2">
+      {% if can_quick_add %}
+        <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#produitRapideModal">
+          <i class="bi bi-lightning-charge me-1"></i> Ajout rapide
+        </button>
+      {% endif %}
+      <a href="{{ url_for('stock.nouveau_produit') }}" class="btn btn-light btn-sm">
+        <i class="bi bi-plus-lg me-1"></i> Fiche complète
+      </a>
+    </div>
   </div>
 
   <div class="card stock-filters-card shadow-sm mb-3">
@@ -164,6 +171,13 @@
                   {% if has_filters %}
                     <br><a href="{{ url_for('stock.index') }}">Voir tout le catalogue</a>
                   {% endif %}
+                  {% if can_quick_add %}
+                    <div class="mt-3">
+                      <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#produitRapideModal">
+                        <i class="bi bi-lightning-charge me-1"></i> Ajouter un produit rapidement
+                      </button>
+                    </div>
+                  {% endif %}
                 </td>
               </tr>
             {% endfor %}
@@ -175,6 +189,9 @@
 {% endblock %}
 
 {% block scripts %}
+  {% if can_quick_add %}
+    {% include 'partials/_produit_rapide_modal.html' %}
+  {% endif %}
 <script>
   (function () {
     var form = document.getElementById('stockFiltersForm');

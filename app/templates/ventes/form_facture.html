@@ -54,9 +54,14 @@
     <div class="card shadow-sm mb-3">
       <div class="card-header d-flex justify-content-between align-items-center">
         <span>Lignes</span>
-        <button type="button" class="btn btn-outline-primary btn-sm" id="addLine">
-          <i class="bi bi-plus-lg me-1"></i> Ajouter une ligne
-        </button>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#produitRapideModal">
+            <i class="bi bi-lightning-charge me-1"></i> Produit rapide
+          </button>
+          <button type="button" class="btn btn-outline-primary btn-sm" id="addLine">
+            <i class="bi bi-plus-lg me-1"></i> Ajouter une ligne
+          </button>
+        </div>
       </div>
 
       <div class="card-body">
@@ -217,6 +222,26 @@
       });
 
       updateAllRows();
+
+      window.onProduitRapideCreated = function (p) {
+        if (!p || !p.id) return;
+        var label = (p.reference || '') + ' - ' + (p.designation || '');
+        document.querySelectorAll("select[name='produit_id[]']").forEach(function (sel) {
+          var opt = document.createElement('option');
+          opt.value = String(p.id);
+          opt.textContent = label;
+          sel.appendChild(opt);
+        });
+        var last = document.querySelector('.line-row:last-child select[name="produit_id[]"]');
+        var lastPrice = document.querySelector('.line-row:last-child input[name="prix_unitaire_ht[]"]');
+        if (last) {
+          last.value = String(p.id);
+          last.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        if (lastPrice) lastPrice.value = String(p.prix_vente_ht || 0);
+      };
     })();
   </script>
+  {% set produit_rapide_mode = 'callback' %}
+  {% include 'partials/_produit_rapide_modal.html' %}
 {% endblock %}

@@ -1,0 +1,124 @@
+{# Modal + JS création produit rapide. Options : produit_rapide_mode = 'reload' | 'callback' #}
+{% set modal_id = produit_rapide_modal_id|default('produitRapideModal') %}
+{% set mode = produit_rapide_mode|default('reload') %}
+
+<div class="modal fade" id="{{ modal_id }}" tabindex="-1" aria-labelledby="{{ modal_id }}Label" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title" id="{{ modal_id }}Label">
+          <i class="bi bi-box-seam me-2 text-success"></i>Ajout rapide d’un produit
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body">
+        <p class="small text-muted mb-3">
+          Seul le <strong>nom</strong> est obligatoire. Référence, unité et stock sont générés automatiquement.
+          Vous pourrez compléter la fiche plus tard.
+        </p>
+        <div class="mb-3">
+          <label class="form-label fw-semibold" for="{{ modal_id }}Nom">Nom du produit</label>
+          <input type="text" class="form-control form-control-lg" id="{{ modal_id }}Nom" placeholder="Ex. Robinet 3 voies" maxlength="200" autocomplete="off">
+        </div>
+        <div class="row g-2">
+          <div class="col-md-7">
+            <label class="form-label" for="{{ modal_id }}Prix">Prix de vente (FCFA)</label>
+            <input type="number" class="form-control" id="{{ modal_id }}Prix" min="0" step="1" placeholder="0" inputmode="numeric">
+          </div>
+          <div class="col-md-5">
+            <label class="form-label" for="{{ modal_id }}Cat">Catégorie</label>
+            <select class="form-select" id="{{ modal_id }}Cat">
+              <option value="consommable" selected>Consommable</option>
+              <option value="medicament">Médicament</option>
+              <option value="implant">Implant</option>
+              <option value="equipement">Équipement</option>
+            </select>
+          </div>
+        </div>
+        <div class="alert alert-danger small d-none mt-3 mb-0" id="{{ modal_id }}Err" role="alert"></div>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button type="button" class="btn btn-success" id="{{ modal_id }}Btn">
+          <i class="bi bi-check-lg me-1"></i> Créer
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var modal = document.getElementById({{ modal_id|tojson }});
+  var nom = document.getElementById({{ (modal_id ~ 'Nom')|tojson }});
+  var prix = document.getElementById({{ (modal_id ~ 'Prix')|tojson }});
+  var cat = document.getElementById({{ (modal_id ~ 'Cat')|tojson }});
+  var btn = document.getElementById({{ (modal_id ~ 'Btn')|tojson }});
+  var err = document.getElementById({{ (modal_id ~ 'Err')|tojson }});
+  var apiUrl = {{ url_for('stock.api_produit_rapide')|tojson }};
+  var mode = {{ mode|tojson }};
+
+  function showErr(msg) {
+    if (!err) return;
+    err.textContent = msg || '';
+    err.classList.toggle('d-none', !msg);
+  }
+
+  if (modal) {
+    modal.addEventListener('show.bs.modal', function () {
+      showErr('');
+      if (nom) nom.value = '';
+      if (prix) prix.value = '';
+      if (cat) cat.value = 'consommable';
+      setTimeout(function () { if (nom) nom.focus(); }, 300);
+    });
+  }
+
+  if (btn && nom) {
+    btn.addEventListener('click', function () {
+      var designation = (nom.value || '').trim();
+      if (designation.length < 2) {
+        showErr('Saisissez au moins 2 caractères pour le nom.');
+        return;
+      }
+      showErr('');
+      btn.disabled = true;
+      fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          designation: designation,
+          prix_vente_ht: prix && prix.value ? prix.value : 0,
+          categorie: cat ? cat.value : 'consommable'
+        })
+      })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (res) {
+          btn.disabled = false;
+          if (!res.ok || !res.j.ok) {
+            showErr((res.j && res.j.error) ? res.j.error : 'Erreur lors de la création.');
+            return;
+          }
+          var inst = window.bootstrap && bootstrap.Modal.getInstance(modal);
+          if (inst) inst.hide();
+          if (typeof window.onProduitRapideCreated === 'function') {
+            window.onProduitRapideCreated(res.j);
+            return;
+          }
+          if (mode === 'reload') {
+            window.location.href = {{ url_for('stock.index')|tojson }} + '?q=' + encodeURIComponent(res.j.designation);
+          }
+        })
+        .catch(function () {
+          btn.disabled = false;
+          showErr('Erreur réseau ou serveur.');
+        });
+    });
+    if (nom) {
+      nom.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); btn.click(); }
+      });
+    }
+  }
+})();
+</script>

@@ -263,6 +263,9 @@
                     placeholder="Référence, désignation…"
                     autocomplete="off"
                   >
+                  <button class="btn btn-outline-success" type="button" data-bs-toggle="modal" data-bs-target="#produitRapideModal" title="Créer un produit (nom + prix)">
+                    <i class="bi bi-plus-lg"></i> Rapide
+                  </button>
                 </div>
                 <div class="small text-muted mb-2">Cliquez sur un produit pour l’ajouter au panier.</div>
                 <div class="vente-product-list" id="venteProductList">
@@ -1017,6 +1020,49 @@
           alert(err);
         }
       });
+
+      window.onProduitRapideCreated = function (p) {
+        if (!p || !p.id) return;
+        if (venteProductList) {
+          var empty = venteProductList.querySelector(".text-center.text-muted");
+          if (empty) empty.remove();
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "vente-product-item";
+          btn.setAttribute("data-id", p.id);
+          btn.setAttribute("data-ref", p.reference || "");
+          btn.setAttribute("data-name", p.designation || "");
+          btn.setAttribute("data-price", String(p.prix_vente_ht || 0));
+          btn.setAttribute("data-stock", "0");
+          btn.setAttribute("data-search", ((p.reference || "") + " " + (p.designation || "")).toLowerCase());
+          var priceLabel = formatFcfa(p.prix_vente_ht || 0);
+          btn.innerHTML =
+            '<span class="flex-grow-1 min-width-0">' +
+              '<span class="vente-product-name text-truncate d-block">' + esc(p.designation || "") + '</span>' +
+              '<span class="vente-product-meta">' + esc(p.reference || "") + ' · Stock : 0</span>' +
+            '</span>' +
+            '<span class="badge text-bg-light border text-nowrap">' + priceLabel + '</span>';
+          btn.addEventListener("click", function () {
+            addProductToCart({
+              id: btn.getAttribute("data-id"),
+              ref: btn.getAttribute("data-ref") || "",
+              name: btn.getAttribute("data-name") || "",
+              price: btn.getAttribute("data-price") || "0",
+              stock: "0",
+            });
+          });
+          venteProductList.prepend(btn);
+        }
+        addProductToCart({
+          id: p.id,
+          ref: p.reference || "",
+          name: p.designation || "",
+          price: p.prix_vente_ht || 0,
+          stock: 0,
+        });
+      };
     })();
   </script>
+  {% set produit_rapide_mode = 'callback' %}
+  {% include 'partials/_produit_rapide_modal.html' %}
 {% endblock %}

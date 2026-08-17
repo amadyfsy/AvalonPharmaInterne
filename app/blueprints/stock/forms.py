@@ -58,12 +58,18 @@ class ProduitBaseForm(FlaskForm):
         ],
         validators=[DataRequired()],
     )
-    unite = StringField('Unité', validators=[DataRequired()])
+    unite = StringField('Unité', validators=[Optional()], default='unité')
     prix_achat_ht = DecimalField(
-        'Prix Achat HT', places=2, validators=[DataRequired(), NumberRange(min=0)]
+        'Prix Achat HT',
+        places=2,
+        default=Decimal('0'),
+        validators=[Optional(), NumberRange(min=0)],
     )
     prix_vente_ht = DecimalField(
-        'Prix Vente HT', places=2, validators=[DataRequired(), NumberRange(min=0)]
+        'Prix Vente HT',
+        places=2,
+        default=Decimal('0'),
+        validators=[Optional(), NumberRange(min=0)],
     )
     tva = TvaPercentField(
         'TVA (%)',
@@ -72,7 +78,9 @@ class ProduitBaseForm(FlaskForm):
         validators=[NumberRange(min=0, max=100)],
     )
     seuil_alerte_stock = IntegerField(
-        'Seuil Alerte Stock', validators=[DataRequired(), NumberRange(min=0)]
+        'Seuil Alerte Stock',
+        default=0,
+        validators=[Optional(), NumberRange(min=0)],
     )
     est_actif = BooleanField('Actif', default=True)
 
