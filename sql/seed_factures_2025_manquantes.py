@@ -71,6 +71,7 @@ def main() -> None:
     from app.models.facture import Facture, LigneFacture
     from app.models.produit import CategorieProduit, Produit
     from app.models.stock import Stock
+    from app.utils.bl_from_facture import assurer_bl_pour_facture
 
     def slugify(text: str) -> str:
         text = unicodedata.normalize("NFKD", text)
@@ -96,8 +97,10 @@ def main() -> None:
 
         for raw in FACTURES:
             numero = raw["numero"]
-            if Facture.query.filter_by(numero=numero).first():
-                print(f"  skip {numero}")
+            existing = Facture.query.filter_by(numero=numero).first()
+            if existing:
+                assurer_bl_pour_facture(existing, statut="livre")
+                print(f"  skip {numero} (BL vérifié)")
                 continue
 
             name = raw["client"]
@@ -204,6 +207,8 @@ def main() -> None:
                         montant_ht=montant,
                     )
                 )
+            db.session.flush()
+            assurer_bl_pour_facture(facture, statut="livre")
             created += 1
             print(f"  + {numero} | {name} | {total_ttc:,.0f} FCFA")
 

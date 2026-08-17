@@ -34,6 +34,10 @@
     if (a.target && a.target !== '_self') return false;
     if (a.hasAttribute('download')) return false;
     if (a.dataset.noLoader === '1') return false;
+    var skipClass = 'js-facture-download js-facture-print js-bl-download js-bl-print js-facture-print-choice';
+    if (a.className && skipClass.split(' ').some(function (c) { return a.classList.contains(c); })) {
+      return false;
+    }
     var href = a.getAttribute('href');
     if (!href || href === '#' || href.charAt(0) === '#') return false;
     if (href.indexOf('javascript:') === 0 || href.indexOf('mailto:') === 0 || href.indexOf('tel:') === 0) {
@@ -43,6 +47,10 @@
       var url = new URL(href, window.location.href);
       if (url.origin !== window.location.origin) return false;
       if (url.pathname === window.location.pathname && url.search === window.location.search && url.hash) {
+        return false;
+      }
+      // PDF / impression : le fichier se télécharge sans quitter la page — ne pas bloquer l’UI.
+      if (/\/pdf(\/|$)/.test(url.pathname) || /\/imprimer(\/|$)/.test(url.pathname)) {
         return false;
       }
     } catch (e) {
@@ -70,11 +78,11 @@
     if (event.persisted) hideLoader();
   });
 
-  if (document.readyState === 'complete') {
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
     hideLoader();
   } else {
+    document.addEventListener('DOMContentLoaded', hideLoader);
     window.addEventListener('load', hideLoader);
-    // Sécurité si load tarde trop
-    setTimeout(hideLoader, 8000);
+    setTimeout(hideLoader, 4000);
   }
 })();

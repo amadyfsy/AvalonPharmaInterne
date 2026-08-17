@@ -47,6 +47,13 @@
         {% if facture.date_emission %}
           <span class="text-muted small">Émise le {{ facture.date_emission.strftime('%d/%m/%Y') }}</span>
         {% endif %}
+        {% if bl %}
+          <a href="{{ url_for('ventes.bl_detail', id=bl.id) }}" class="badge bg-success-subtle text-success text-decoration-none">
+            <i class="bi bi-truck me-1"></i>BL {{ bl.numero }}
+          </a>
+        {% else %}
+          <span class="badge bg-warning-subtle text-warning">Pas de BL</span>
+        {% endif %}
       </p>
     </div>
     <div class="d-flex flex-wrap gap-2">
@@ -67,6 +74,17 @@
          {% if bl %}data-bl-num="{{ bl.numero }}"{% endif %}>
         <i class="bi bi-printer me-1"></i> Aperçu
       </a>
+      {% if bl %}
+        <a href="{{ url_for('ventes.bl_detail', id=bl.id) }}" class="btn btn-outline-success">
+          <i class="bi bi-truck me-1"></i> Voir le BL
+        </a>
+      {% elif peut_creer_bl|default(false) and facture.statut != 'annulee' %}
+        <form method="post" action="{{ url_for('ventes.facture_creer_bl', id=facture.id) }}" class="d-inline">
+          <button type="submit" class="btn btn-success">
+            <i class="bi bi-truck me-1"></i> Créer le BL
+          </button>
+        </form>
+      {% endif %}
       {% if facture.statut in ['brouillon', 'emise', 'partiellement_payee'] %}
         <a href="{{ url_for('ventes.modifier_facture', id=facture.id) }}" class="btn btn-outline-primary">
           <i class="bi bi-pencil-square me-1"></i> Modifier
@@ -200,40 +218,66 @@
     </div>
   </div>
 
-  {% if bl or proforma_src %}
+  <div class="card shadow-sm mt-4 {% if not bl %}border-warning{% endif %}">
+    <div class="card-header fw-semibold d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <span><i class="bi bi-truck me-2"></i>Bon de livraison</span>
+      {% if bl %}
+        {{ badge_statut_bl(bl.statut) }}
+      {% else %}
+        <span class="badge bg-warning text-dark">Manquant</span>
+      {% endif %}
+    </div>
+    <div class="card-body">
+      {% if bl %}
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+          <div>
+            <div class="mb-1">
+              N° <a href="{{ url_for('ventes.bl_detail', id=bl.id) }}" class="fw-semibold text-decoration-none">{{ bl.numero }}</a>
+            </div>
+            <div class="small text-muted">
+              Livraison le {{ bl.date_livraison.strftime('%d/%m/%Y') if bl.date_livraison else '—' }}
+              · {{ bl.lignes|length }} ligne(s)
+            </div>
+            {% if bl.adresse_livraison %}
+              <div class="small mt-1">{{ bl.adresse_livraison }}</div>
+            {% endif %}
+          </div>
+          <div class="d-flex flex-wrap gap-2">
+            <a href="{{ url_for('ventes.bl_detail', id=bl.id) }}" class="btn btn-sm btn-outline-success">Ouvrir</a>
+            <a href="{{ url_for('ventes.bl_imprimer', id=bl.id) }}"
+               class="btn btn-sm btn-outline-primary js-bl-print"
+               data-print-url="{{ url_for('ventes.bl_imprimer', id=bl.id) }}"
+               data-doc-type="bl"
+               data-has-cachet="{{ '1' if has_cachet else '0' }}">Imprimer</a>
+            <a href="{{ url_for('ventes.bl_pdf', id=bl.id) }}"
+               class="btn btn-sm btn-outline-secondary js-bl-download"
+               data-pdf-url="{{ url_for('ventes.bl_pdf', id=bl.id) }}"
+               data-doc-type="bl"
+               data-has-cachet="{{ '1' if has_cachet else '0' }}">PDF</a>
+          </div>
+        </div>
+      {% else %}
+        <p class="mb-3 text-muted">Cette facture n’a pas encore de bon de livraison. Le BL reprend le même numéro et les mêmes lignes.</p>
+        {% if peut_creer_bl|default(false) and facture.statut != 'annulee' %}
+          <form method="post" action="{{ url_for('ventes.facture_creer_bl', id=facture.id) }}">
+            <button type="submit" class="btn btn-success">
+              <i class="bi bi-plus-circle me-1"></i> Créer le bon de livraison
+            </button>
+          </form>
+        {% else %}
+          <p class="small text-muted mb-0">Vous n’avez pas le droit de créer un BL. Demandez à un commercial ou un administrateur.</p>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+
+  {% if proforma_src %}
     <div class="card shadow-sm mt-4">
-      <div class="card-header fw-semibold">Documents liés</div>
+      <div class="card-header fw-semibold">Proforma d’origine</div>
       <div class="card-body">
-        <ul class="list-unstyled mb-0">
-          {% if proforma_src %}
-            <li class="mb-2">
-              <i class="bi bi-file-earmark-text me-2 text-secondary"></i>
-              Proforma d’origine : <strong>{{ proforma_src.numero }}</strong>
-              <a href="{{ url_for('ventes.proforma_pdf', id=proforma_src.id) }}" class="ms-2" target="_blank" rel="noopener">PDF proforma</a>
-            </li>
-          {% endif %}
-          {% if bl %}
-            <li>
-              <i class="bi bi-truck me-2 text-secondary"></i>
-              Bon de livraison :
-              <a href="{{ url_for('ventes.bl_detail', id=bl.id) }}" class="fw-semibold text-decoration-none">{{ bl.numero }}</a>
-              {{ badge_statut_bl(bl.statut) }}
-              <span class="ms-2">
-                <a href="{{ url_for('ventes.bl_imprimer', id=bl.id) }}"
-                   class="btn btn-sm btn-outline-primary py-0 js-bl-print"
-                   data-print-url="{{ url_for('ventes.bl_imprimer', id=bl.id) }}"
-                   data-doc-type="bl"
-                   data-has-cachet="{{ '1' if has_cachet else '0' }}">Imprimer</a>
-                <a href="{{ url_for('ventes.bl_pdf', id=bl.id) }}"
-                   class="btn btn-sm btn-outline-secondary py-0 js-bl-download"
-                   data-pdf-url="{{ url_for('ventes.bl_pdf', id=bl.id) }}"
-                   data-doc-type="bl"
-                   data-has-cachet="{{ '1' if has_cachet else '0' }}">PDF</a>
-                <a href="{{ url_for('ventes.bons_livraison') }}" class="small text-muted">Liste BL</a>
-              </span>
-            </li>
-          {% endif %}
-        </ul>
+        <i class="bi bi-file-earmark-text me-2 text-secondary"></i>
+        <strong>{{ proforma_src.numero }}</strong>
+        <a href="{{ url_for('ventes.proforma_pdf', id=proforma_src.id) }}" class="ms-2" target="_blank" rel="noopener">PDF proforma</a>
       </div>
     </div>
   {% endif %}

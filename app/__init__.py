@@ -106,48 +106,51 @@ def app(config_name='default'):
         # Menus du header (notifications + messages) par utilisateur connecté.
         try:
             if current_user and current_user.is_authenticated:
+                from sqlalchemy import func
+
                 from .models.notification import Notification
 
-                notif_rows = (
-                    Notification.query.filter_by(user_id=current_user.id, kind='notification')
+                inbox = (
+                    Notification.query.filter_by(user_id=current_user.id)
                     .order_by(Notification.is_read.asc(), Notification.created_at.desc())
-                    .limit(5)
+                    .limit(24)
                     .all()
                 )
-                msg_rows = (
-                    Notification.query.filter_by(user_id=current_user.id, kind='message')
-                    .order_by(Notification.is_read.asc(), Notification.created_at.desc())
-                    .limit(5)
-                    .all()
-                )
-                info['header_notifications'] = [
+                notif_rows = [n for n in inbox if n.kind == "notification"][:5]
+                msg_rows = [n for n in inbox if n.kind == "message"][:5]
+                info["header_notifications"] = [
                     {
-                        'id': n.id,
-                        'icon': n.icon,
-                        'title': n.title,
-                        'text': n.text,
-                        'url': n.url or url_for('dashboard.index'),
-                        'is_read': bool(n.is_read),
+                        "id": n.id,
+                        "icon": n.icon,
+                        "title": n.title,
+                        "text": n.text,
+                        "url": n.url or url_for("dashboard.index"),
+                        "is_read": bool(n.is_read),
                     }
                     for n in notif_rows
                 ]
-                info['header_messages'] = [
+                info["header_messages"] = [
                     {
-                        'id': m.id,
-                        'icon': m.icon,
-                        'title': m.title,
-                        'text': m.text,
-                        'url': m.url or url_for('auth.profil'),
-                        'is_read': bool(m.is_read),
+                        "id": m.id,
+                        "icon": m.icon,
+                        "title": m.title,
+                        "text": m.text,
+                        "url": m.url or url_for("auth.profil"),
+                        "is_read": bool(m.is_read),
                     }
                     for m in msg_rows
                 ]
-                info['header_notifications_count'] = Notification.query.filter_by(
-                    user_id=current_user.id, kind='notification', is_read=False
-                ).count()
-                info['header_messages_count'] = Notification.query.filter_by(
-                    user_id=current_user.id, kind='message', is_read=False
-                ).count()
+                counts = dict(
+                    db.session.query(Notification.kind, func.count(Notification.id))
+                    .filter(
+                        Notification.user_id == current_user.id,
+                        Notification.is_read.is_(False),
+                    )
+                    .group_by(Notification.kind)
+                    .all()
+                )
+                info["header_notifications_count"] = int(counts.get("notification") or 0)
+                info["header_messages_count"] = int(counts.get("message") or 0)
         except Exception as e:
             app.logger.debug(f"Could not build header notifications/messages: {e}")
             

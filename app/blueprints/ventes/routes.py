@@ -17,8 +17,12 @@ from ...utils.depense_justificatif import remove_justificatif_file, upload_depen
 from ...utils.depense_reference import prochaine_reference_depense
 from ...utils.document_numero import (
     download_name_document,
-    numero_bl_pour_facture,
     prochain_numero_document,
+)
+from ...utils.bl_from_facture import (
+    _ecrire_lignes_bl,
+    adresse_livraison_depuis_client,
+    assurer_bl_pour_facture,
 )
 from ...utils.nombre_lettres import format_montant_espace
 from ...utils.parametres_pdf import (
@@ -40,6 +44,7 @@ from flask_login import current_user, login_required
 from sqlalchemy.orm import joinedload
 
 from flask import (
+    abort,
     current_app,
     flash,
     jsonify,
@@ -54,8 +59,7 @@ from . import ventes_bp
 
 
 def _adresse_livraison_client(client: Client, override: str | None) -> str:
-    txt = (override or '').strip() or (client.adresse or '').strip()
-    return txt if txt else 'Adresse non renseignée'
+    return adresse_livraison_depuis_client(client, override)
 
 
 def _categorie_depense_vente() -> CategorieDepense:
@@ -483,31 +487,15 @@ def nouvelle_vente():
                         montant_ht=row['montant_ht'],
                     )
                 )
-
-            numero_bl = numero_bl_pour_facture(facture)
-
-            bl = BonLivraison(
-                numero=numero_bl,
-                facture_id=facture.id,
-                client_id=client_id,
+            db.session.flush()
+            bl = assurer_bl_pour_facture(
+                facture,
+                statut="prepare",
                 date_livraison=date_livraison,
-                adresse_livraison=adresse_liv,
+                adresse_override=adresse_liv,
                 livreur=livreur,
-                statut='prepare',
                 notes=bl_notes,
             )
-            db.session.add(bl)
-            db.session.flush()
-
-            for row in lignes_calc:
-                db.session.add(
-                    LigneBL(
-                        bl_id=bl.id,
-                        produit_id=row['produit_id'],
-                        quantite_commandee=row['quantite'],
-                        quantite_livree=0,
-                    )
-                )
 
             # Dépenses d'accompagnement (transport, etc.) : enregistrées en base, non imprimées sur la facture.
             dep_rows: list[dict] = []
@@ -1030,32 +1018,13 @@ def convertir_proforma(id):
                     montant_ht=p_ligne.montant_ht,
                 )
             )
-
-        adresse_liv = _adresse_livraison_client(client, None)
-        numero_bl = numero_bl_pour_facture(facture)
-
-        bl = BonLivraison(
-            numero=numero_bl,
-            facture_id=facture.id,
-            client_id=proforma.client_id,
-            date_livraison=today,
-            adresse_livraison=adresse_liv,
-            livreur=None,
-            statut='prepare',
-            notes=(proforma.notes or '').strip() or None,
-        )
-        db.session.add(bl)
         db.session.flush()
-
-        for p_ligne in proforma.lignes:
-            db.session.add(
-                LigneBL(
-                    bl_id=bl.id,
-                    produit_id=p_ligne.produit_id,
-                    quantite_commandee=p_ligne.quantite,
-                    quantite_livree=0,
-                )
-            )
+        bl = assurer_bl_pour_facture(
+            facture,
+            statut="prepare",
+            date_livraison=today,
+            notes=(proforma.notes or "").strip() or None,
+        )
 
         proforma.statut = 'converti'
         db.session.commit()
@@ -1195,22 +1164,42 @@ def _replace_lignes_facture(facture_id, lignes_specs):
         )
 
 
+def _bl_query_pour_facture(facture_id: int):
+    return BonLivraison.query.options(
+        joinedload(BonLivraison.lignes).joinedload(LigneBL.produit),
+        joinedload(BonLivraison.client),
+    ).filter_by(facture_id=facture_id)
+
+
+def _peut_creer_bl_facture() -> bool:
+    return (
+        user_has_permission(current_user, "ventes", "create")
+        or user_has_permission(current_user, "ventes", "update")
+        or user_has_permission(current_user, "ventes", "bl")
+    )
+
+
+def _try_assurer_bl(facture: Facture, *, statut: str = "prepare") -> BonLivraison | None:
+    try:
+        bl = assurer_bl_pour_facture(facture, statut=statut)
+        db.session.commit()
+        return _bl_query_pour_facture(facture.id).first() or bl
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception(
+            "Création du BL impossible pour la facture %s", facture.numero
+        )
+        return None
+
+
 def _sync_bl_depuis_facture(facture: Facture, bl: BonLivraison | None) -> bool:
     """Recopie les lignes facture → BL (mêmes produits et quantités) si BL encore préparé."""
-    if bl is None or bl.statut != "prepare":
+    if bl is None:
+        assurer_bl_pour_facture(facture, statut="prepare")
+        return True
+    if bl.statut != "prepare":
         return False
-    lignes_facture = sorted(facture.lignes or [], key=lambda x: x.id)
-    LigneBL.query.filter_by(bl_id=bl.id).delete(synchronize_session=False)
-    for lf in lignes_facture:
-        db.session.add(
-            LigneBL(
-                bl_id=bl.id,
-                produit_id=lf.produit_id,
-                lot_id=getattr(lf, "lot_id", None),
-                quantite_commandee=int(lf.quantite or 0),
-                quantite_livree=0,
-            )
-        )
+    _ecrire_lignes_bl(facture, bl, livre=False)
     return True
 
 
@@ -1234,24 +1223,30 @@ def facture_detail(id):
         .filter_by(id=id)
         .first_or_404()
     )
-    bl = (
-        BonLivraison.query.options(
-            joinedload(BonLivraison.lignes).joinedload(LigneBL.produit),
-        )
-        .filter_by(facture_id=id)
-        .first()
-    )
+    bl = _bl_query_pour_facture(id).first()
     if bl and _bl_desaligne_depuis_facture(facture, bl):
         _sync_bl_depuis_facture(facture, bl)
         db.session.commit()
-        bl = (
-            BonLivraison.query.options(
-                joinedload(BonLivraison.lignes).joinedload(LigneBL.produit),
-            )
-            .filter_by(facture_id=id)
-            .first()
-        )
+        bl = _bl_query_pour_facture(id).first()
         flash("Le bon de livraison a été realigné sur les quantités de la facture.", "info")
+    elif bl is None:
+        bl = _try_assurer_bl(facture, statut="prepare")
+        if bl:
+            flash("Un bon de livraison a été créé automatiquement pour cette facture.", "success")
+        else:
+            facture = (
+                Facture.query.options(
+                    joinedload(Facture.client),
+                    joinedload(Facture.lignes).joinedload(LigneFacture.produit),
+                )
+                .filter_by(id=id)
+                .first_or_404()
+            )
+            flash(
+                "Cette facture n’a pas encore de bon de livraison. "
+                "Utilisez le bouton « Créer le BL » ci-dessous.",
+                "warning",
+            )
     proforma = None
     if facture.proforma_id:
         proforma = Proforma.query.get(facture.proforma_id)
@@ -1276,7 +1271,29 @@ def facture_detail(id):
         format_fcfa=format_montant_espace,
         affiche_tva=document_affiche_tva(facture),
         has_cachet=has_cachet(),
+        peut_creer_bl=_peut_creer_bl_facture(),
     )
+
+
+@ventes_bp.route("/factures/<int:id>/creer-bl", methods=["POST"])
+@login_required
+def facture_creer_bl(id):
+    if not _peut_creer_bl_facture():
+        abort(403)
+    facture = Facture.query.filter_by(id=id).first_or_404()
+    if facture.statut == "annulee":
+        flash("Impossible de créer un BL pour une facture annulée.", "warning")
+        return redirect(url_for("ventes.facture_detail", id=id))
+    existing = BonLivraison.query.filter_by(facture_id=id).first()
+    if existing:
+        flash(f"Cette facture a déjà le bon de livraison {existing.numero}.", "info")
+        return redirect(url_for("ventes.bl_detail", id=existing.id))
+    bl = _try_assurer_bl(facture, statut="prepare")
+    if bl:
+        flash(f"Bon de livraison {bl.numero} créé.", "success")
+        return redirect(url_for("ventes.bl_detail", id=bl.id))
+    flash("Impossible de créer le bon de livraison. Réessayez ou contactez l’administrateur.", "danger")
+    return redirect(url_for("ventes.facture_detail", id=id))
 
 
 @ventes_bp.route("/factures/<int:id>/depenses", methods=["POST"])
@@ -1409,7 +1426,10 @@ def modifier_facture(id):
             _apply_totals_to_facture(facture, data)
             db.session.flush()
             bl_lie = BonLivraison.query.filter_by(facture_id=facture.id).first()
-            if bl_lie and bl_lie.numero != facture.numero:
+            if bl_lie is None:
+                bl_lie = assurer_bl_pour_facture(facture, statut="prepare")
+                flash("Un bon de livraison a été créé pour cette facture.", "info")
+            elif bl_lie.numero != facture.numero:
                 # Facture et BL portent toujours le même numéro
                 conflit = BonLivraison.query.filter(
                     BonLivraison.numero == facture.numero,
@@ -1459,8 +1479,9 @@ def emettre_facture(id):
         return redirect(url_for("ventes.facture_detail", id=id))
     try:
         facture.statut = "emise"
+        assurer_bl_pour_facture(facture, statut="prepare")
         db.session.commit()
-        flash(f"Facture {facture.numero} émise.", "success")
+        flash(f"Facture {facture.numero} émise (bon de livraison créé).", "success")
     except Exception as e:
         db.session.rollback()
         flash(str(e), "danger")
@@ -1496,9 +1517,11 @@ def nouveau_facture():
             db.session.flush()
             _replace_lignes_facture(facture.id, data["lignes"])
             _apply_totals_to_facture(facture, data)
+            db.session.flush()
+            assurer_bl_pour_facture(facture, statut="prepare")
 
             db.session.commit()
-            flash(f'Facture {numero} créée avec succès.', 'success')
+            flash(f'Facture {numero} créée avec son bon de livraison.', 'success')
             return redirect(url_for('ventes.facture_detail', id=facture.id))
 
         except ValueError as e:
@@ -1729,7 +1752,7 @@ def facture_imprimer(id):
         joinedload(BonLivraison.client),
         joinedload(BonLivraison.lignes).joinedload(LigneBL.produit),
         joinedload(BonLivraison.lignes).joinedload(LigneBL.lot),
-    ).filter_by(facture_id=id).first()
+    ).filter_by(facture_id=id).first() if avec_bl else None
 
     ctx = merge_browser_print_logo(_ctx_pdf_vente_ht(facture))
     dp = ctx["doc_params"]

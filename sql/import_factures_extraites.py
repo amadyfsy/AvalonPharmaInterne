@@ -184,6 +184,7 @@ def run_import(
     from GestAvalon.app.models.facture import Facture, LigneFacture
     from GestAvalon.app.models.produit import CategorieProduit, Produit
     from GestAvalon.app.models.proforma import LigneProforma, Proforma
+    from GestAvalon.app.utils.bl_from_facture import assurer_bl_pour_facture
 
     app = create_app("default")
     with app.app_context():
@@ -357,6 +358,8 @@ def run_import(
                 fa.tva_montant = tva_sum
                 fa.total_ttc = total_ttc
                 fa.reste_a_payer = total_ttc
+                db.session.flush()
+                assurer_bl_pour_facture(fa, statut="livre")
             else:
                 continue
 

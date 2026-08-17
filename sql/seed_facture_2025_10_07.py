@@ -47,11 +47,15 @@ def main() -> None:
     from app.models.facture import Facture, LigneFacture
     from app.models.produit import CategorieProduit, Produit
     from app.models.stock import Stock
+    from app.utils.bl_from_facture import assurer_bl_pour_facture
 
     app = create_app()
     with app.app_context():
-        if Facture.query.filter_by(numero=NUMERO).first():
-            print(f"Déjà présente : {NUMERO}")
+        existing = Facture.query.filter_by(numero=NUMERO).first()
+        if existing:
+            assurer_bl_pour_facture(existing, statut="livre")
+            db.session.commit()
+            print(f"Déjà présente : {NUMERO} (BL vérifié)")
             return
 
         cat = CategorieProduit.query.filter_by(nom="Dispositifs médicaux").first()
@@ -163,6 +167,8 @@ def main() -> None:
                     montant_ht=montant,
                 )
             )
+        db.session.flush()
+        assurer_bl_pour_facture(facture, statut="livre")
         db.session.commit()
         print(
             f"+ {NUMERO} | {client.raison_sociale} | BC {BC} | "

@@ -132,20 +132,25 @@ def site_web_display(url: str) -> str:
     return u.replace("https://", "").replace("http://", "").rstrip("/")
 
 
-def pdf_company_context():
-    """Dict à passer en plus aux render_template des PDF."""
+def pdf_company_context(*, include_logo_data: bool = False):
+    """Dict à passer en plus aux render_template des PDF.
+
+    ``include_logo_data`` (base64) n’est utile que pour WeasyPrint / xhtml2pdf.
+    ReportLab lit le fichier logo directement : on évite l’encodage à chaque PDF.
+    """
     row = ensure_doc_params_email(get_parametres_documents())
     site_web_url = normalize_site_web_url(getattr(row, "site_web", None))
+    cachet_path = get_cachet_filepath()
     return {
         "doc_params": row,
-        "logo_data_uri": logo_data_uri(),
+        "logo_data_uri": logo_data_uri() if include_logo_data else None,
         "company_name": row.raison_sociale or "Société",
         "company_email": resolve_company_email(row),
         "site_web_url": site_web_url,
         "site_web_label": site_web_display(site_web_url),
         "company_slogan": resolve_company_slogan(row),
-        "has_cachet": has_cachet(),
-        "cachet_url": cachet_url(),
+        "has_cachet": cachet_path is not None,
+        "cachet_url": cachet_url() if include_logo_data else None,
     }
 
 
@@ -169,6 +174,6 @@ def merge_browser_print_logo(ctx: dict) -> dict:
     ctx["site_web_url"] = normalize_site_web_url(getattr(row, "site_web", None) if row else None)
     ctx["site_web_label"] = site_web_display(ctx["site_web_url"])
     ctx["company_slogan"] = resolve_company_slogan(row) if row else DEFAULT_COMPANY_SLOGAN
-    ctx["has_cachet"] = has_cachet()
+    ctx["has_cachet"] = get_cachet_filepath() is not None
     ctx["cachet_url"] = cachet_url()
     return ctx

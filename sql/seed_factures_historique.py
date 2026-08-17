@@ -562,6 +562,7 @@ def run(dry_run: bool = False) -> None:
     from app.models.facture import Facture, LigneFacture
     from app.models.produit import CategorieProduit, Produit
     from app.models.stock import Stock
+    from app.utils.bl_from_facture import assurer_bl_pour_facture
 
     app = create_app()
     with app.app_context():
@@ -589,9 +590,11 @@ def run(dry_run: bool = False) -> None:
 
         for raw in FACTURES:
             numero = raw["numero"]
-            if Facture.query.filter_by(numero=numero).first():
+            existing = Facture.query.filter_by(numero=numero).first()
+            if existing:
+                assurer_bl_pour_facture(existing, statut="livre")
                 skipped += 1
-                print(f"  skip {numero} (existe déjà)")
+                print(f"  skip {numero} (existe déjà, BL vérifié)")
                 continue
 
             client_name = CLIENT_ALIASES.get(raw["client"], raw["client"])
@@ -706,6 +709,8 @@ def run(dry_run: bool = False) -> None:
                         montant_ht=montant,
                     )
                 )
+            db.session.flush()
+            assurer_bl_pour_facture(facture, statut="livre")
 
             created_factures += 1
             total_ttc_all += total_ttc

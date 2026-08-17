@@ -19,6 +19,10 @@ def _is_missing_table_error(exc: BaseException) -> bool:
     )
 
 
+# inspect() INFORMATION_SCHEMA est lent sur MySQL distant : une fois par process suffit.
+_CACHET_SCHEMA_READY = False
+
+
 class ParametresDocuments(db.Model):
     __tablename__ = "parametres_documents"
 
@@ -46,6 +50,12 @@ class ParametresDocuments(db.Model):
     @classmethod
     def get_singleton(cls):
         """Retourne la ligne id=1 ; crée la table si elle n’existe pas encore (sans migration manuelle)."""
+        from flask import g, has_request_context
+
+        if has_request_context():
+            cached = getattr(g, "_parametres_documents", None)
+            if cached is not None:
+                return cached
 
         defaults = {
             "telephone": "77 444 14 01 - 77 764 87 28",
@@ -57,6 +67,9 @@ class ParametresDocuments(db.Model):
 
         def _ensure_cachet_column():
             """Ajoute cachet_filename si la colonne n’existe pas encore."""
+            global _CACHET_SCHEMA_READY
+            if _CACHET_SCHEMA_READY:
+                return
             from sqlalchemy import inspect, text
 
             try:
@@ -64,6 +77,7 @@ class ParametresDocuments(db.Model):
             except Exception:
                 return
             if "cachet_filename" in cols:
+                _CACHET_SCHEMA_READY = True
                 return
             try:
                 db.session.execute(
@@ -73,6 +87,7 @@ class ParametresDocuments(db.Model):
                     )
                 )
                 db.session.commit()
+                _CACHET_SCHEMA_READY = True
             except Exception:
                 db.session.rollback()
 
@@ -99,11 +114,14 @@ class ParametresDocuments(db.Model):
             return _ensure_company_coords(row)
 
         try:
-            return _load_or_create()
+            row = _load_or_create()
         except (ProgrammingError, OperationalError) as e:
             if not _is_missing_table_error(e):
                 db.session.rollback()
                 raise
             db.session.rollback()
             db.create_all()
-            return _load_or_create()
+            row = _load_or_create()
+        if has_request_context():
+            g._parametres_documents = row
+        return row
