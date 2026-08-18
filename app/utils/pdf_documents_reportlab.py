@@ -557,6 +557,59 @@ def _company_info_rows(
     return rows
 
 
+def _pad_card_rows(rows: list, target_count: int) -> list:
+    """Aligne la hauteur des cartes en complétant la liste la plus courte."""
+    padded = list(rows)
+    filler = [Spacer(1, 3.6 * mm)]
+    while len(padded) < target_count:
+        padded.append(filler)
+    return padded
+
+
+def _info_cards_side_by_side(left_rows: list, right_rows: list, usable_w: float) -> Table:
+    """Deux cartes côte à côte, même largeur et même hauteur (lignes équilibrées)."""
+    row_count = max(len(left_rows), len(right_rows))
+    left_rows = _pad_card_rows(left_rows, row_count)
+    right_rows = _pad_card_rows(right_rows, row_count)
+
+    card_w = usable_w * 0.48
+    gap_w = usable_w * 0.04
+    inner_w = card_w - 12  # padding horizontal des cartes
+
+    left_tbl = Table(left_rows, colWidths=[inner_w])
+    right_tbl = Table(right_rows, colWidths=[inner_w])
+    card_style = TableStyle(
+        [
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("BOX", (0, 0), (-1, -1), 0.75, _INV_BORDER),
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
+        ]
+    )
+    left_tbl.setStyle(card_style)
+    right_tbl.setStyle(card_style)
+    info_grid = Table(
+        [[left_tbl, "", right_tbl]],
+        colWidths=[card_w, gap_w, card_w],
+        rowHeights=[None],
+    )
+    info_grid.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ("TOPPADDING", (0, 0), (-1, -1), 0),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+            ]
+        )
+    )
+    return info_grid
+
+
 def _facture_pdf_info_grid(
     facture: Any,
     doc_params: Any,
@@ -594,27 +647,7 @@ def _facture_pdf_info_grid(
         mode_paiement=getattr(facture, "mode_paiement", None),
     )
 
-    left_tbl = Table(left_rows, colWidths=[usable_w * 0.46])
-    right_tbl = Table(right_rows, colWidths=[usable_w * 0.46])
-    card_style = TableStyle(
-        [
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 6),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-            ("TOPPADDING", (0, 0), (-1, -1), 4),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-            ("BOX", (0, 0), (-1, -1), 0.75, _INV_BORDER),
-            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
-        ]
-    )
-    left_tbl.setStyle(card_style)
-    right_tbl.setStyle(card_style)
-    info_grid = Table(
-        [[left_tbl, Spacer(usable_w * 0.04, 1), right_tbl]],
-        colWidths=[usable_w * 0.48, usable_w * 0.04, usable_w * 0.48],
-    )
-    info_grid.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]))
-    return info_grid
+    return _info_cards_side_by_side(left_rows, right_rows, usable_w)
 
 
 def _bl_pdf_info_grid(
@@ -663,27 +696,7 @@ def _bl_pdf_info_grid(
         notes=notes or None,
     )
 
-    left_tbl = Table(left_rows, colWidths=[usable_w * 0.46])
-    right_tbl = Table(right_rows, colWidths=[usable_w * 0.46])
-    card_style = TableStyle(
-        [
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 6),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-            ("TOPPADDING", (0, 0), (-1, -1), 4),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-            ("BOX", (0, 0), (-1, -1), 0.75, _INV_BORDER),
-            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
-        ]
-    )
-    left_tbl.setStyle(card_style)
-    right_tbl.setStyle(card_style)
-    info_grid = Table(
-        [[left_tbl, Spacer(usable_w * 0.04, 1), right_tbl]],
-        colWidths=[usable_w * 0.48, usable_w * 0.04, usable_w * 0.48],
-    )
-    info_grid.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]))
-    return info_grid
+    return _info_cards_side_by_side(left_rows, right_rows, usable_w)
 
 
 def build_facture_pdf_bytesio(
@@ -1190,7 +1203,7 @@ def build_bl_pdf_bytesio(
     )
     hdr_c = ParagraphStyle("bhc", parent=hdr_l, alignment=TA_CENTER)
     c_left = ParagraphStyle("bl", parent=body, fontSize=10, leading=12)
-    c_right = ParagraphStyle("br", parent=body, fontSize=10, leading=12, alignment=TA_RIGHT)
+    c_qty = ParagraphStyle("bq", parent=body, fontSize=10, leading=12, alignment=TA_CENTER)
 
     data = [[Paragraph("DÉSIGNATION", hdr_l), Paragraph("QUANTITÉ", hdr_c)]]
     for l in sorted(getattr(bl, "lignes", None) or [], key=lambda x: x.id):
@@ -1200,7 +1213,7 @@ def build_bl_pdf_bytesio(
         data.append(
             [
                 Paragraph(escape(str(des)), c_left),
-                Paragraph(escape(str(bl_quantite_document(l))), c_right),
+                Paragraph(escape(str(bl_quantite_document(l))), c_qty),
             ]
         )
     tbl = Table(data, colWidths=[col_d, col_q], repeatRows=1)
@@ -1210,7 +1223,7 @@ def build_bl_pdf_bytesio(
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                 ("ALIGN", (0, 0), (-1, -1), "CENTER"),
                 ("ALIGN", (0, 1), (0, -1), "LEFT"),
-                ("ALIGN", (1, 1), (1, -1), "RIGHT"),
+                ("ALIGN", (1, 1), (1, -1), "CENTER"),
                 ("LEFTPADDING", (0, 0), (-1, -1), 5),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 5),
                 ("TOPPADDING", (0, 0), (-1, -1), 4),

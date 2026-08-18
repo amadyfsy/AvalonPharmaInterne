@@ -343,6 +343,8 @@ body.invoice-body {
 .invoice-info-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  grid-auto-rows: 1fr;
+  align-items: stretch;
   gap: 0.75rem;
   padding: 0.85rem 0;
 }
@@ -352,6 +354,11 @@ body.invoice-body {
   border: 1px solid var(--inv-border);
   border-radius: 8px;
   padding: 0.75rem 0.85rem;
+  height: 100%;
+  min-height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
 
 .invoice-info-card--facture {
@@ -743,6 +750,7 @@ body.invoice-body {
 
   .invoice-info-grid {
     grid-template-columns: 1fr 1fr !important;
+    align-items: stretch !important;
   }
 
   .invoice-bottom {

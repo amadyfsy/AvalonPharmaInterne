@@ -1,25 +1,72 @@
-{# Sélecteur client : recherche + liste + création rapide (nom structure seul). Requiert : clients (liste), optionnel select_id (défaut clientSelect) #}
+{# Sélecteur client : autocomplete + création rapide. Requiert : clients (optionnel, legacy). #}
 {% set sel_id = (client_select_id if client_select_id is defined else 'clientSelect') %}
 {% set search_id = (client_search_id if client_search_id is defined else 'clientSearch') %}
 {% set modal_id = (client_modal_id if client_modal_id is defined else 'clientRapideModal') %}
+{% set init_cid = client_initial_id|default(facture.client_id if facture is defined and facture else none) %}
 
-<div class="client-picker mb-0">
-  <label class="form-label">{{ (client_label if client_label is defined else 'Client') }} {% if client_required|default(true) %}<span class="text-danger">*</span>{% endif %}</label>
-  <div class="input-group mb-2">
-    <span class="input-group-text bg-body-secondary"><i class="bi bi-search" aria-hidden="true"></i></span>
-    <input type="search" class="form-control" id="{{ search_id }}" placeholder="Rechercher par nom, code, téléphone, ville…" autocomplete="off" aria-label="Filtrer les clients">
-    <button class="btn btn-outline-success" type="button" data-bs-toggle="modal" data-bs-target="#{{ modal_id }}" title="Ajouter un client (nom seulement)">
-      <i class="bi bi-person-plus me-1"></i> Rapide
+<style>
+  .client-picker .client-picker-results {
+    position: absolute;
+    z-index: 1050;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 280px;
+    overflow-y: auto;
+    margin-top: 0.25rem;
+    border-radius: 0.375rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.12);
+  }
+  .client-picker .client-picker-item {
+    cursor: pointer;
+    border-left: 3px solid transparent;
+  }
+  .client-picker .client-picker-item:hover,
+  .client-picker .client-picker-item.active {
+    border-left-color: var(--bs-primary);
+    background-color: var(--bs-primary-bg-subtle);
+  }
+  .client-picker .client-picker-item mark {
+    padding: 0;
+    background: rgba(var(--bs-warning-rgb), 0.35);
+  }
+  .client-picker .client-picker-chip .client-picker-meta {
+    font-size: 0.8125rem;
+  }
+</style>
+
+<div class="client-picker mb-0" data-client-picker>
+  <label class="form-label" for="{{ search_id }}">{{ (client_label if client_label is defined else 'Client') }} {% if client_required|default(true) %}<span class="text-danger">*</span>{% endif %}</label>
+
+  <div class="client-picker-chip alert alert-light border d-none align-items-start gap-2 py-2 px-3 mb-2" role="status" aria-live="polite">
+    <i class="bi bi-building text-primary mt-1" aria-hidden="true"></i>
+    <div class="flex-grow-1 min-w-0">
+      <div class="fw-semibold text-truncate client-picker-chip-name"></div>
+      <div class="text-muted client-picker-meta client-picker-chip-meta"></div>
+    </div>
+    <button type="button" class="btn btn-sm btn-outline-secondary flex-shrink-0 client-picker-change" title="Changer de client">
+      Changer
     </button>
   </div>
-  <select class="form-select" name="{{ (client_field_name if client_field_name is defined else 'client_id') }}" id="{{ sel_id }}" {% if client_required|default(true) %}required{% endif %} size="{{ (client_select_size if client_select_size is defined else 1) }}">
-    {% for c in clients %}
-      <option value="{{ c.id }}" data-adresse="{{ (c.adresse or '')|e }}" data-code="{{ (c.code or '')|e }}">{{ c.raison_sociale }}{% if c.code %} — {{ c.code }}{% endif %}</option>
-    {% else %}
-      <option value="" disabled selected>Aucun client — utilisez « Rapide »</option>
+
+  <div class="client-picker-search-wrap position-relative">
+    <div class="input-group mb-0">
+      <span class="input-group-text bg-body-secondary"><i class="bi bi-search" aria-hidden="true"></i></span>
+      <input type="search" class="form-control" id="{{ search_id }}" placeholder="Nom, code, téléphone, ville, email…" autocomplete="off" aria-label="Rechercher un client" aria-autocomplete="list" aria-controls="{{ search_id }}-results" aria-expanded="false">
+      <button class="btn btn-outline-success" type="button" data-bs-toggle="modal" data-bs-target="#{{ modal_id }}" title="Ajouter un client (nom seulement)">
+        <i class="bi bi-person-plus me-1"></i> Rapide
+      </button>
+    </div>
+    <div class="list-group client-picker-results d-none" id="{{ search_id }}-results" role="listbox" aria-label="Résultats clients"></div>
+    <div class="form-text mt-1">Tapez au moins 2 caractères ou ouvrez la liste. Flèches ↑↓ et Entrée pour sélectionner.</div>
+  </div>
+
+  <select class="visually-hidden" name="{{ (client_field_name if client_field_name is defined else 'client_id') }}" id="{{ sel_id }}" {% if client_required|default(true) %}required{% endif %} tabindex="-1" aria-hidden="true">
+    <option value="" disabled {% if not init_cid %}selected{% endif %}>—</option>
+    {% for c in clients|default([]) %}
+      <option value="{{ c.id }}" data-adresse="{{ (c.adresse or '')|e }}" data-code="{{ (c.code or '')|e }}" {% if init_cid and init_cid == c.id %}selected{% endif %}>{{ c.raison_sociale }}{% if c.code %} — {{ c.code }}{% endif %}</option>
     {% endfor %}
   </select>
-  <div class="form-text">Filtrez avec la barre de recherche ou créez un client avec le bouton vert.</div>
 </div>
 
 <div class="modal fade" id="{{ modal_id }}" tabindex="-1" aria-labelledby="{{ modal_id }}Label" aria-hidden="true">
@@ -48,46 +95,247 @@
 <script>
 (function () {
   var search = document.getElementById('{{ search_id }}');
+  var root = search ? search.closest('[data-client-picker]') : null;
+  if (!root || !search) return;
   var sel = document.getElementById('{{ sel_id }}');
+  var resultsEl = document.getElementById('{{ search_id }}-results');
+  var chip = root.querySelector('.client-picker-chip');
+  var chipName = root.querySelector('.client-picker-chip-name');
+  var chipMeta = root.querySelector('.client-picker-chip-meta');
+  var changeBtn = root.querySelector('.client-picker-change');
+  var searchWrap = root.querySelector('.client-picker-search-wrap');
   var modal = document.getElementById('{{ modal_id }}');
   var nomInput = document.getElementById('{{ modal_id }}Nom');
   var btn = document.getElementById('{{ modal_id }}Btn');
   var err = document.getElementById('{{ modal_id }}Err');
-  var apiUrl = {{ url_for('clients.api_client_rapide')|tojson }};
+  var searchApi = {{ url_for('clients.api_clients_recherche')|tojson }};
+  var rapideApi = {{ url_for('clients.api_client_rapide')|tojson }};
+  var initialClientId = {{ init_cid|tojson }};
 
-  function filterClients() {
-    if (!search || !sel) return;
-    var q = (search.value || '').toLowerCase().trim();
-    if (!q) {
-      sel.querySelectorAll('option').forEach(function (opt) {
-        if (opt.value) opt.disabled = false;
-      });
+  var debounceTimer = null;
+  var fetchCtrl = null;
+  var lastResults = [];
+  var activeIndex = -1;
+
+  function escapeHtml(s) {
+    return String(s || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function highlight(text, q) {
+    if (!q || !text) return escapeHtml(text);
+    var lower = text.toLowerCase();
+    var qi = q.toLowerCase();
+    var idx = lower.indexOf(qi);
+    if (idx === -1) return escapeHtml(text);
+    return escapeHtml(text.slice(0, idx))
+      + '<mark>' + escapeHtml(text.slice(idx, idx + q.length)) + '</mark>'
+      + escapeHtml(text.slice(idx + q.length));
+  }
+
+  function clientMetaLine(c) {
+    var parts = [];
+    if (c.code) parts.push(c.code);
+    if (c.ville) parts.push(c.ville);
+    if (c.telephone) parts.push(c.telephone);
+    return parts.join(' · ') || '—';
+  }
+
+  function syncSelect(client) {
+    if (!sel) return;
+    sel.innerHTML = '';
+    if (!client) {
+      var empty = document.createElement('option');
+      empty.value = '';
+      empty.disabled = true;
+      empty.selected = true;
+      empty.textContent = '—';
+      sel.appendChild(empty);
       return;
     }
-    sel.querySelectorAll('option').forEach(function (opt) {
-      if (!opt.value) { opt.disabled = false; return; }
-      var t = (opt.textContent || '').toLowerCase();
-      var ad = (opt.getAttribute('data-adresse') || '').toLowerCase();
-      var cd = (opt.getAttribute('data-code') || '').toLowerCase();
-      var ok = !q || t.indexOf(q) !== -1 || ad.indexOf(q) !== -1 || cd.indexOf(q) !== -1;
-      opt.disabled = !ok;
-    });
-    if (q) {
-      for (var i = 0; i < sel.options.length; i++) {
-        var o = sel.options[i];
-        if (o.value && !o.disabled) { sel.selectedIndex = i; break; }
-      }
+    var opt = document.createElement('option');
+    opt.value = String(client.id);
+    opt.selected = true;
+    opt.textContent = client.raison_sociale + (client.code ? ' — ' + client.code : '');
+    opt.setAttribute('data-adresse', client.adresse || '');
+    opt.setAttribute('data-code', client.code || '');
+    sel.appendChild(opt);
+  }
+
+  function showChip(client) {
+    if (chipName) chipName.textContent = client.raison_sociale || '—';
+    if (chipMeta) chipMeta.textContent = clientMetaLine(client);
+    if (chip) {
+      chip.classList.remove('d-none');
+      chip.classList.add('d-flex');
     }
+    if (searchWrap) searchWrap.classList.add('d-none');
+    syncSelect(client);
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  function clearSelection(focusSearch) {
+    syncSelect(null);
+    if (chip) {
+      chip.classList.add('d-none');
+      chip.classList.remove('d-flex');
+    }
+    if (searchWrap) searchWrap.classList.remove('d-none');
+    if (search) {
+      search.value = '';
+      if (focusSearch !== false) search.focus();
+    }
+    hideResults();
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  function hideResults() {
+    if (!resultsEl) return;
+    resultsEl.classList.add('d-none');
+    resultsEl.innerHTML = '';
+    lastResults = [];
+    activeIndex = -1;
+    if (search) search.setAttribute('aria-expanded', 'false');
+  }
+
+  function setActiveIndex(idx) {
+    activeIndex = idx;
+    if (!resultsEl) return;
+    var items = resultsEl.querySelectorAll('.client-picker-item');
+    items.forEach(function (el, i) {
+      el.classList.toggle('active', i === idx);
+      if (i === idx) el.scrollIntoView({ block: 'nearest' });
+    });
+  }
+
+  function renderResults(clients, q) {
+    if (!resultsEl) return;
+    lastResults = clients || [];
+    activeIndex = lastResults.length ? 0 : -1;
+    if (!lastResults.length) {
+      resultsEl.innerHTML = '<div class="list-group-item small text-muted py-3 text-center">'
+        + (q ? 'Aucun client pour « ' + escapeHtml(q) + ' »' : 'Aucun client actif')
+        + '</div>';
+      resultsEl.classList.remove('d-none');
+      if (search) search.setAttribute('aria-expanded', 'true');
+      return;
+    }
+    resultsEl.innerHTML = lastResults.map(function (c, i) {
+      var meta = clientMetaLine(c);
+      return '<button type="button" class="list-group-item list-group-item-action client-picker-item'
+        + (i === 0 ? ' active' : '')
+        + '" role="option" data-index="' + i + '">'
+        + '<div class="fw-semibold">' + highlight(c.raison_sociale, q) + '</div>'
+        + '<div class="small text-muted">' + highlight(meta, q) + '</div>'
+        + (c.email ? '<div class="small text-muted">' + highlight(c.email, q) + '</div>' : '')
+        + '</button>';
+    }).join('');
+    resultsEl.classList.remove('d-none');
+    if (search) search.setAttribute('aria-expanded', 'true');
+    resultsEl.querySelectorAll('.client-picker-item').forEach(function (btnEl) {
+      btnEl.addEventListener('mousedown', function (e) {
+        e.preventDefault();
+        var idx = parseInt(btnEl.getAttribute('data-index'), 10);
+        if (!isNaN(idx) && lastResults[idx]) selectClient(lastResults[idx]);
+      });
+    });
+  }
+
+  function selectClient(client) {
+    if (!client || !client.id) return;
+    hideResults();
+    showChip(client);
+  }
+
+  function fetchClients(q) {
+    if (fetchCtrl) fetchCtrl.abort();
+    fetchCtrl = new AbortController();
+    var url = searchApi + '?limit=15';
+    if (q) url += '&q=' + encodeURIComponent(q);
+    return fetch(url, {
+      headers: { 'Accept': 'application/json' },
+      signal: fetchCtrl.signal
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (!data || !data.ok) return [];
+        return data.clients || [];
+      })
+      .catch(function (err) {
+        if (err && err.name === 'AbortError') return null;
+        return [];
+      });
+  }
+
+  function runSearch(immediate) {
+    if (!search) return;
+    var q = (search.value || '').trim();
+    clearTimeout(debounceTimer);
+    var delay = immediate ? 0 : 220;
+    debounceTimer = setTimeout(function () {
+      if (q.length === 1) {
+        resultsEl.innerHTML = '<div class="list-group-item small text-muted py-3 text-center">Saisissez au moins 2 caractères pour affiner la recherche.</div>';
+        resultsEl.classList.remove('d-none');
+        if (search) search.setAttribute('aria-expanded', 'true');
+        lastResults = [];
+        activeIndex = -1;
+        return;
+      }
+      fetchClients(q).then(function (clients) {
+        if (clients === null) return;
+        renderResults(clients, q);
+      });
+    }, delay);
+  }
+
+  function fetchClientById(id) {
+    return fetch(searchApi + '?id=' + encodeURIComponent(id), {
+      headers: { 'Accept': 'application/json' }
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data && data.ok && data.clients && data.clients[0]) return data.clients[0];
+        return null;
+      })
+      .catch(function () { return null; });
   }
 
   if (search) {
-    search.addEventListener('input', filterClients);
-    search.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        sel.focus();
+    search.addEventListener('input', function () { runSearch(false); });
+    search.addEventListener('focus', function () {
+      if ((search.value || '').trim().length >= 2 || !(search.value || '').trim()) {
+        runSearch(true);
       }
     });
+    search.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (!lastResults.length) return;
+        setActiveIndex(Math.min(activeIndex + 1, lastResults.length - 1));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (!lastResults.length) return;
+        setActiveIndex(Math.max(activeIndex - 1, 0));
+      } else if (e.key === 'Enter') {
+        if (activeIndex >= 0 && lastResults[activeIndex]) {
+          e.preventDefault();
+          selectClient(lastResults[activeIndex]);
+        }
+      } else if (e.key === 'Escape') {
+        hideResults();
+      }
+    });
+  }
+
+  document.addEventListener('click', function (e) {
+    if (!root.contains(e.target)) hideResults();
+  });
+
+  if (changeBtn) {
+    changeBtn.addEventListener('click', function () { clearSelection(true); });
   }
 
   function showErr(msg) {
@@ -104,7 +352,7 @@
     });
   }
 
-  if (btn && nomInput && sel) {
+  if (btn && nomInput) {
     btn.addEventListener('click', function () {
       var nom = (nomInput.value || '').trim();
       if (nom.length < 2) {
@@ -113,7 +361,7 @@
       }
       showErr('');
       btn.disabled = true;
-      fetch(apiUrl, {
+      fetch(rapideApi, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify({ raison_sociale: nom })
@@ -125,16 +373,16 @@
             showErr((res.j && res.j.error) ? res.j.error : 'Erreur lors de la création.');
             return;
           }
-          var opt = document.createElement('option');
-          opt.value = res.j.id;
-          opt.textContent = res.j.raison_sociale + ' — ' + res.j.code;
-          opt.setAttribute('data-adresse', '');
-          opt.setAttribute('data-code', res.j.code || '');
-          sel.appendChild(opt);
-          sel.value = String(res.j.id);
-          sel.dispatchEvent(new Event('change', { bubbles: true }));
-          if (search) search.value = '';
-          filterClients();
+          selectClient({
+            id: res.j.id,
+            raison_sociale: res.j.raison_sociale,
+            code: res.j.code || '',
+            adresse: '',
+            ville: '',
+            telephone: '',
+            email: '',
+            contact: ''
+          });
           var inst = bootstrap.Modal.getInstance(modal);
           if (inst) inst.hide();
         })
@@ -142,6 +390,16 @@
           btn.disabled = false;
           showErr('Erreur réseau ou serveur.');
         });
+    });
+  }
+
+  if (initialClientId) {
+    fetchClientById(initialClientId).then(function (c) {
+      if (c) showChip(c);
+    });
+  } else if (sel && sel.value) {
+    fetchClientById(parseInt(sel.value, 10)).then(function (c) {
+      if (c) showChip(c);
     });
   }
 })();

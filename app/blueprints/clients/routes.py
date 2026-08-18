@@ -63,12 +63,27 @@ def _clients_search_query(q: Optional[str]):
             or_(
                 Client.raison_sociale.ilike(like),
                 Client.code.ilike(like),
+                Client.contact.ilike(like),
                 Client.telephone.ilike(like),
                 Client.ville.ilike(like),
                 Client.email.ilike(like),
+                Client.adresse.ilike(like),
             )
         )
     return query.order_by(Client.raison_sociale)
+
+
+def _client_picker_dict(client: Client) -> dict:
+    return {
+        'id': client.id,
+        'raison_sociale': client.raison_sociale or '',
+        'code': client.code or '',
+        'contact': client.contact or '',
+        'telephone': client.telephone or '',
+        'ville': client.ville or '',
+        'email': client.email or '',
+        'adresse': client.adresse or '',
+    }
 
 
 @clients_bp.route('/')
@@ -252,6 +267,25 @@ def encaisser(id):
         "success",
     )
     return redirect(url_for('clients.detail', id=client.id))
+
+
+@clients_bp.route('/api/recherche')
+@login_required
+@permission_required('ventes', 'read')
+def api_clients_recherche():
+    """Recherche JSON pour le sélecteur client (ventes, factures, BL)."""
+    cid = request.args.get('id', type=int)
+    if cid:
+        client = Client.query.get(cid)
+        if not client:
+            return jsonify(ok=True, clients=[])
+        return jsonify(ok=True, clients=[_client_picker_dict(client)])
+
+    q = (request.args.get('q') or '').strip()
+    limit = min(max(request.args.get('limit', 15, type=int) or 15, 1), 50)
+    query = _clients_search_query(q).filter(Client.est_actif == True)  # noqa: E712
+    clients = query.limit(limit).all()
+    return jsonify(ok=True, clients=[_client_picker_dict(c) for c in clients])
 
 
 @clients_bp.route('/api/rapide', methods=['POST'])

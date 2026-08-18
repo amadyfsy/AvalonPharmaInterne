@@ -327,7 +327,7 @@ def nouvelle_vente():
     Point d’entrée des ventes : vente directe → facture (émise) + BL générés ;
     case « Proforma » → uniquement proforma (conversion facture + BL plus tard).
     """
-    clients = Client.query.filter_by(est_actif=True).all()
+    clients = []
     produits = Produit.query.filter_by(est_actif=True).all()
     depense_categories = CategorieDepense.query.order_by(CategorieDepense.nom).all()
     default_depense_cat = get_categorie_by_code(CODE_VENTE_LIEE) or (
@@ -884,7 +884,7 @@ def get_produit_info(id):
 @login_required
 @permission_required('ventes', 'create')
 def nouveau_proforma():
-    clients = Client.query.filter_by(est_actif=True).all()
+    clients = []
     produits = Produit.query.filter_by(est_actif=True).all()
     
     if request.method == 'POST':
@@ -1393,7 +1393,7 @@ def modifier_facture(id):
         )
         return redirect(url_for("ventes.facture_detail", id=id))
 
-    clients = _clients_for_facture_form(facture)
+    clients = []
     produits = Produit.query.filter_by(est_actif=True).order_by(Produit.designation).all()
 
     if request.method == "POST":
@@ -1492,7 +1492,7 @@ def emettre_facture(id):
 @login_required
 @permission_required('ventes', 'create')
 def nouveau_facture():
-    clients = _clients_for_facture_form(None)
+    clients = []
     produits = Produit.query.filter_by(est_actif=True).order_by(Produit.designation).all()
 
     if request.method == 'POST':
@@ -1545,7 +1545,7 @@ def nouveau_facture():
 @login_required
 @permission_required('ventes', 'create')
 def nouveau_bl():
-    clients = Client.query.filter_by(est_actif=True).all()
+    clients = []
     produits = Produit.query.filter_by(est_actif=True).all()
     
     if request.method == 'POST':
