@@ -626,6 +626,7 @@ def _bl_pdf_info_grid(
     card_title: ParagraphStyle,
     card_sub: ParagraphStyle,
     card_name: ParagraphStyle,
+    card_phone: ParagraphStyle,
 ) -> Table:
     left_rows: list = [
         [Paragraph("BON DE LIVRAISON", card_label)],
@@ -644,6 +645,9 @@ def _bl_pdf_info_grid(
     left_rows.append([Paragraph("CLIENT", card_label)])
     cn = bl.client.raison_sociale if getattr(bl, "client", None) else "—"
     left_rows.append([Paragraph(escape(cn), card_name)])
+    client = getattr(bl, "client", None)
+    if client and getattr(client, "telephone", None):
+        left_rows.append([Paragraph(escape(f"Tél. {client.telephone}"), card_phone)])
     adr = (getattr(bl, "adresse_livraison", None) or "").strip()
     if adr:
         left_rows.append([Paragraph(escape(adr), card_sub)])
@@ -1075,9 +1079,33 @@ def build_bl_pdf_bytesio(
 ) -> io.BytesIO:
     _ensure_fonts()
     buffer = io.BytesIO()
-    LM = RM = 16 * mm
-    TM = BM = 14 * mm
-    doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=LM, rightMargin=RM, topMargin=TM, bottomMargin=BM)
+    LM = RM = _FACTURE_SIDE_MM * mm
+    TM = _FACTURE_TOP_MM * mm
+    BM = _FACTURE_BOTTOM_MM * mm
+    site_web = _resolve_site_web(doc_params)
+    doc = BaseDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=LM,
+        rightMargin=RM,
+        topMargin=TM,
+        bottomMargin=BM,
+    )
+    frame = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="normal")
+
+    def on_page(c: Any, d: Any) -> None:
+        _facture_draw_header(c, d, doc_params, logo_path, site_web)
+
+    doc.addPageTemplates(
+        [
+            PageTemplate(
+                id="BonLivraison",
+                frames=[frame],
+                onPage=on_page,
+                pagesize=A4,
+            )
+        ]
+    )
     usable_w = A4[0] - LM - RM
 
     styles = getSampleStyleSheet()
@@ -1103,27 +1131,39 @@ def build_bl_pdf_bytesio(
         "bl_card_title",
         parent=body,
         fontName="Times-Bold",
-        fontSize=11,
-        leading=13,
+        fontSize=10,
+        leading=12,
+        textColor=_INV_INK,
+        spaceAfter=1,
     )
     card_sub = ParagraphStyle(
         "bl_card_sub",
         parent=body,
-        fontSize=8.5,
-        leading=11,
+        fontSize=8,
+        leading=10,
         textColor=_INV_MUTED,
+        spaceAfter=3,
     )
     card_name = ParagraphStyle(
         "bl_card_name",
         parent=body,
         fontName="Times-Bold",
-        fontSize=10,
-        leading=12,
+        fontSize=9,
+        leading=11,
+        textColor=_INV_INK,
+        spaceAfter=1,
+    )
+    card_phone = ParagraphStyle(
+        "bl_card_phone",
+        parent=body,
+        fontName="Times-Bold",
+        fontSize=8,
+        leading=10,
+        textColor=_INV_INK,
+        spaceAfter=1,
     )
 
     story: list = []
-    story.extend(_header_flowable(logo_path, doc_params, usable_w))
-    story.append(Spacer(1, 2 * mm))
     story.append(
         _bl_pdf_info_grid(
             bl,
@@ -1133,13 +1173,21 @@ def build_bl_pdf_bytesio(
             card_title=card_title,
             card_sub=card_sub,
             card_name=card_name,
+            card_phone=card_phone,
         )
     )
     story.append(Spacer(1, 4 * mm))
 
     col_d = usable_w * 0.72
     col_q = usable_w * 0.28
-    hdr_l = ParagraphStyle("bhl", parent=body, fontName="Times-Bold", fontSize=10, leading=12)
+    hdr_l = ParagraphStyle(
+        "bhl",
+        parent=body,
+        fontName="Times-Bold",
+        fontSize=10,
+        leading=12,
+        textColor=colors.white,
+    )
     hdr_c = ParagraphStyle("bhc", parent=hdr_l, alignment=TA_CENTER)
     c_left = ParagraphStyle("bl", parent=body, fontSize=10, leading=12)
     c_right = ParagraphStyle("br", parent=body, fontSize=10, leading=12, alignment=TA_RIGHT)

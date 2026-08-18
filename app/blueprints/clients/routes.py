@@ -316,3 +316,22 @@ def nouveau():
         flash('Client ajouté avec succès.', 'success')
         return redirect(url_for('clients.index'))
     return render_template('clients/form.html', form=form, title="Nouveau Client")
+
+
+@clients_bp.route('/<int:id>/modifier', methods=['GET', 'POST'])
+@login_required
+@permission_required('ventes', 'create')
+def modifier(id):
+    client = Client.query.get_or_404(id)
+    form = ClientForm(obj=client)
+    if form.validate_on_submit():
+        form.populate_obj(client)
+        db.session.commit()
+        flash('Informations client mises à jour.', 'success')
+        return redirect(url_for('clients.detail', id=client.id))
+    return render_template(
+        'clients/form.html',
+        form=form,
+        title=f"Modifier {client.raison_sociale}",
+        client=client,
+    )
