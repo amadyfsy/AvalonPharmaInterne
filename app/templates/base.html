@@ -16,7 +16,8 @@
 {% set page_loader_logo = global_logo_url if global_logo_url else url_for('static', filename='public/img/avalon-logo.png') %}
 <div id="pageLoader" class="page-loader" role="status" aria-live="polite" aria-busy="true" aria-label="Chargement">
   <div class="page-loader__box">
-    <img src="{{ page_loader_logo }}" alt="Avalon Pharma" class="page-loader__logo" width="180" height="180">
+    <img src="{{ page_loader_logo }}" alt="Avalon Pharma" class="page-loader__logo" width="180" height="180"
+         onerror="this.onerror=null;this.src='{{ url_for('static', filename='public/img/avalon-logo.png') }}';">
     <div class="page-loader__bar" aria-hidden="true"><span></span></div>
   </div>
 </div>

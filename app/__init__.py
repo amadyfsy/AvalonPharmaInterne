@@ -96,9 +96,10 @@ def app(config_name='default'):
         }
         
         try:
+            from .utils.parametres_pdf import get_logo_filepath
             from .models.parametres_documents import ParametresDocuments
             p = ParametresDocuments.get_singleton()
-            if p and p.logo_filename:
+            if p and p.logo_filename and get_logo_filepath():
                 info['global_logo_url'] = url_for('parametres.logo_file', filename=p.logo_filename)
         except Exception as e:
             app.logger.debug(f"Could not load global logo: {e}")

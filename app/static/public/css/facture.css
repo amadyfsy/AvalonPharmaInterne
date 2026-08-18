@@ -188,11 +188,13 @@ body.invoice-body {
   display: flex;
   flex-direction: column;
   flex: 1;
+  min-height: 0;
 }
 
 /* En-tête (calqué sur le PDF) */
 .invoice-header {
   padding: 0.35rem 0 0.85rem;
+  flex-shrink: 0;
 }
 
 .invoice-header-grid {
@@ -339,14 +341,14 @@ body.invoice-body {
   color: var(--inv-ink);
 }
 
-/* Grille infos */
+/* Grille infos — même largeur/hauteur sans étirer toute la page (évite de masquer l’en-tête) */
 .invoice-info-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-auto-rows: 1fr;
   align-items: stretch;
   gap: 0.75rem;
   padding: 0.85rem 0;
+  flex-shrink: 0;
 }
 
 .invoice-info-card {
@@ -354,11 +356,12 @@ body.invoice-body {
   border: 1px solid var(--inv-border);
   border-radius: 8px;
   padding: 0.75rem 0.85rem;
-  height: 100%;
-  min-height: 100%;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  align-self: stretch;
+  min-height: 0;
+  height: auto;
 }
 
 .invoice-info-card--facture {

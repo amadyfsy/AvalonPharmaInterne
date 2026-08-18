@@ -3,7 +3,9 @@
   <div class="sidebar-header">
     <div class="logo">
       {% if global_logo_url %}
-        <img src="{{ global_logo_url }}" alt="Logo entreprise" class="sidebar-logo-img">
+        <img src="{{ global_logo_url }}" alt="Logo entreprise" class="sidebar-logo-img"
+             onerror="this.style.display='none'; this.nextElementSibling && this.nextElementSibling.classList.remove('d-none');">
+        <span class="d-none">Avalon Pharma</span>
       {% else %}
         <i class="bi bi-hospital"></i>
         <span>Avalon Pharma</span>

@@ -557,53 +557,43 @@ def _company_info_rows(
     return rows
 
 
-def _pad_card_rows(rows: list, target_count: int) -> list:
-    """Aligne la hauteur des cartes en complétant la liste la plus courte."""
-    padded = list(rows)
-    filler = [Spacer(1, 3.6 * mm)]
-    while len(padded) < target_count:
-        padded.append(filler)
-    return padded
-
-
 def _info_cards_side_by_side(left_rows: list, right_rows: list, usable_w: float) -> Table:
-    """Deux cartes côte à côte, même largeur et même hauteur (lignes équilibrées)."""
-    row_count = max(len(left_rows), len(right_rows))
-    left_rows = _pad_card_rows(left_rows, row_count)
-    right_rows = _pad_card_rows(right_rows, row_count)
-
+    """Deux cartes côte à côte, même largeur et même hauteur (une seule rangée)."""
     card_w = usable_w * 0.48
     gap_w = usable_w * 0.04
-    inner_w = card_w - 12  # padding horizontal des cartes
-
-    left_tbl = Table(left_rows, colWidths=[inner_w])
-    right_tbl = Table(right_rows, colWidths=[inner_w])
-    card_style = TableStyle(
+    left_inner = [[row[0]] for row in left_rows]
+    right_inner = [[row[0]] for row in right_rows]
+    left_tbl = Table(left_inner, colWidths=[card_w - 12])
+    right_tbl = Table(right_inner, colWidths=[card_w - 12])
+    inner_style = TableStyle(
         [
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 6),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-            ("TOPPADDING", (0, 0), (-1, -1), 4),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-            ("BOX", (0, 0), (-1, -1), 0.75, _INV_BORDER),
-            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+            ("TOPPADDING", (0, 0), (-1, -1), 1),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
         ]
     )
-    left_tbl.setStyle(card_style)
-    right_tbl.setStyle(card_style)
+    left_tbl.setStyle(inner_style)
+    right_tbl.setStyle(inner_style)
     info_grid = Table(
         [[left_tbl, "", right_tbl]],
         colWidths=[card_w, gap_w, card_w],
-        rowHeights=[None],
     )
     info_grid.setStyle(
         TableStyle(
             [
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-                ("TOPPADDING", (0, 0), (-1, -1), 0),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+                ("LEFTPADDING", (0, 0), (0, 0), 6),
+                ("RIGHTPADDING", (0, 0), (0, 0), 6),
+                ("LEFTPADDING", (2, 0), (2, 0), 6),
+                ("RIGHTPADDING", (2, 0), (2, 0), 6),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("BOX", (0, 0), (0, 0), 0.75, _INV_BORDER),
+                ("BOX", (2, 0), (2, 0), 0.75, _INV_BORDER),
+                ("BACKGROUND", (0, 0), (0, 0), colors.HexColor("#f8fafc")),
+                ("BACKGROUND", (2, 0), (2, 0), colors.HexColor("#f8fafc")),
             ]
         )
     )
