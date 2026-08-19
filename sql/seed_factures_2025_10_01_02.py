@@ -71,11 +71,41 @@ def find_client(Client, name: str, aliases: tuple[str, ...] = ()):
     for c in Client.query.all():
         if _norm(c.raison_sociale or "") in wanted:
             return c
-    for c in Client.query.all():
-        rs = _norm(c.raison_sociale or "")
-        if "saint" in rs and "louis" in rs and "chr" in rs:
-            return c
+    # Correspondance partielle uniquement si le nom demandé est bien ce client.
+    name_n = _norm(name)
+    if "saint" in name_n and "louis" in name_n:
+        for c in Client.query.all():
+            rs = _norm(c.raison_sociale or "")
+            if "saint" in rs and "louis" in rs and ("chr" in rs or "hopital" in rs):
+                return c
+    if "opk" in name_n or "sokone" in name_n:
+        for c in Client.query.all():
+            rs = _norm(c.raison_sociale or "")
+            if "opk" in rs or "sokone" in rs:
+                return c
     return None
+
+
+def get_or_create_client(Client, db, name: str, client_type: str, aliases: tuple[str, ...] = ()):
+    client = find_client(Client, name, aliases)
+    if client:
+        return client
+    code = "CLI-" + slugify(name)[:20]
+    base = code
+    n = 1
+    while Client.query.filter_by(code=code).first():
+        n += 1
+        code = f"{base}-{n}"
+    client = Client(
+        code=code,
+        raison_sociale=name,
+        type_client=client_type or "autre",
+        est_actif=True,
+    )
+    db.session.add(client)
+    db.session.flush()
+    print(f"  + client {name}")
+    return client
 
 
 def find_produit(produits: dict, designation: str):
@@ -91,6 +121,7 @@ def find_produit(produits: dict, designation: str):
 def main() -> None:
     from app import create_app
     from app.extensions import db
+    from app.models.bon_livraison import BonLivraison
     from app.models.client import Client
     from app.models.facture import Facture, LigneFacture
     from app.models.paiement_client import PaiementClient
@@ -117,31 +148,36 @@ def main() -> None:
 
         for raw in FACTURES:
             numero = raw["numero"]
+            name = raw["client"]
             existing = Facture.query.filter_by(numero=numero).first()
             if existing:
+                client = get_or_create_client(
+                    Client,
+                    db,
+                    name,
+                    raw.get("client_type") or "autre",
+                    raw.get("client_aliases") or (),
+                )
+                if existing.client_id != client.id:
+                    old = (existing.client.raison_sociale if existing.client else "?")
+                    existing.client_id = client.id
+                    for pay in PaiementClient.query.filter_by(facture_id=existing.id).all():
+                        pay.client_id = client.id
+                    for bl in BonLivraison.query.filter_by(facture_id=existing.id).all():
+                        bl.client_id = client.id
+                    print(f"  corrigé {numero} : {old} → {client.raison_sociale}")
                 assurer_bl_pour_facture(existing, statut="livre")
                 db.session.commit()
-                print(f"  skip {numero} (déjà présente, BL vérifié)")
+                print(f"  ok {numero} | {client.raison_sociale}")
                 continue
 
-            name = raw["client"]
-            client = find_client(Client, name, raw.get("client_aliases") or ())
-            if not client:
-                code = "CLI-" + slugify(name)[:20]
-                base = code
-                n = 1
-                while Client.query.filter_by(code=code).first():
-                    n += 1
-                    code = f"{base}-{n}"
-                client = Client(
-                    code=code,
-                    raison_sociale=name,
-                    type_client=raw.get("client_type") or "autre",
-                    est_actif=True,
-                )
-                db.session.add(client)
-                db.session.flush()
-                print(f"  + client {name}")
+            client = get_or_create_client(
+                Client,
+                db,
+                name,
+                raw.get("client_type") or "autre",
+                raw.get("client_aliases") or (),
+            )
 
             sous_total = Decimal("0")
             lignes_data = []
