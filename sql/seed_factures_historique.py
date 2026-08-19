@@ -29,6 +29,29 @@ if str(ROOT) not in sys.path:
 
 FACTURES = [
     {
+        "numero": "2025/10/01",
+        "date": date(2025, 10, 6),
+        "client": "OPK Ndiaye Sokone",
+        "lignes": [
+            ("Microscope opératoire", 1, 1950000),
+            ("Lampe à fente 5 steps", 1, 950000),
+        ],
+        "acompte": Decimal("2100000"),
+    },
+    {
+        "numero": "2025/10/02",
+        "date": date(2025, 10, 2),
+        "client": "CHR Saint-Louis",
+        "bc": "01640",
+        "lignes": [
+            ("Bonnet", 300, 2000),
+            ("Gant d'examen", 2000, 1800),
+            ("Masque Chirurgie", 200, 2000),
+            ("Pièce de Gaze", 300, 6500),
+            ("Blouse non Stérile", 1000, 530),
+        ],
+    },
+    {
         "numero": "2025/10/03",
         "date": date(2025, 10, 9),
         "client": "Tambedou TSO Touba",
@@ -532,6 +555,8 @@ FACTURES = [
 
 # Alias → nom canonique (évite les doublons clients)
 CLIENT_ALIASES = {
+    "CHR de Saint-Louis": "CHR Saint-Louis",
+    "OPK NDIAYE SOKONE": "OPK Ndiaye Sokone",
     "Hôpital Linguère": "CH Maguette Lo de Linguère",
     "Hopital Linguère": "CH Maguette Lo de Linguère",
     "Hôpital Linguere": "CH Maguette Lo de Linguère",
@@ -681,6 +706,17 @@ def run(dry_run: bool = False) -> None:
             from datetime import timedelta
 
             d_emis = raw["date"]
+            acompte = money(raw.get("acompte") or 0)
+            if acompte > total_ttc:
+                acompte = total_ttc
+            reste = money(total_ttc - acompte)
+            if acompte <= 0:
+                statut = "emise"
+            elif reste <= 0:
+                statut = "payee"
+                reste = Decimal("0")
+            else:
+                statut = "partiellement_payee"
             facture = Facture(
                 numero=numero,
                 client_id=client.id,
@@ -691,9 +727,9 @@ def run(dry_run: bool = False) -> None:
                 total_ht=base_ht,
                 tva_montant=tva_montant,
                 total_ttc=total_ttc,
-                statut="emise",
-                montant_paye=Decimal("0"),
-                reste_a_payer=total_ttc,
+                statut=statut,
+                montant_paye=acompte,
+                reste_a_payer=reste,
             )
             db.session.add(facture)
             db.session.flush()
