@@ -621,7 +621,12 @@ def _facture_pdf_info_grid(
         )
     bc = (getattr(facture, "bc", None) or "").strip()
     if bc:
-        left_rows.append([Paragraph(escape(f"BC : {bc}"), card_sub)])
+        left_rows.append([Paragraph(escape(f"BC : N° {bc}"), card_sub)])
+    date_bc = getattr(facture, "date_bc", None)
+    if date_bc:
+        left_rows.append(
+            [Paragraph(escape(f"Date BC : {date_bc.strftime('%d/%m/%Y')}"), card_sub)]
+        )
     left_rows.append([Spacer(1, 1 * mm)])
     left_rows.append([Paragraph("CLIENT", card_label)])
     cn = facture.client.raison_sociale if getattr(facture, "client", None) else "—"

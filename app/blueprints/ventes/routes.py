@@ -1074,6 +1074,8 @@ def _parse_facture_post():
     date_echeance = datetime.strptime(request.form.get("date_echeance"), "%Y-%m-%d").date()
     remise_globale = float(request.form.get("remise_globale", 0) or 0)
     bc = (request.form.get("bc") or "").strip() or None
+    raw_date_bc = (request.form.get("date_bc") or "").strip()
+    date_bc = datetime.strptime(raw_date_bc, "%Y-%m-%d").date() if raw_date_bc else None
 
     produit_ids = request.form.getlist("produit_id[]")
     quantites = request.form.getlist("quantite[]")
@@ -1115,6 +1117,7 @@ def _parse_facture_post():
         "date_echeance": date_echeance,
         "remise_globale": remise_globale,
         "bc": bc,
+        "date_bc": date_bc,
         "lignes": lignes,
         "total_ht_global": total_ht_global,
         "tva_montant_global": tva_montant_global,
@@ -1131,6 +1134,7 @@ def _apply_totals_to_facture(facture, data):
     facture.date_echeance = data["date_echeance"]
     facture.remise_globale = rem
     facture.bc = data.get("bc")
+    facture.date_bc = data.get("date_bc")
     facture.total_ht = total_ht_remise
     facture.tva_montant = tva_montant_remise
     facture.total_ttc = total_ttc

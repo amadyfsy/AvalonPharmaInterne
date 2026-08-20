@@ -18,6 +18,7 @@ class Facture(db.Model):
     statut = db.Column(db.Enum('brouillon', 'emise', 'partiellement_payee', 'payee', 'annulee', name='statut_factures'), default='brouillon')
     mode_paiement = db.Column(db.String(50), nullable=True)
     bc = db.Column(db.String(80), nullable=True)
+    date_bc = db.Column(db.Date, nullable=True)
     montant_paye = db.Column(db.Numeric(12, 2), default=0.00)
     reste_a_payer = db.Column(db.Numeric(12, 2), nullable=False)
     commercial_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)

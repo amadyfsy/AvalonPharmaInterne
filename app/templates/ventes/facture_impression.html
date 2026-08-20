@@ -91,8 +91,13 @@
                   {% if facture.date_emission %}
                     <div class="invoice-doc-date">Émise le {{ facture.date_emission.strftime('%d/%m/%Y') }}</div>
                   {% endif %}
-                  {% if facture.bc %}
-                    <div class="invoice-doc-bc">BC : {{ facture.bc }}</div>
+                  {% if facture.bc or facture.date_bc %}
+                    <div class="invoice-doc-bc">
+                      {% if facture.bc %}BC : N° {{ facture.bc }}{% endif %}
+                      {% if facture.date_bc %}
+                        {% if facture.bc %} — {% endif %}Date : {{ facture.date_bc.strftime('%d/%m/%Y') }}
+                      {% endif %}
+                    </div>
                   {% endif %}
 
                   <div class="invoice-info-card__divider"></div>

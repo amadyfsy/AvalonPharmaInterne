@@ -37,6 +37,7 @@ FACTURES = [
         "client_aliases": ("CHR de Saint-Louis", "CHR Saint-Louis"),
         "client_type": "hopital",
         "bc": "01640",
+        "date_bc": date(2025, 9, 19),
         "lignes": [
             ("Bonnet", 300, 2000),
             ("Gant d'examen", 2000, 1800),
@@ -246,6 +247,7 @@ def main() -> None:
                 date_emission=d_emis,
                 date_echeance=d_emis + timedelta(days=30),
                 bc=raw.get("bc"),
+                date_bc=raw.get("date_bc"),
                 remise_globale=Decimal("0"),
                 total_ht=total_ttc,
                 tva_montant=Decimal("0"),

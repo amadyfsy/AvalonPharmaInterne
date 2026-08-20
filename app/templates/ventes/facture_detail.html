@@ -120,9 +120,14 @@
             <dd class="col-7">{{ facture.date_emission.strftime('%d/%m/%Y') if facture.date_emission else '—' }}</dd>
             <dt class="col-5">Échéance</dt>
             <dd class="col-7">{{ facture.date_echeance.strftime('%d/%m/%Y') if facture.date_echeance else '—' }}</dd>
-            {% if facture.bc %}
+            {% if facture.bc or facture.date_bc %}
               <dt class="col-5">BC</dt>
-              <dd class="col-7">{{ facture.bc }}</dd>
+              <dd class="col-7">
+                {% if facture.bc %}N° {{ facture.bc }}{% endif %}
+                {% if facture.date_bc %}
+                  {% if facture.bc %} — {% endif %}Date {{ facture.date_bc.strftime('%d/%m/%Y') }}
+                {% endif %}
+              </dd>
             {% endif %}
             <dt class="col-5">Remise globale</dt>
             <dd class="col-7">

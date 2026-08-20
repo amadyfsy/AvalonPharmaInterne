@@ -45,9 +45,14 @@
       </div>
 
       <div class="col-12 col-md-4">
-        <label class="form-label">BC <span class="text-muted fw-normal">(bon de commande, optionnel)</span></label>
-        <input class="form-control" type="text" name="bc" maxlength="80" placeholder="Ex. BC-2026-001"
+        <label class="form-label">N° BC <span class="text-muted fw-normal">(bon de commande, optionnel)</span></label>
+        <input class="form-control" type="text" name="bc" maxlength="80" placeholder="Ex. 0000517"
                value="{{ facture.bc if facture and facture.bc else '' }}">
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="form-label">Date BC <span class="text-muted fw-normal">(optionnel)</span></label>
+        <input class="form-control" type="date" name="date_bc"
+               value="{{ facture.date_bc.strftime('%Y-%m-%d') if facture and facture.date_bc else '' }}">
       </div>
     </div>
 

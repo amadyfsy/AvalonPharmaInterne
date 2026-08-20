@@ -393,10 +393,12 @@ def app(config_name='default'):
                 facture_columns = {c['name'] for c in inspector.get_columns('factures')}
                 if 'bc' not in facture_columns:
                     db.session.execute(text("ALTER TABLE factures ADD COLUMN bc VARCHAR(80) NULL"))
+                if 'date_bc' not in facture_columns:
+                    db.session.execute(text("ALTER TABLE factures ADD COLUMN date_bc DATE NULL"))
                 db.session.commit()
         except Exception as exc:
             db.session.rollback()
-            app.logger.warning('Colonne bc non initialisée sur factures: %s', exc)
+            app.logger.warning('Colonnes bc/date_bc non initialisées sur factures: %s', exc)
 
         try:
             from sqlalchemy import inspect, text
