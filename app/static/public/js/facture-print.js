@@ -18,12 +18,17 @@
 
   function setModalCopy(mode, docType) {
     var isBl = docType === 'bl';
+    var isProforma = docType === 'proforma';
     var isDl = mode === 'download';
     if (titleEl) {
       if (isBl) {
         titleEl.innerHTML = isDl
           ? '<i class="bi bi-download me-2 text-primary"></i>Télécharger le BL'
           : '<i class="bi bi-printer me-2 text-primary"></i>Imprimer le BL';
+      } else if (isProforma) {
+        titleEl.innerHTML = isDl
+          ? '<i class="bi bi-download me-2 text-primary"></i>Télécharger la proforma'
+          : '<i class="bi bi-printer me-2 text-primary"></i>Imprimer la proforma';
       } else {
         titleEl.innerHTML = isDl
           ? '<i class="bi bi-download me-2 text-primary"></i>Télécharger la facture'
@@ -31,7 +36,7 @@
       }
     }
     if (descEl) {
-      if (isBl) {
+      if (isBl || isProforma) {
         descEl.textContent = isDl
           ? 'Choisissez les options du PDF à télécharger.'
           : 'Choisissez les options du document à imprimer.';
@@ -42,7 +47,7 @@
       }
     }
     if (btnSeul) {
-      if (isBl) {
+      if (isBl || isProforma) {
         btnSeul.innerHTML = '<i class="bi bi-file-earmark-text me-2"></i>'
           + (isDl ? 'Télécharger' : 'Continuer');
       } else {
@@ -61,7 +66,7 @@
   function buildUrl(base, avecBl) {
     var sep = base.indexOf('?') >= 0 ? '&' : '?';
     var url = base + sep + 'avec_cachet=' + cachetParam();
-    if (pendingDocType !== 'bl') {
+    if (pendingDocType === 'facture') {
       url += '&avec_bl=' + (avecBl ? '1' : '0');
     }
     return url;

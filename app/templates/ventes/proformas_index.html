@@ -108,10 +108,20 @@
                     <a class="btn btn-outline-secondary" href="{{ url_for('ventes.proforma_detail', id=p.id) }}" title="Voir">
                       <i class="bi bi-eye"></i>
                     </a>
-                    <a class="btn btn-outline-primary" href="{{ url_for('ventes.proforma_imprimer', id=p.id) }}" target="_blank" rel="noopener" title="Imprimer">
+                    <a class="btn btn-outline-primary js-facture-print"
+                       href="{{ url_for('ventes.proforma_imprimer', id=p.id) }}"
+                       data-doc-type="proforma"
+                       data-print-url="{{ url_for('ventes.proforma_imprimer', id=p.id) }}"
+                       data-has-cachet="{{ '1' if has_cachet else '0' }}"
+                       title="Imprimer">
                       <i class="bi bi-printer"></i>
                     </a>
-                    <a class="btn btn-outline-secondary" href="{{ url_for('ventes.proforma_pdf', id=p.id) }}" target="_blank" rel="noopener" title="PDF">
+                    <a class="btn btn-outline-secondary js-facture-download"
+                       href="{{ url_for('ventes.proforma_pdf', id=p.id) }}"
+                       data-doc-type="proforma"
+                       data-pdf-url="{{ url_for('ventes.proforma_pdf', id=p.id) }}"
+                       data-has-cachet="{{ '1' if has_cachet else '0' }}"
+                       title="PDF">
                       <i class="bi bi-file-earmark-pdf"></i>
                     </a>
                     {% if p.statut != 'converti' %}
@@ -175,6 +185,8 @@
 {% endblock %}
 
 {% block scripts %}
+  {% include 'ventes/_modal_imprimer_facture.html' %}
+  <script src="{{ url_for('static', filename='public/js/facture-print.js') }}"></script>
 <script>
   (function () {
     var form = document.getElementById('proformasFiltersForm');

@@ -238,6 +238,9 @@ def build_proforma_pdf_bytesio(
     format_fcfa: Callable[[Any], str],
     logo_path: str | None,
     date_lieu_fr: str = "",
+    *,
+    cachet_path: str | None = None,
+    avec_cachet: bool = False,
 ) -> io.BytesIO:
     """Proforma PDF alignée sur le modèle facture (en-tête, cartes, tableau)."""
     _ensure_fonts()
@@ -557,7 +560,21 @@ def build_proforma_pdf_bytesio(
     sig_data: list = []
     if date_lieu_fr:
         sig_data.append([Paragraph(escape(date_lieu_fr), sig_style)])
-    sig_data.append([Spacer(1, 25 * mm)])
+    if avec_cachet and cachet_path and os.path.isfile(cachet_path):
+        try:
+            img = Image(cachet_path)
+            img.hAlign = "CENTER"
+            max_w, max_h = 48 * mm, 48 * mm
+            iw, ih = img.imageWidth, img.imageHeight
+            scale = min(max_w / float(iw), max_h / float(ih), 1.0)
+            img.drawWidth = iw * scale
+            img.drawHeight = ih * scale
+            sig_data.append([Spacer(1, 0.5 * mm)])
+            sig_data.append([img])
+        except Exception:
+            sig_data.append([Spacer(1, 25 * mm)])
+    else:
+        sig_data.append([Spacer(1, 25 * mm)])
     sig_table = Table(sig_data, colWidths=[65 * mm])
     sig_table.hAlign = "RIGHT"
     story.append(sig_table)

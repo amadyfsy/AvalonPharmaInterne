@@ -649,6 +649,7 @@ def proformas():
         statut_filtre=statut,
         filtres_url=filtres_url,
         statuts_proforma=_STATUTS_PROFORMA,
+        has_cachet=has_cachet(),
     )
 
 
@@ -672,6 +673,7 @@ def proforma_detail(id):
         facture_issue=facture_issue,
         format_fcfa=format_montant_espace,
         affiche_tva=document_affiche_tva(proforma),
+        has_cachet=has_cachet(),
     )
 
 FACTURES_PAR_PAGE = 15
@@ -1809,6 +1811,7 @@ def bl_imprimer(id):
 @permission_required("ventes", "read")
 def proforma_imprimer(id):
     """Aperçu navigateur + impression proforma (même modèle visuel que facture)."""
+    avec_cachet = _arg_bool("avec_cachet") and has_cachet()
     proforma = (
         Proforma.query.options(
             joinedload(Proforma.client),
@@ -1825,6 +1828,7 @@ def proforma_imprimer(id):
         "ventes/proforma_impression.html",
         **ctx,
         proforma=proforma,
+        avec_cachet=avec_cachet,
         date_signature_fr=_date_lieu_fr(proforma.date_emission, lieu),
     )
 
@@ -1833,6 +1837,7 @@ def proforma_imprimer(id):
 @login_required
 @permission_required('ventes', 'read')
 def proforma_pdf(id):
+    avec_cachet = _arg_bool("avec_cachet")
     proforma = (
         Proforma.query.options(
             joinedload(Proforma.client),
@@ -1846,6 +1851,7 @@ def proforma_pdf(id):
     dp = ctx["doc_params"]
     lieu = (getattr(dp, "lieu_signature", None) or "St Louis").strip()
     logo_path = get_logo_filepath()
+    cachet_path = get_cachet_filepath() if avec_cachet else None
     try:
         pdf_io = build_proforma_pdf_bytesio(
             proforma,
@@ -1854,6 +1860,8 @@ def proforma_pdf(id):
             format_montant_espace,
             logo_path,
             _date_lieu_fr(proforma.date_emission, lieu),
+            cachet_path=cachet_path,
+            avec_cachet=bool(cachet_path),
         )
     except Exception as e:
         current_app.logger.warning("PDF proforma ReportLab → HTML : %s", e)
