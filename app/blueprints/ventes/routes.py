@@ -740,9 +740,10 @@ def factures():
     query = Facture.query.options(joinedload(Facture.client))
     if q:
         pattern = f'%{q}%'
-        query = query.join(Client, Facture.client_id == Client.id).filter(
+        query = query.outerjoin(Client, Facture.client_id == Client.id).filter(
             or_(
                 Facture.numero.ilike(pattern),
+                Facture.bc.ilike(pattern),
                 Client.raison_sociale.ilike(pattern),
             )
         )
