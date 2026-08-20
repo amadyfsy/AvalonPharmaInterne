@@ -228,6 +228,14 @@
                         <i class="bi bi-pencil"></i>
                       </a>
                     {% endif %}
+                    {% if f.statut != 'annulee' %}
+                      <form method="post" action="{{ url_for('ventes.annuler_facture', id=f.id) }}" class="d-inline"
+                            onsubmit="return confirm('Annuler la facture {{ f.numero }} ?\n\nElle ne sera pas supprimée.');">
+                        <button type="submit" class="btn btn-outline-danger" title="Annuler">
+                          <i class="bi bi-x-circle"></i>
+                        </button>
+                      </form>
+                    {% endif %}
                     <a class="btn btn-primary js-facture-download"
                        href="{{ url_for('ventes.facture_pdf', id=f.id) }}"
                        data-pdf-url="{{ url_for('ventes.facture_pdf', id=f.id) }}"

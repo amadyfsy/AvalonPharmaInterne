@@ -98,9 +98,27 @@
           </button>
         </form>
       {% endif %}
+      {% if facture.statut != 'annulee' %}
+        <form method="post" action="{{ url_for('ventes.annuler_facture', id=facture.id) }}" class="d-inline"
+              onsubmit="return confirm('Annuler la facture {{ facture.numero }} ?\n\nElle ne sera pas supprimée : elle restera visible avec le statut « Annulée ».');">
+          <button type="submit" class="btn btn-outline-danger">
+            <i class="bi bi-x-circle me-1"></i> Annuler
+          </button>
+        </form>
+      {% endif %}
       <a href="{{ url_for('ventes.factures') }}" class="btn btn-outline-secondary">Liste</a>
     </div>
   </div>
+
+  {% if facture.statut == 'annulee' %}
+    <div class="alert alert-dark d-flex align-items-start gap-2 mb-4" role="status">
+      <i class="bi bi-x-octagon fs-5 mt-1" aria-hidden="true"></i>
+      <div>
+        <strong>Facture annulée</strong>
+        <div class="small mb-0">Ce document est conservé pour l’historique. Aucune modification, paiement ni nouveau BL n’est possible.</div>
+      </div>
+    </div>
+  {% endif %}
 
   <div class="row g-4">
     <div class="col-lg-4">

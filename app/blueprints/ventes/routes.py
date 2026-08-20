@@ -1495,6 +1495,33 @@ def emettre_facture(id):
     return redirect(url_for("ventes.facture_detail", id=id))
 
 
+@ventes_bp.route("/factures/<int:id>/annuler", methods=["POST"])
+@login_required
+@permission_required("ventes", "create")
+def annuler_facture(id):
+    """Passe la facture au statut annulée — le document est conservé (pas de suppression)."""
+    facture = Facture.query.filter_by(id=id).first_or_404()
+    if facture.statut == "annulee":
+        flash(f"La facture {facture.numero} est déjà annulée.", "info")
+        return redirect(url_for("ventes.facture_detail", id=id))
+
+    bl = BonLivraison.query.filter_by(facture_id=id).first()
+    try:
+        facture.statut = "annulee"
+        db.session.commit()
+        msg = f"Facture {facture.numero} annulée. Elle reste consultable (non supprimée)."
+        if bl and bl.statut in ("livre", "partiellement_livre"):
+            msg += (
+                f" Attention : le BL {bl.numero} est déjà {bl.statut.replace('_', ' ')} "
+                "— le stock n’a pas été rétabli automatiquement."
+            )
+        flash(msg, "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(str(e), "danger")
+    return redirect(url_for("ventes.facture_detail", id=id))
+
+
 @ventes_bp.route('/factures/nouveau', methods=['GET', 'POST'])
 @login_required
 @permission_required('ventes', 'create')
