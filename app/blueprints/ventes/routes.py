@@ -1843,14 +1843,17 @@ def proforma_pdf(id):
     )
     ctx = _ctx_pdf_vente_ht(proforma)
     ctx["proforma"] = proforma
+    dp = ctx["doc_params"]
+    lieu = (getattr(dp, "lieu_signature", None) or "St Louis").strip()
     logo_path = get_logo_filepath()
     try:
         pdf_io = build_proforma_pdf_bytesio(
             proforma,
-            ctx["doc_params"],
+            dp,
             ctx["montant_lettres"],
             format_montant_espace,
             logo_path,
+            _date_lieu_fr(proforma.date_emission, lieu),
         )
     except Exception as e:
         current_app.logger.warning("PDF proforma ReportLab → HTML : %s", e)

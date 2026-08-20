@@ -28,14 +28,22 @@
         </ol>
       </nav>
       <h1 class="page-title mb-1">Proforma {{ proforma.numero }}</h1>
-      <p class="page-subtitle mb-0">{{ badge_statut_proforma(proforma.statut) }}</p>
+      <p class="page-subtitle mb-0 d-flex flex-wrap align-items-center gap-2">
+        {{ badge_statut_proforma(proforma.statut) }}
+        {% if proforma.date_emission %}
+          <span class="text-muted small">Émise le {{ proforma.date_emission.strftime('%d/%m/%Y') }}</span>
+        {% endif %}
+        {% if proforma.date_validite %}
+          <span class="text-muted small">Valable jusqu’au {{ proforma.date_validite.strftime('%d/%m/%Y') }}</span>
+        {% endif %}
+      </p>
     </div>
     <div class="d-flex flex-wrap gap-2">
-      <a href="{{ url_for('ventes.proforma_imprimer', id=proforma.id) }}" class="btn btn-outline-primary" target="_blank" rel="noopener">
-        <i class="bi bi-printer me-1"></i> Aperçu / Imprimer
+      <a href="{{ url_for('ventes.proforma_pdf', id=proforma.id) }}" class="btn btn-primary" title="Télécharger la proforma PDF">
+        <i class="bi bi-download me-1"></i> Télécharger
       </a>
-      <a href="{{ url_for('ventes.proforma_pdf', id=proforma.id) }}" class="btn btn-outline-primary" target="_blank" rel="noopener">
-        <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+      <a href="{{ url_for('ventes.proforma_imprimer', id=proforma.id) }}" class="btn btn-outline-secondary" target="_blank" rel="noopener">
+        <i class="bi bi-printer me-1"></i> Aperçu
       </a>
       {% if proforma.statut != 'converti' %}
         <form method="post" action="{{ url_for('ventes.convertir_proforma', id=proforma.id) }}" class="d-inline"
@@ -70,10 +78,11 @@
             <dt class="col-5">Remise globale</dt>
             <dd class="col-7">{{ proforma.remise_globale or 0 }} %</dd>
           </dl>
-          {% if proforma.notes %}
+          {% set notes_visibles = (proforma.notes or '')|trim %}
+          {% if notes_visibles and not notes_visibles.lower().startswith('seed:') %}
             <hr>
             <div class="small text-muted">Notes</div>
-            <div class="small">{{ proforma.notes }}</div>
+            <div class="small">{{ notes_visibles }}</div>
           {% endif %}
         </div>
       </div>

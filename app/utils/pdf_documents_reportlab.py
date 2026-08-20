@@ -176,123 +176,392 @@ def _header_flowable(logo_path: str | None, doc_params: Any, usable_width: float
 
 
 
+def _proforma_pdf_info_grid(
+    proforma: Any,
+    doc_params: Any,
+    usable_w: float,
+    *,
+    card_label: ParagraphStyle,
+    card_title: ParagraphStyle,
+    card_sub: ParagraphStyle,
+    card_name: ParagraphStyle,
+    card_phone: ParagraphStyle,
+) -> Table:
+    left_rows: list = [
+        [Paragraph("PROFORMA", card_label)],
+        [Paragraph(escape(f"N° {proforma.numero}"), card_title)],
+    ]
+    if getattr(proforma, "date_emission", None):
+        left_rows.append(
+            [
+                Paragraph(
+                    escape(f"Émise le {proforma.date_emission.strftime('%d/%m/%Y')}"),
+                    card_sub,
+                )
+            ]
+        )
+    if getattr(proforma, "date_validite", None):
+        left_rows.append(
+            [
+                Paragraph(
+                    escape(
+                        f"Valable jusqu’au {proforma.date_validite.strftime('%d/%m/%Y')}"
+                    ),
+                    card_sub,
+                )
+            ]
+        )
+    left_rows.append([Spacer(1, 1 * mm)])
+    left_rows.append([Paragraph("CLIENT", card_label)])
+    cn = proforma.client.raison_sociale if getattr(proforma, "client", None) else "—"
+    left_rows.append([Paragraph(escape(cn), card_name)])
+    client = getattr(proforma, "client", None)
+    if client and getattr(client, "telephone", None):
+        left_rows.append([Paragraph(escape(f"Tél. {client.telephone}"), card_phone)])
+
+    notes = (getattr(proforma, "notes", None) or "").strip()
+    if notes.lower().startswith("seed:"):
+        notes = ""
+    right_rows = _company_info_rows(
+        doc_params,
+        card_label=card_label,
+        card_sub=card_sub,
+        notes=notes or None,
+    )
+    return _info_cards_side_by_side(left_rows, right_rows, usable_w)
+
+
 def build_proforma_pdf_bytesio(
     proforma: Any,
     doc_params: Any,
     montant_lettres: str,
     format_fcfa: Callable[[Any], str],
     logo_path: str | None,
+    date_lieu_fr: str = "",
 ) -> io.BytesIO:
+    """Proforma PDF alignée sur le modèle facture (en-tête, cartes, tableau)."""
     _ensure_fonts()
     buffer = io.BytesIO()
-    LM = RM = 16 * mm
-    TM = BM = 14 * mm
-    doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=LM, rightMargin=RM, topMargin=TM, bottomMargin=BM)
-    usable_w = A4[0] - LM - RM
+    LM = RM = _FACTURE_SIDE_MM * mm
+    TM = _FACTURE_TOP_MM * mm
+    BM = _FACTURE_BOTTOM_MM * mm
 
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle(
-        "pt",
-        parent=styles["Normal"],
-        fontName="Times-Bold",
-        fontSize=13,
-        leading=16,
-        alignment=TA_CENTER,
-        spaceAfter=10,
+    site_web = _resolve_site_web(doc_params)
+    page_info = {"total": 1}
+
+    def on_page(c: Any, d: Any) -> None:
+        _facture_draw_header(c, d, doc_params, logo_path, site_web)
+        c.saveState()
+        c.setFont("Times-Roman", 8)
+        c.setFillColor(_INV_MUTED)
+        c.drawCentredString(A4[0] / 2, 7 * mm, f"Page {d.page} / {page_info['total']}")
+        c.restoreState()
+
+    doc = BaseDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=LM,
+        rightMargin=RM,
+        topMargin=TM,
+        bottomMargin=BM,
     )
+    frame = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="normal")
+    doc.addPageTemplates(
+        [
+            PageTemplate(
+                id="Proforma",
+                frames=[frame],
+                onPage=on_page,
+                pagesize=A4,
+            )
+        ]
+    )
+
+    usable_w = A4[0] - LM - RM
+    styles = getSampleStyleSheet()
     body = ParagraphStyle(
-        "pb",
+        "pb_body",
         parent=styles["Normal"],
         fontName="Times-Roman",
         fontSize=10.5,
         leading=14,
-        spaceAfter=5,
+        spaceAfter=6,
+        textColor=colors.black,
     )
-    small = ParagraphStyle("ps", parent=body, fontSize=9, leading=11)
+    hdr_l = ParagraphStyle(
+        "ph_l",
+        parent=body,
+        fontName="Times-Bold",
+        fontSize=8,
+        leading=10,
+        textColor=colors.white,
+        alignment=TA_LEFT,
+    )
+    hdr_c = ParagraphStyle(
+        "ph_c",
+        parent=body,
+        fontName="Times-Bold",
+        fontSize=8,
+        leading=10,
+        textColor=colors.white,
+        alignment=TA_CENTER,
+    )
+    hdr_r = ParagraphStyle(
+        "ph_r",
+        parent=body,
+        fontName="Times-Bold",
+        fontSize=8,
+        leading=10,
+        textColor=colors.white,
+        alignment=TA_RIGHT,
+    )
+    c_left = ParagraphStyle("pl", parent=body, fontSize=10, leading=12.5)
+    c_center = ParagraphStyle("pc", parent=body, fontSize=10, leading=12.5, alignment=TA_CENTER)
+    c_right = ParagraphStyle("pr", parent=body, fontSize=10, leading=12.5, alignment=TA_RIGHT)
+    body_amount = ParagraphStyle(
+        "pba",
+        parent=body,
+        fontName="Times-Roman",
+        textColor=colors.HexColor("#164e63"),
+        backColor=colors.HexColor("#ecfeff"),
+        borderPadding=6,
+        leftIndent=4,
+    )
+    card_label = ParagraphStyle(
+        "pcard_lbl",
+        parent=body,
+        fontName="Times-Bold",
+        fontSize=6.5,
+        leading=8,
+        textColor=_INV_PRIMARY,
+        spaceAfter=2,
+    )
+    card_title = ParagraphStyle(
+        "pcard_doc",
+        parent=body,
+        fontName="Times-Bold",
+        fontSize=10,
+        leading=12,
+        textColor=_INV_INK,
+        spaceAfter=1,
+    )
+    card_sub = ParagraphStyle(
+        "pcard_sub",
+        parent=body,
+        fontSize=8,
+        leading=10,
+        textColor=_INV_MUTED,
+        spaceAfter=3,
+    )
+    card_name = ParagraphStyle(
+        "pcard_name",
+        parent=body,
+        fontName="Times-Bold",
+        fontSize=9,
+        leading=11,
+        textColor=_INV_INK,
+        spaceAfter=1,
+    )
+    card_phone = ParagraphStyle(
+        "pcard_phone",
+        parent=body,
+        fontName="Times-Bold",
+        fontSize=8,
+        leading=10,
+        textColor=_INV_INK,
+        spaceAfter=1,
+    )
 
     story: list = []
-    story.extend(_header_flowable(logo_path, doc_params, usable_w))
-    story.append(Paragraph(escape(f"PROFORMA No {proforma.numero}"), title_style))
-    cn = proforma.client.raison_sociale if getattr(proforma, "client", None) else ""
-    story.append(Paragraph(f"<b>CLIENT :</b> {escape(cn)}", body))
-    story.append(
-        Paragraph(
-            f"Arrêté le présent document à la somme de : <b>{escape(montant_lettres)}</b>.",
-            body,
+
+    def append_info_grid() -> None:
+        story.append(
+            _proforma_pdf_info_grid(
+                proforma,
+                doc_params,
+                usable_w,
+                card_label=card_label,
+                card_title=card_title,
+                card_sub=card_sub,
+                card_name=card_name,
+                card_phone=card_phone,
+            )
         )
+        story.append(Spacer(1, 4 * mm))
+
+    col_desc = usable_w * 0.48
+    col_q = usable_w * 0.14
+    col_pu = usable_w * 0.19
+    col_mt = usable_w * 0.19
+
+    lignes_sorted = sorted(getattr(proforma, "lignes", None) or [], key=lambda x: x.id)
+    sous_total = sum(float(l.montant_ht or 0) for l in lignes_sorted)
+    rem_raw = float(getattr(proforma, "remise_globale", 0) or 0)
+    remise_montant = max(0.0, sous_total - float(proforma.total_ht or 0))
+    if rem_raw > 0 and rem_raw <= 100:
+        remise_pct = rem_raw
+    elif sous_total > 0 and remise_montant > 0:
+        remise_pct = round(remise_montant / sous_total * 100)
+    else:
+        remise_pct = 0
+    line_chunks = _chunk_facture_lines(lignes_sorted)
+    needs_break_before_bottom = (
+        len(lignes_sorted) > 0 and len(line_chunks[-1]) >= _FACTURE_LINES_PER_PAGE
     )
-    story.extend(_story_coords(doc_params, proforma.date_emission))
-    story.append(Spacer(1, 4 * mm))
+    page_info["total"] = len(line_chunks) + (1 if needs_break_before_bottom else 0)
 
-    col_desc = usable_w * 0.52
-    col_q = usable_w * 0.11
-    col_pu = usable_w * 0.185
-    col_mt = usable_w * 0.185
-    hdr = ParagraphStyle("h", parent=body, fontName="Times-Bold", fontSize=10, leading=12)
-    c_left = ParagraphStyle("l", parent=body, fontSize=10, leading=12)
-    c_right = ParagraphStyle("r", parent=body, fontSize=10, leading=12, alignment=TA_RIGHT)
-    c_tot_l = ParagraphStyle("tl", parent=c_left, fontName="Times-Bold")
-    c_tot_r = ParagraphStyle("tr", parent=c_right, fontName="Times-Bold")
+    for chunk_idx, chunk in enumerate(line_chunks):
+        if chunk_idx > 0:
+            story.append(PageBreak())
+        append_info_grid()
+        story.append(
+            _facture_pdf_lines_table(
+                chunk,
+                col_desc=col_desc,
+                col_q=col_q,
+                col_pu=col_pu,
+                col_mt=col_mt,
+                hdr_l=hdr_l,
+                hdr_c=hdr_c,
+                hdr_r=hdr_r,
+                c_left=c_left,
+                c_center=c_center,
+                c_right=c_right,
+                format_fcfa=format_fcfa,
+            )
+        )
+        story.append(Spacer(1, 4 * mm))
 
-    data = [
-        [
-            Paragraph("DÉSIGNATION", hdr),
-            Paragraph("QUANTITÉ", hdr),
-            Paragraph("PRIX<br/>UNITAIRE", hdr),
-            Paragraph("MONTANT", hdr),
-        ]
-    ]
-    for l in sorted(getattr(proforma, "lignes", None) or [], key=lambda x: x.id):
-        des = l.produit.designation if getattr(l, "produit", None) else ""
-        data.append(
+    tva_ok = document_affiche_tva(proforma)
+    tot_lbl = ParagraphStyle(
+        "ptot_lbl", parent=body, fontSize=9, leading=11, textColor=_INV_MUTED
+    )
+    tot_val = ParagraphStyle(
+        "ptot_val",
+        parent=body,
+        fontName="Times-Bold",
+        fontSize=9,
+        leading=11,
+        alignment=TA_RIGHT,
+    )
+    tot_grand_l = ParagraphStyle(
+        "ptot_grand_l",
+        parent=tot_lbl,
+        fontName="Times-Bold",
+        fontSize=10,
+        textColor=colors.white,
+    )
+    tot_grand_r = ParagraphStyle(
+        "ptot_grand_r", parent=tot_val, fontSize=10, textColor=colors.white
+    )
+
+    totals_data: list[list] = []
+    if remise_montant > 0.5:
+        totals_data.append(
             [
-                Paragraph(escape(str(des)), c_left),
-                Paragraph(escape(str(l.quantite)), c_right),
-                Paragraph(escape(format_fcfa(l.prix_unitaire_ht)), c_right),
-                Paragraph(escape(format_fcfa(l.montant_ht)), c_right),
+                Paragraph("Sous-total", tot_lbl),
+                _pdf_amount_paragraph(format_fcfa(sous_total), tot_val),
             ]
         )
-    data.append(
-        [
-            Paragraph("Total", c_tot_l),
-            Paragraph("", c_right),
-            Paragraph("", c_right),
-            Paragraph(escape(format_fcfa(proforma.total_ht)), c_tot_r),
-        ]
+        totals_data.append(
+            [
+                Paragraph(
+                    escape(
+                        f"Remise (−{remise_pct:g} %)" if remise_pct else "Remise"
+                    ),
+                    tot_lbl,
+                ),
+                _pdf_amount_paragraph(f"−{format_fcfa(remise_montant)}", tot_val),
+            ]
+        )
+    if tva_ok:
+        totals_data.append(
+            [
+                Paragraph("Total HT", tot_lbl),
+                _pdf_amount_paragraph(format_fcfa(proforma.total_ht), tot_val),
+            ]
+        )
+        totals_data.append(
+            [
+                Paragraph("TVA", tot_lbl),
+                _pdf_amount_paragraph(format_fcfa(proforma.tva_montant), tot_val),
+            ]
+        )
+        totals_data.append(
+            [
+                Paragraph("Total TTC", tot_grand_l),
+                _pdf_amount_paragraph(format_fcfa(proforma.total_ttc), tot_grand_r),
+            ]
+        )
+    else:
+        totals_data.append(
+            [
+                Paragraph("Total", tot_grand_l),
+                _pdf_amount_paragraph(format_fcfa(proforma.total_ht), tot_grand_r),
+            ]
+        )
+
+    col_tot = usable_w * 0.42
+    totals_tbl = Table(totals_data, colWidths=[col_tot * 0.36, col_tot * 0.64])
+    grand_row = len(totals_data) - 1
+    totals_tbl.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("ALIGN", (1, 0), (1, -1), "RIGHT"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("BOX", (0, 0), (-1, -1), 0.75, _INV_BORDER),
+                ("INNERGRID", (0, 0), (-1, -1), 0.5, _INV_BORDER),
+                ("BACKGROUND", (0, grand_row), (-1, grand_row), _INV_PRIMARY),
+            ]
+        )
     )
-    tbl = Table(data, colWidths=[col_desc, col_q, col_pu, col_mt], repeatRows=1)
-    tbl.setStyle(
+
+    col_words = usable_w * 0.56
+    bottom_tbl = Table(
+        [
+            [
+                Paragraph(
+                    f"Arrêtée la présente proforma à la somme de :<br/><b>{escape(montant_lettres)}</b>.",
+                    body_amount,
+                ),
+                totals_tbl,
+            ]
+        ],
+        colWidths=[col_words, col_tot],
+    )
+    bottom_tbl.setStyle(
         TableStyle(
             [
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 2),
-                ("TOPPADDING", (0, 0), (-1, -1), 2),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                ("LINEBELOW", (0, 0), (-1, 0), 1.5, colors.black),
-                ("LINEABOVE", (0, -1), (-1, -1), 1, colors.black),
+                ("LEFTPADDING", (0, 0), (0, 0), 0),
+                ("RIGHTPADDING", (0, 0), (0, 0), 6),
+                ("LEFTPADDING", (1, 0), (1, 0), 6),
+                ("RIGHTPADDING", (1, 0), (1, 0), 0),
             ]
         )
     )
-    story.append(tbl)
-    if document_affiche_tva(proforma):
-        story.append(Spacer(1, 3 * mm))
-        story.append(
-            Paragraph(
-                escape(
-                    f"TVA : {format_fcfa(proforma.tva_montant)} — Total TTC : {format_fcfa(proforma.total_ttc)}"
-                ),
-                small,
-            )
-        )
-    notes = (getattr(proforma, "notes", None) or "").strip()
-    if notes:
-        story.append(Spacer(1, 2 * mm))
-        story.append(Paragraph(f"<b>Notes :</b> {escape(notes)}", small))
-    pied = (getattr(doc_params, "pied_de_page", None) or "").strip()
-    if pied:
-        story.append(Spacer(1, 5 * mm))
-        story.append(Paragraph(escape(pied).replace("\n", "<br/>"), small))
+
+    if needs_break_before_bottom:
+        story.append(PageBreak())
+        append_info_grid()
+
+    story.append(Spacer(1, 2 * mm))
+    story.append(bottom_tbl)
+    story.append(Spacer(1, 6 * mm))
+
+    sig_style = ParagraphStyle("psig", parent=body, alignment=TA_CENTER)
+    sig_data: list = []
+    if date_lieu_fr:
+        sig_data.append([Paragraph(escape(date_lieu_fr), sig_style)])
+    sig_data.append([Spacer(1, 25 * mm)])
+    sig_table = Table(sig_data, colWidths=[65 * mm])
+    sig_table.hAlign = "RIGHT"
+    story.append(sig_table)
+
     doc.build(story)
     buffer.seek(0)
     return buffer
