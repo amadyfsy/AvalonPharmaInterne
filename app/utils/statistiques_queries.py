@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import date
 
 from dateutil.relativedelta import relativedelta
-from sqlalchemy import and_, func
+from sqlalchemy import func
 
 from ..extensions import db
 from ..models.client import Client
