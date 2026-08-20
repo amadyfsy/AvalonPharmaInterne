@@ -15,10 +15,7 @@ from ..models.facture import Facture, LigneFacture
 from ..models.produit import Lot, Produit
 from ..models.stock import Stock
 
-_FACTURE_CA = and_(
-    Facture.statut != 'annulee',
-    Facture.statut != 'brouillon',
-)
+_FACTURE_CA = Facture.statut.in_(('emise', 'partiellement_payee', 'payee'))
 
 _MOIS_FR = (
     'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',

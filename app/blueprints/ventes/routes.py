@@ -1509,7 +1509,10 @@ def annuler_facture(id):
     try:
         facture.statut = "annulee"
         db.session.commit()
-        msg = f"Facture {facture.numero} annulée. Elle reste consultable (non supprimée)."
+        msg = (
+            f"Facture {facture.numero} annulée. Elle reste consultable "
+            "(non supprimée) et n’entre plus dans le chiffre d’affaires."
+        )
         if bl and bl.statut in ("livre", "partiellement_livre"):
             msg += (
                 f" Attention : le BL {bl.numero} est déjà {bl.statut.replace('_', ' ')} "

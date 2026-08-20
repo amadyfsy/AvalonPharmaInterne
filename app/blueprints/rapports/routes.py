@@ -11,6 +11,7 @@ from ...models.produit import Produit
 from ...models.stock import MouvementStock, Stock
 from ...models.tresorerie import TresorerieOperation
 from ...utils.decorators import permission_required
+from ...utils.statistiques_queries import _FACTURE_CA
 from . import rapports_bp
 
 
@@ -41,7 +42,7 @@ def index():
     ca_mois = (
         db.session.query(func.coalesce(func.sum(Facture.total_ttc), 0))
         .filter(Facture.date_emission >= start_month, Facture.date_emission < end_month)
-        .filter(Facture.statut.in_(['emise', 'partiellement_payee', 'payee']))
+        .filter(_FACTURE_CA)
         .scalar()
         or 0
     )
@@ -80,7 +81,11 @@ def index():
     )
 
     top_ventes = (
-        Facture.query.filter(Facture.date_emission >= start_month, Facture.date_emission < end_month)
+        Facture.query.filter(
+            Facture.date_emission >= start_month,
+            Facture.date_emission < end_month,
+            _FACTURE_CA,
+        )
         .order_by(Facture.date_emission.desc(), Facture.created_at.desc())
         .limit(8)
         .all()

@@ -16,6 +16,7 @@ from flask import render_template
 
 from ...utils.nombre_lettres import format_montant_espace
 from ...utils.parametres_pdf import has_cachet
+from ...utils.statistiques_queries import _FACTURE_CA
 
 from . import dashboard_bp
 
@@ -48,11 +49,10 @@ def index():
     first_day_this_month = today.replace(day=1)
     first_day_last_month = (first_day_this_month - relativedelta(months=1))
     
-    # Chiffre d'Affaires (Current Month)
+    # Chiffre d'Affaires (Current Month) — hors brouillons et annulées
     ca_current = float(
         db.session.query(func.sum(Facture.total_ttc)).filter(
-            Facture.statut != 'annulee',
-            Facture.statut != 'brouillon',
+            _FACTURE_CA,
             extract('month', Facture.date_emission) == today.month,
             extract('year', Facture.date_emission) == today.year
         ).scalar()
@@ -62,8 +62,7 @@ def index():
     # Chiffre d'Affaires (Last Month)
     ca_last = float(
         db.session.query(func.sum(Facture.total_ttc)).filter(
-            Facture.statut != 'annulee',
-            Facture.statut != 'brouillon',
+            _FACTURE_CA,
             extract('month', Facture.date_emission) == first_day_last_month.month,
             extract('year', Facture.date_emission) == first_day_last_month.year
         ).scalar()
@@ -164,8 +163,7 @@ def index():
         m = today - relativedelta(months=i)
         m_ca = float(
             db.session.query(func.sum(Facture.total_ttc)).filter(
-                Facture.statut != "annulee",
-                Facture.statut != "brouillon",
+                _FACTURE_CA,
                 extract("month", Facture.date_emission) == m.month,
                 extract("year", Facture.date_emission) == m.year,
             ).scalar()
@@ -234,8 +232,7 @@ def index():
         .join(LigneFacture, LigneFacture.produit_id == Produit.id)
         .join(Facture, Facture.id == LigneFacture.facture_id)
         .filter(
-            Facture.statut != 'annulee',
-            Facture.statut != 'brouillon',
+            _FACTURE_CA,
             extract('year', Facture.date_emission) == today.year,
         )
         .group_by(Produit.id, Produit.reference, Produit.designation)
