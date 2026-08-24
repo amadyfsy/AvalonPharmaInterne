@@ -739,10 +739,13 @@ def factures():
     if annee and annee not in annees_dispo:
         annee = None
 
-    query = Facture.query.options(joinedload(Facture.client))
+    query = (
+        Facture.query.options(joinedload(Facture.client))
+        .outerjoin(Client, Facture.client_id == Client.id)
+    )
     if q:
         pattern = f'%{q}%'
-        query = query.outerjoin(Client, Facture.client_id == Client.id).filter(
+        query = query.filter(
             or_(
                 Facture.numero.ilike(pattern),
                 Facture.bc.ilike(pattern),
@@ -758,8 +761,8 @@ def factures():
 
     pagination = (
         query.order_by(
-            Facture.date_emission.desc(),
-            Facture.created_at.desc(),
+            Client.raison_sociale.asc(),
+            Facture.numero.asc(),
             Facture.id.desc(),
         )
         .paginate(page=page, per_page=FACTURES_PAR_PAGE, error_out=False)
@@ -781,8 +784,7 @@ def factures():
         for bl_row in BonLivraison.query.filter(BonLivraison.facture_id.in_(facture_ids)).all():
             bl_par_facture[bl_row.facture_id] = bl_row
 
-    return render_template(
-        'ventes/factures_index.html',
+    ctx = dict(
         factures=pagination.items,
         pagination=pagination,
         q=q,
@@ -797,6 +799,9 @@ def factures():
         format_fcfa=format_montant_espace,
         has_cachet=has_cachet(),
     )
+    if request.args.get("partial") == "1":
+        return render_template("ventes/_factures_results.html", **ctx)
+    return render_template("ventes/factures_index.html", **ctx)
 
 @ventes_bp.route('/bons-livraison')
 @login_required

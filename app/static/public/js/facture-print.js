@@ -141,23 +141,22 @@
     }
   }
 
-  document.querySelectorAll('.js-facture-print, .js-bl-print').forEach(function (el) {
-    el.addEventListener('click', function (e) {
+  document.addEventListener('click', function (e) {
+    var printEl = e.target.closest('.js-facture-print, .js-bl-print');
+    if (printEl) {
       e.preventDefault();
-      handleClick(el, 'print');
-    });
-  });
-
-  document.querySelectorAll('.js-facture-download, .js-bl-download').forEach(function (el) {
-    el.addEventListener('click', function (e) {
+      handleClick(printEl, 'print');
+      return;
+    }
+    var dlEl = e.target.closest('.js-facture-download, .js-bl-download');
+    if (dlEl) {
       e.preventDefault();
-      handleClick(el, 'download');
-    });
-  });
-
-  document.querySelectorAll('.js-facture-print-choice').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      openUrl(btn.getAttribute('data-avec-bl') === '1');
-    });
+      handleClick(dlEl, 'download');
+      return;
+    }
+    var choiceBtn = e.target.closest('.js-facture-print-choice');
+    if (choiceBtn) {
+      openUrl(choiceBtn.getAttribute('data-avec-bl') === '1');
+    }
   });
 })();
