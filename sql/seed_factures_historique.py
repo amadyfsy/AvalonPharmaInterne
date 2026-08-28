@@ -514,6 +514,31 @@ FACTURES = [
         "remise_pct": Decimal("10"),
     },
     {
+        "numero": "2026/07/04",
+        "date": date(2026, 7, 2),
+        "client": "Hôpital Tivaouane",
+        "lignes": [
+            ("Brassard adulte pour tensiomètre", 10, 4000),
+            ("Brassard adulte pour tensiomètre (pédiatrique)", 5, 3500),
+            ("Brassard adulte pour tensiomètre (extra large)", 5, 4500),
+        ],
+    },
+    {
+        "numero": "2026/07/05",
+        "date": date(2026, 7, 5),
+        "client": "Hôpital Tivaouane",
+        "lignes": [
+            ("Drain thoracique trocart (armé) 14 FR", 10, 3500),
+            ("Drain thoracique trocart (armé) 16 FR", 5, 3500),
+            ("Drain thoracique trocart (armé) 18 FR", 10, 3500),
+            ("Drain thoracique trocart (armé) 22 FR", 5, 3500),
+            ("Drain thoracique trocart (armé) 24 FR", 10, 3500),
+            ("Drain thoracique trocart (armé) 28 FR", 10, 3500),
+            ("Drain thoracique trocart (armé) 32 FR", 10, 3500),
+            ("Surgicel", 1, 11500),
+        ],
+    },
+    {
         "numero": "2026/07/06",
         "date": date(2026, 7, 7),
         "client": "Clinique Abdou Lahad",
@@ -521,6 +546,34 @@ FACTURES = [
             ("Table motorisée", 1, 300000),
             ("Implant", 29, 4000),
         ],
+    },
+    {
+        "numero": "2026/07/07",
+        "date": date(2026, 7, 8),
+        "client": "Dr Matar Lo",
+        "lignes": [
+            ("Appareil ECG", 1, 650000),
+            ("Appareil d'échographie générale", 1, 1300000),
+            ("Autoclave de table", 1, 800000),
+        ],
+    },
+    {
+        "numero": "2026/07/08",
+        "date": date(2026, 7, 11),
+        "client": "Medical Distribution",
+        "lignes": [("Hystéro", 30, 9000)],
+    },
+    {
+        "numero": "2026/07/09",
+        "date": date(2026, 7, 24),
+        "client": "RAJUNT DISTRIBUTION",
+        "lignes": [("Valves d'Heimlich double", 10, 14000)],
+    },
+    {
+        "numero": "2026/07/10",
+        "date": date(2026, 7, 29),
+        "client": "CHR Saint-Louis",
+        "lignes": [("Miroir de Clar", 2, 145000)],
     },
     {
         "numero": "2026/07/11",
