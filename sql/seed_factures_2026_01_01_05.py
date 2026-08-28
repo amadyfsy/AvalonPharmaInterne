@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Ajoute les factures 2025/11/02, 2025/11/05 et 2025/11/07.
+"""Ajoute les factures 2026/01/01 à 2026/01/05.
 
 Usage (PythonAnywhere — activer le venv d'abord) :
   source ~/.virtualenvs/avalon-interne/bin/activate
-  python sql/seed_factures_2025_11_02_05_07.py
+  python sql/seed_factures_2026_01_01_05.py
 """
 from __future__ import annotations
 
@@ -20,55 +20,81 @@ if str(ROOT) not in sys.path:
 
 FACTURES = [
     {
-        "numero": "2025/11/02",
-        "date": date(2025, 11, 7),
+        "numero": "2026/01/01",
+        "date": date(2026, 1, 14),
+        "client": "RAJUNT DISTRIBUTION",
+        "client_type": "grossiste",
+        "lignes": [
+            ("Valves d'Heimlich double", 20, 14000),
+            ("Valves d'Heimlich Simple", 10, 8000),
+        ],
+        "total_attendu": 360000,
+    },
+    {
+        "numero": "2026/01/02",
+        "date": date(2026, 1, 14),
         "client": "HÔPITAL TIVAOUANE",
         "client_type": "hopital",
         "lignes": [
-            ("Gants Stériles T 7,5", 2000, 150),
+            ("Valves d'Heimlich double", 20, 14000),
         ],
-        "total_attendu": 300000,
+        "total_attendu": 280000,
     },
     {
-        "numero": "2025/11/05",
-        "date": date(2025, 11, 20),
-        "client": "CHR Saint-Louis",
-        "client_aliases": ("CHR de Saint-Louis", "CHR Saint-Louis"),
-        "client_type": "hopital",
-        "bc": "003509",
-        "date_bc": date(2025, 11, 17),
-        "lignes": [
-            ("Gants de soins", 2000, 1800),
-            ("Masques chirurgicaux", 300, 2000),
-        ],
-        "total_attendu": 4200000,
-    },
-    {
-        "numero": "2025/11/07",
-        "date": date(2025, 11, 25),
+        "numero": "2026/01/03",
+        "date": date(2026, 1, 14),
         "client": "HÔPITAL TIVAOUANE",
         "client_type": "hopital",
         "lignes": [
-            ("Drap d'accouchement avec poche de recueil post partum", 250, 3000),
+            ("Papier ECG 280*210 - 200 pages", 10, 18000),
+            ("Papier ECG 295*210 - 100 pages", 10, 9000),
         ],
-        "total_attendu": 750000,
+        "total_attendu": 270000,
+    },
+    {
+        "numero": "2026/01/04",
+        "date": date(2026, 1, 21),
+        "client": "RAJUNT DISTRIBUTION",
+        "client_type": "grossiste",
+        "lignes": [
+            ("Valves d'Heimlich Simple", 10, 8000),
+        ],
+        "total_attendu": 80000,
+    },
+    {
+        "numero": "2026/01/05",
+        "date": date(2026, 1, 23),
+        "client": "HÔPITAL TIVAOUANE",
+        "client_type": "hopital",
+        "lignes": [
+            ("Kit de Traction Adulte", 20, 5000),
+            ("Kit de Traction Enfant", 10, 5000),
+        ],
+        "total_attendu": 150000,
     },
 ]
 
 PRODUIT_ALIASES = {
-    "gants de soins": (
-        "Gants de soins B/100",
-        "Gant d'examen",
-        "GANTS DE CHIRURGIE STERILES 7.5",
+    "valves d heimlich simple": (
+        "Valves d'Heimlich simple",
+        "Valves d'Heimlich Simple",
     ),
-    "masques chirurgicaux": (
-        "Masque Chirurgie",
-        "Masques de chirurgie à usage unique",
-        "MASQUES DE CHIRURGIE À USAGE UNIQUE",
+    "valves d heimlich double": (
+        "Valves d'Heimlich double",
     ),
-    "drap d accouchement avec poche de recueil post partum": (
-        "Drap d'accouchement avec poche de recueil",
-        "Drap d'accouchement avec poche de recueil post partum",
+    "papier ecg 280 210 200 pages": (
+        "Papier ECG 280x210 - 200 pages",
+        "Papier ECG 280*210 - 200 pages",
+    ),
+    "papier ecg 295 210 100 pages": (
+        "Papier ECG 295x210 - 100 pages",
+        "Papier ECG 295*210 - 100 pages",
+    ),
+    "kit de traction adulte": (
+        "Kit de traction adulte",
+    ),
+    "kit de traction enfant": (
+        "Kit de traction enfant",
     ),
 }
 
@@ -96,15 +122,15 @@ def find_client(Client, name: str, aliases: tuple[str, ...] = ()):
         if _norm(c.raison_sociale or "") in wanted:
             return c
     name_n = _norm(name)
-    if "saint" in name_n and "louis" in name_n:
-        for c in Client.query.all():
-            rs = _norm(c.raison_sociale or "")
-            if "saint" in rs and "louis" in rs and ("chr" in rs or "hopital" in rs):
-                return c
     if "tivaouane" in name_n:
         for c in Client.query.all():
             rs = _norm(c.raison_sociale or "")
             if "tivaouane" in rs:
+                return c
+    if "rajunt" in name_n:
+        for c in Client.query.all():
+            rs = _norm(c.raison_sociale or "")
+            if "rajunt" in rs:
                 return c
     return None
 
@@ -156,7 +182,7 @@ def main() -> None:
             "Sur PythonAnywhere :\n"
             "  source ~/.virtualenvs/avalon-interne/bin/activate\n"
             "  pip install -r requirements.txt\n"
-            "  python sql/seed_factures_2025_11_02_05_07.py",
+            "  python sql/seed_factures_2026_01_01_05.py",
             file=sys.stderr,
         )
         raise SystemExit(1) from exc
@@ -209,15 +235,12 @@ def main() -> None:
                         bl.client_id = client.id
                     print(f"  corrigé {numero} : {old} → {client.raison_sociale}")
                     changed = True
-                if raw.get("bc") and existing.bc != raw.get("bc"):
-                    existing.bc = raw.get("bc")
-                    changed = True
-                if raw.get("date_bc") and existing.date_bc != raw.get("date_bc"):
-                    existing.date_bc = raw.get("date_bc")
-                    changed = True
                 assurer_bl_pour_facture(existing, statut="livre")
                 db.session.commit()
-                print(f"  ok {numero} | {client.raison_sociale}" + (" (mise à jour)" if changed else " (déjà présente)"))
+                print(
+                    f"  ok {numero} | {client.raison_sociale}"
+                    + (" (mise à jour)" if changed else " (déjà présente)")
+                )
                 continue
 
             client = get_or_create_client(
@@ -274,35 +297,19 @@ def main() -> None:
             if total_ttc != attendu:
                 print(f"  ⚠ {numero} total calculé {total_ttc} ≠ {attendu}")
 
-            acompte = money(raw.get("acompte") or 0)
-            if acompte < 0:
-                acompte = Decimal("0")
-            if acompte > total_ttc:
-                acompte = total_ttc
-            reste = money(total_ttc - acompte)
-            if acompte <= 0:
-                statut = "emise"
-            elif reste <= 0:
-                statut = "payee"
-                reste = Decimal("0")
-            else:
-                statut = "partiellement_payee"
-
             d_emis = raw["date"]
             facture = Facture(
                 numero=numero,
                 client_id=client.id,
                 date_emission=d_emis,
                 date_echeance=d_emis + timedelta(days=30),
-                bc=raw.get("bc"),
-                date_bc=raw.get("date_bc"),
                 remise_globale=Decimal("0"),
                 total_ht=total_ttc,
                 tva_montant=Decimal("0"),
                 total_ttc=total_ttc,
-                statut=statut,
-                montant_paye=acompte,
-                reste_a_payer=reste,
+                statut="emise",
+                montant_paye=Decimal("0"),
+                reste_a_payer=total_ttc,
             )
             db.session.add(facture)
             db.session.flush()
@@ -318,40 +325,9 @@ def main() -> None:
                     )
                 )
             db.session.flush()
-            if acompte > 0 and user:
-                year = d_emis.year
-                prefix = f"ENC-{year}-"
-                rows = (
-                    db.session.query(PaiementClient.reference)
-                    .filter(PaiementClient.reference.like(f"{prefix}%"))
-                    .all()
-                )
-                max_seq = 0
-                for (ref,) in rows:
-                    if not ref or not ref.startswith(prefix):
-                        continue
-                    try:
-                        max_seq = max(max_seq, int(ref[len(prefix) :]))
-                    except ValueError:
-                        continue
-                enc_ref = f"{prefix}{max_seq + 1:04d}"
-                db.session.add(
-                    PaiementClient(
-                        client_id=client.id,
-                        facture_id=facture.id,
-                        reference=enc_ref,
-                        montant=acompte,
-                        mode_paiement="espece",
-                        date_paiement=d_emis,
-                        created_by=user.id,
-                    )
-                )
             assurer_bl_pour_facture(facture, statut="livre")
             created += 1
-            bc_info = ""
-            if raw.get("bc"):
-                bc_info = f" | BC {raw['bc']}"
-            print(f"  + {numero} | {client.raison_sociale} | {total_ttc:,.0f} FCFA{bc_info}")
+            print(f"  + {numero} | {client.raison_sociale} | {total_ttc:,.0f} FCFA")
 
         db.session.commit()
         print(f"\nTerminé : {created} facture(s) ajoutée(s).")
