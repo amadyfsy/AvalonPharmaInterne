@@ -33,7 +33,7 @@
       {% if mois_filtre %} · {{ mois_dispo[mois_filtre - 1][1]|lower }}{% endif %}
       {% if statut_filtre %} · statut : {{ libelle_statut_facture(statut_filtre) }}{% endif %}
       {% if pagination.pages > 1 %} · page {{ pagination.page }}/{{ pagination.pages }}{% endif %}
-      <span class="text-muted"> · triées par client (A→Z)</span>
+      <span class="text-muted"> · triées par date (récentes d'abord)</span>
     {% else %}
       Aucune facture ne correspond aux critères.
     {% endif %}

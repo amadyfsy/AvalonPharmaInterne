@@ -761,8 +761,8 @@ def factures():
 
     pagination = (
         query.order_by(
-            Client.raison_sociale.asc(),
-            Facture.numero.asc(),
+            Facture.date_emission.desc(),
+            Facture.numero.desc(),
             Facture.id.desc(),
         )
         .paginate(page=page, per_page=FACTURES_PAR_PAGE, error_out=False)
