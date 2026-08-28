@@ -173,6 +173,107 @@ def find_produit(produits: dict, designation: str):
     return None
 
 
+def resolve_lignes(raw, produits, cat, db):
+    from app.models.produit import Produit
+    from app.models.stock import Stock
+
+    sous_total = Decimal("0")
+    lignes_data = []
+    for designation, qty, pu in raw["lignes"]:
+        produit = find_produit(produits, designation)
+        if not produit:
+            ref = "PRD-" + slugify(designation)[:24]
+            base = ref
+            n = 1
+            while Produit.query.filter_by(reference=ref).first():
+                n += 1
+                ref = f"{base}-{n}"
+            pu_d = money(pu)
+            produit = Produit(
+                reference=ref,
+                designation=designation,
+                categorie_id=cat.id,
+                forme="dispositif",
+                unite="unité",
+                prix_achat_ht=money(pu_d * Decimal("0.7")),
+                prix_vente_ht=pu_d,
+                tva=Decimal("0"),
+                prix_vente_ttc=pu_d,
+                seuil_alerte_stock=5,
+                est_actif=True,
+            )
+            db.session.add(produit)
+            db.session.flush()
+            db.session.add(
+                Stock(
+                    produit_id=produit.id,
+                    quantite_disponible=1000,
+                    quantite_reservee=0,
+                )
+            )
+            produits[designation] = produit
+            print(f"  + produit {designation}")
+
+        montant = money(Decimal(qty) * Decimal(pu))
+        sous_total += montant
+        lignes_data.append((produit, int(qty), money(pu), montant))
+    return lignes_data, money(sous_total)
+
+
+def apply_facture(facture, client, raw, lignes_data, total_ttc, LigneFacture, db):
+    d_emis = raw["date"]
+    facture.client_id = client.id
+    facture.date_emission = d_emis
+    facture.date_echeance = d_emis + timedelta(days=30)
+    if "bc" in raw:
+        facture.bc = raw.get("bc")
+    if "date_bc" in raw:
+        facture.date_bc = raw.get("date_bc")
+    facture.remise_globale = Decimal("0")
+    facture.total_ht = total_ttc
+    facture.tva_montant = Decimal("0")
+    facture.total_ttc = total_ttc
+
+    mp = float(facture.montant_paye or 0)
+    if mp <= 0:
+        facture.montant_paye = Decimal("0")
+        facture.reste_a_payer = total_ttc
+        facture.statut = "emise"
+    else:
+        reste = max(0.0, float(total_ttc) - mp)
+        facture.reste_a_payer = money(reste)
+        if reste <= 0.001:
+            facture.reste_a_payer = Decimal("0")
+            facture.statut = "payee"
+        else:
+            facture.statut = "partiellement_payee"
+
+    LigneFacture.query.filter_by(facture_id=facture.id).delete(synchronize_session=False)
+    for produit, qty, pu, montant in lignes_data:
+        db.session.add(
+            LigneFacture(
+                facture_id=facture.id,
+                produit_id=produit.id,
+                quantite=qty,
+                prix_unitaire_ht=pu,
+                remise=Decimal("0"),
+                montant_ht=montant,
+            )
+        )
+
+
+def sync_bl(facture, raw_date):
+    from app.utils.bl_from_facture import _ecrire_lignes_bl, assurer_bl_pour_facture
+
+    bl = assurer_bl_pour_facture(facture, statut="livre", date_livraison=raw_date)
+    if bl:
+        bl.client_id = facture.client_id
+        bl.date_livraison = raw_date
+        bl.statut = "livre"
+        _ecrire_lignes_bl(facture, bl, livre=True)
+    return bl
+
+
 def main() -> None:
     try:
         from app import create_app
@@ -188,14 +289,11 @@ def main() -> None:
         raise SystemExit(1) from exc
 
     from app.extensions import db
-    from app.models.bon_livraison import BonLivraison
     from app.models.client import Client
     from app.models.facture import Facture, LigneFacture
     from app.models.paiement_client import PaiementClient
     from app.models.produit import CategorieProduit, Produit
     from app.models.stock import Stock
-    from app.models.user import User
-    from app.utils.bl_from_facture import assurer_bl_pour_facture
 
     app = create_app()
     with app.app_context():
@@ -210,39 +308,12 @@ def main() -> None:
             db.session.flush()
 
         produits = {p.designation: p for p in Produit.query.all()}
-        user = User.query.order_by(User.id.asc()).first()
         created = 0
+        repaired = 0
 
         for raw in FACTURES:
             numero = raw["numero"]
             name = raw["client"]
-            existing = Facture.query.filter_by(numero=numero).first()
-            if existing:
-                client = get_or_create_client(
-                    Client,
-                    db,
-                    name,
-                    raw.get("client_type") or "autre",
-                    raw.get("client_aliases") or (),
-                )
-                changed = False
-                if existing.client_id != client.id:
-                    old = existing.client.raison_sociale if existing.client else "?"
-                    existing.client_id = client.id
-                    for pay in PaiementClient.query.filter_by(facture_id=existing.id).all():
-                        pay.client_id = client.id
-                    for bl in BonLivraison.query.filter_by(facture_id=existing.id).all():
-                        bl.client_id = client.id
-                    print(f"  corrigé {numero} : {old} → {client.raison_sociale}")
-                    changed = True
-                assurer_bl_pour_facture(existing, statut="livre")
-                db.session.commit()
-                print(
-                    f"  ok {numero} | {client.raison_sociale}"
-                    + (" (mise à jour)" if changed else " (déjà présente)")
-                )
-                continue
-
             client = get_or_create_client(
                 Client,
                 db,
@@ -250,59 +321,33 @@ def main() -> None:
                 raw.get("client_type") or "autre",
                 raw.get("client_aliases") or (),
             )
-
-            sous_total = Decimal("0")
-            lignes_data = []
-            for designation, qty, pu in raw["lignes"]:
-                produit = find_produit(produits, designation)
-                if not produit:
-                    ref = "PRD-" + slugify(designation)[:24]
-                    base = ref
-                    n = 1
-                    while Produit.query.filter_by(reference=ref).first():
-                        n += 1
-                        ref = f"{base}-{n}"
-                    pu_d = money(pu)
-                    produit = Produit(
-                        reference=ref,
-                        designation=designation,
-                        categorie_id=cat.id,
-                        forme="dispositif",
-                        unite="unité",
-                        prix_achat_ht=money(pu_d * Decimal("0.7")),
-                        prix_vente_ht=pu_d,
-                        tva=Decimal("0"),
-                        prix_vente_ttc=pu_d,
-                        seuil_alerte_stock=5,
-                        est_actif=True,
-                    )
-                    db.session.add(produit)
-                    db.session.flush()
-                    db.session.add(
-                        Stock(
-                            produit_id=produit.id,
-                            quantite_disponible=1000,
-                            quantite_reservee=0,
-                        )
-                    )
-                    produits[designation] = produit
-                    print(f"  + produit {designation}")
-
-                montant = money(Decimal(qty) * Decimal(pu))
-                sous_total += montant
-                lignes_data.append((produit, int(qty), money(pu), montant))
-
-            total_ttc = money(sous_total)
+            lignes_data, total_ttc = resolve_lignes(raw, produits, cat, db)
             attendu = money(raw["total_attendu"])
             if total_ttc != attendu:
                 print(f"  ⚠ {numero} total calculé {total_ttc} ≠ {attendu}")
 
-            d_emis = raw["date"]
+            existing = Facture.query.filter_by(numero=numero).first()
+            if existing:
+                old_client = existing.client.raison_sociale if existing.client else "?"
+                old_total = float(existing.total_ttc or 0)
+                apply_facture(existing, client, raw, lignes_data, total_ttc, LigneFacture, db)
+                for pay in PaiementClient.query.filter_by(facture_id=existing.id).all():
+                    pay.client_id = client.id
+                sync_bl(existing, raw["date"])
+                repaired += 1
+                note = ""
+                if _norm(old_client) != _norm(client.raison_sociale):
+                    note = f" client {old_client} → {client.raison_sociale}"
+                if abs(old_total - float(total_ttc)) > 0.5:
+                    note += f" total {old_total:,.0f} → {float(total_ttc):,.0f}"
+                print(f"  ↻ {numero} | {client.raison_sociale} | {total_ttc:,.0f} FCFA{note or ' (resynchronisée)'}")
+                continue
+
             facture = Facture(
                 numero=numero,
                 client_id=client.id,
-                date_emission=d_emis,
-                date_echeance=d_emis + timedelta(days=30),
+                date_emission=raw["date"],
+                date_echeance=raw["date"] + timedelta(days=30),
                 remise_globale=Decimal("0"),
                 total_ht=total_ttc,
                 tva_montant=Decimal("0"),
@@ -313,24 +358,13 @@ def main() -> None:
             )
             db.session.add(facture)
             db.session.flush()
-            for produit, qty, pu, montant in lignes_data:
-                db.session.add(
-                    LigneFacture(
-                        facture_id=facture.id,
-                        produit_id=produit.id,
-                        quantite=qty,
-                        prix_unitaire_ht=pu,
-                        remise=Decimal("0"),
-                        montant_ht=montant,
-                    )
-                )
-            db.session.flush()
-            assurer_bl_pour_facture(facture, statut="livre")
+            apply_facture(facture, client, raw, lignes_data, total_ttc, LigneFacture, db)
+            sync_bl(facture, raw["date"])
             created += 1
             print(f"  + {numero} | {client.raison_sociale} | {total_ttc:,.0f} FCFA")
 
         db.session.commit()
-        print(f"\nTerminé : {created} facture(s) ajoutée(s).")
+        print(f"\nTerminé : {created} créée(s), {repaired} resynchronisée(s).")
 
 
 if __name__ == "__main__":

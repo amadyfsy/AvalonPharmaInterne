@@ -124,31 +124,43 @@ FACTURES = [
         ],
     },
     {
-        "numero": "2026/01/02",
-        "date": date(2026, 1, 2),
+        "numero": "2026/01/01",
+        "date": date(2026, 1, 14),
         "client": "RAJUNT DISTRIBUTION",
-        "lignes": [("Valves d'Heimlich simple", 10, 8000)],
-    },
-    {
-        "numero": "2026/01/03",
-        "date": date(2026, 1, 3),
-        "client": "Hôpital Tivaouane",
-        "lignes": [("Valves d'Heimlich double", 20, 14000)],
-    },
-    {
-        "numero": "2026/01/04",
-        "date": date(2026, 1, 4),
-        "client": "Hôpital Tivaouane",
         "lignes": [
-            ("Papier ECG 280x210 - 200 pages", 10, 18000),
-            ("Papier ECG 295x210 - 100 pages", 10, 9000),
+            ("Valves d'Heimlich double", 20, 14000),
+            ("Valves d'Heimlich simple", 10, 8000),
         ],
     },
     {
-        "numero": "2026/01/05",
-        "date": date(2026, 1, 5),
+        "numero": "2026/01/02",
+        "date": date(2026, 1, 14),
+        "client": "HÔPITAL TIVAOUANE",
+        "lignes": [("Valves d'Heimlich double", 20, 14000)],
+    },
+    {
+        "numero": "2026/01/03",
+        "date": date(2026, 1, 14),
+        "client": "HÔPITAL TIVAOUANE",
+        "lignes": [
+            ("Papier ECG 280*210 - 200 pages", 10, 18000),
+            ("Papier ECG 295*210 - 100 pages", 10, 9000),
+        ],
+    },
+    {
+        "numero": "2026/01/04",
+        "date": date(2026, 1, 21),
         "client": "RAJUNT DISTRIBUTION",
         "lignes": [("Valves d'Heimlich simple", 10, 8000)],
+    },
+    {
+        "numero": "2026/01/05",
+        "date": date(2026, 1, 23),
+        "client": "HÔPITAL TIVAOUANE",
+        "lignes": [
+            ("Kit de Traction Adulte", 20, 5000),
+            ("Kit de Traction Enfant", 10, 5000),
+        ],
     },
     {
         "numero": "2026/02/01",
@@ -566,6 +578,8 @@ CLIENT_ALIASES = {
     "Centre de Santé Keur Niang": "Centre de Santé Keur Niang Touba",
     "Centre de santé Keur Niang": "Centre de Santé Keur Niang Touba",
     "CENTRE DE SANTE KEUR NIANG TOUBA": "Centre de Santé Keur Niang Touba",
+    "Hôpital Tivaouane": "HÔPITAL TIVAOUANE",
+    "Hopital Tivaouane": "HÔPITAL TIVAOUANE",
 }
 
 
