@@ -761,7 +761,6 @@ def factures():
 
     pagination = (
         query.order_by(
-            Facture.date_emission.desc(),
             Facture.numero.desc(),
             Facture.id.desc(),
         )
