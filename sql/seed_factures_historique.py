@@ -190,7 +190,7 @@ FACTURES = [
     },
     {
         "numero": "2026/02/01",
-        "date": date(2026, 2, 1),
+        "date": date(2026, 2, 17),
         "client": "Hôpital Tivaouane",
         "lignes": [
             ("Drap d'accouchement avec poche de recueil post partum", 200, 3500),
@@ -199,9 +199,8 @@ FACTURES = [
         ],
     },
     {
-        # Excel « No 2026/02/02 » — ne pas dupliquer sous 2026/02/17
         "numero": "2026/02/02",
-        "date": date(2026, 2, 2),
+        "date": date(2026, 2, 17),
         "client": "Centre de Santé 28 de Touba",
         "lignes": [
             ("Lampe à fente + Tonomètre + Table motorisée", 1, 1600000),
