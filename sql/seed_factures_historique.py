@@ -124,6 +124,32 @@ FACTURES = [
         ],
     },
     {
+        "numero": "2025/12/01",
+        "date": date(2025, 12, 10),
+        "client": "Mme Sow",
+        "lignes": [
+            ("Ballon respiration manuel", 1, 20000),
+            ("Gants pour invasion utérine", 1, 30000),
+            ("Drap d'accouchement avec poche de recueil post partum", 50, 3200),
+        ],
+    },
+    {
+        "numero": "2025/12/02",
+        "date": date(2025, 12, 15),
+        "client": "Mme Sow",
+        "lignes": [
+            ("Masque nébuliseur adulte", 30, 1200),
+            ("Masque nébuliseur enfant", 18, 1200),
+            ("Masque nébuliseur néonatal", 2, 1200),
+        ],
+    },
+    {
+        "numero": "2025/12/04",
+        "date": date(2025, 12, 18),
+        "client": "CHR de Ndioum",
+        "lignes": [("Déshumidificateur", 2, 250000)],
+    },
+    {
         "numero": "2026/01/01",
         "date": date(2026, 1, 14),
         "client": "RAJUNT DISTRIBUTION",
@@ -167,33 +193,25 @@ FACTURES = [
         "date": date(2026, 2, 1),
         "client": "Hôpital Tivaouane",
         "lignes": [
-            ("Kit de traction adulte", 20, 5000),
-            ("Kit de traction enfant", 10, 5000),
-        ],
-    },
-    {
-        "numero": "2026/02/02",
-        "date": date(2026, 2, 2),
-        "client": "Hôpital Tivaouane",
-        "lignes": [
-            ("Drap d'accouchement avec poche de recueil", 200, 3500),
+            ("Drap d'accouchement avec poche de recueil post partum", 200, 3500),
             ("Robinet 3 voies", 200, 140),
             ("Prolongateur 75 à 100 cm", 200, 360),
         ],
     },
     {
-        "numero": "2026/02/17",
-        "date": date(2026, 2, 17),
+        # Excel « No 2026/02/02 » — ne pas dupliquer sous 2026/02/17
+        "numero": "2026/02/02",
+        "date": date(2026, 2, 2),
         "client": "Centre de Santé 28 de Touba",
         "lignes": [
-            ("Lampe à fente + tonomètre + table motorisée", 1, 1600000),
-            ("Autoréfracto kératomètre + table motorisée", 1, 2760000),
+            ("Lampe à fente + Tonomètre + Table motorisée", 1, 1600000),
+            ("Autoréfracto Kératomètre + table motorisée", 1, 2760000),
             ("Microscope opératoire", 1, 1900000),
             ("Boîte verre à essai + montures", 1, 120000),
             ("Échelle d'acuité + projecteur test", 1, 400000),
             ("Ophtalmoscope indirect", 1, 80000),
-            ("Lentille Volk 90", 1, 90000),
-            ("Boîte cataracte", 1, 120000),
+            ("Volk 90", 1, 90000),
+            ("Boîte Cataracte", 1, 120000),
             ("Boîte de petite chirurgie", 1, 80000),
             ("Boîte de trichiasis", 1, 110000),
             ("Autoclave", 1, 800000),
@@ -384,7 +402,8 @@ FACTURES = [
         ],
     },
     {
-        "numero": "2026/06/05",
+        # Excel « No 2026/06/004 » (distinct de 2026/06/04 CHR Saint-Louis)
+        "numero": "2026/06/004",
         "date": date(2026, 6, 5),
         "client": "Hôpital Tivaouane",
         "lignes": [("Cire à os", 12, 13500)],
@@ -575,6 +594,8 @@ CLIENT_ALIASES = {
     "C H Magatte Lo de Linguère": "CH Maguette Lo de Linguère",
     "CH Magatte Lo de Linguère": "CH Maguette Lo de Linguère",
     "Centre Hospitalier Maguette Lo de Linguere": "CH Maguette Lo de Linguère",
+    "Centre Hospitalier Régional de Ndioum": "CHR de Ndioum",
+    "CHR Ndioum": "CHR de Ndioum",
     "Centre de Santé Keur Niang": "Centre de Santé Keur Niang Touba",
     "Centre de santé Keur Niang": "Centre de Santé Keur Niang Touba",
     "CENTRE DE SANTE KEUR NIANG TOUBA": "Centre de Santé Keur Niang Touba",
