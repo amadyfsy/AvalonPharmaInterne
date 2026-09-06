@@ -89,7 +89,7 @@
               <th>Facture</th>
               <th>Mode</th>
               <th class="text-end">Montant</th>
-              <th class="text-center" style="width:120px;">Justificatif</th>
+              <th class="text-center" style="width:140px;">Justificatif</th>
               <th class="text-end pe-3" style="width:140px;">Actions</th>
             </tr>
           </thead>
@@ -114,14 +114,27 @@
                 </td>
                 <td><span class="badge bg-light text-dark border">{{ mode_labels.get(p.mode_paiement, p.mode_paiement) }}</span></td>
                 <td class="text-end fw-semibold text-nowrap">{{ "{:,.0f}".format(p.montant|float).replace(",", " ") }} FCFA</td>
-                <td class="text-center">
+                <td class="text-center text-nowrap">
                   {% if p.justificatif %}
-                    <a href="{{ url_for('clients.paiement_justificatif_fichier', stored_name=p.justificatif) }}"
-                       target="_blank" rel="noopener"
-                       class="btn btn-sm btn-outline-success py-0 px-2"
-                       title="Voir le justificatif">
-                      <i class="bi bi-paperclip me-1"></i>Reçu
-                    </a>
+                    {% set ext = p.justificatif.rsplit('.', 1)[1].lower() if '.' in p.justificatif else '' %}
+                    <div class="btn-group btn-group-sm" role="group">
+                      <button type="button"
+                              class="btn btn-outline-success py-0 px-2 btn-apercu-justificatif"
+                              data-bs-toggle="modal"
+                              data-bs-target="#modalApercuJustificatif"
+                              data-url="{{ url_for('clients.paiement_justificatif_fichier', stored_name=p.justificatif) }}"
+                              data-ref="{{ p.reference }}"
+                              data-type="{{ 'pdf' if ext == 'pdf' else 'image' }}"
+                              title="Voir l'aperçu du justificatif">
+                        <i class="bi {% if ext == 'pdf' %}bi-file-earmark-pdf{% else %}bi-image{% endif %} me-1"></i>Aperçu
+                      </button>
+                      <a href="{{ url_for('clients.paiement_justificatif_fichier', stored_name=p.justificatif) }}"
+                         target="_blank" rel="noopener"
+                         class="btn btn-outline-success py-0 px-1"
+                         title="Ouvrir dans un nouvel onglet">
+                        <i class="bi bi-box-arrow-up-right"></i>
+                      </a>
+                    </div>
                   {% else %}
                     <span class="badge text-bg-light text-muted border">Aucun</span>
                   {% endif %}
@@ -204,8 +217,21 @@
                 <div class="d-flex align-items-center justify-content-between p-2 rounded border bg-light">
                   <span class="small"><i class="bi bi-paperclip me-1 text-success"></i> Justificatif actuel :</span>
                   <div class="d-flex align-items-center gap-2">
-                    <a href="#" target="_blank" rel="noopener" class="btn btn-sm btn-outline-success py-0" id="editPaiementJustifCurrentLink">Voir</a>
-                    <div class="form-check form-check-inline m-0">
+                    <button type="button"
+                            class="btn btn-sm btn-outline-success py-0 px-2 btn-apercu-justificatif"
+                            id="editPaiementJustifCurrentApercuBtn"
+                            data-bs-toggle="modal"
+                            data-bs-target="#modalApercuJustificatif"
+                            data-url=""
+                            data-ref=""
+                            data-type=""
+                            title="Voir l'aperçu">
+                      <i class="bi bi-eye me-1"></i>Aperçu
+                    </button>
+                    <a href="#" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary py-0 px-1" id="editPaiementJustifCurrentLink" title="Ouvrir dans un nouvel onglet">
+                      <i class="bi bi-box-arrow-up-right"></i>
+                    </a>
+                    <div class="form-check form-check-inline m-0 ms-1">
                       <input class="form-check-input" type="checkbox" name="supprimer_justificatif" id="editPaiementSupprJustif" value="1">
                       <label class="form-check-label small text-danger" for="editPaiementSupprJustif">Supprimer</label>
                     </div>
@@ -224,6 +250,9 @@
       </div>
     </div>
   </div>
+
+  <!-- Modal Aperçu Justificatif -->
+  {% include "includes/modal_apercu_justificatif.html" %}
 {% endblock %}
 
 {% block scripts %}
@@ -238,6 +267,7 @@
   var justifHint = document.getElementById("editPaiementJustifHint");
   var justifWrap = document.getElementById("editPaiementJustifCurrentWrap");
   var justifLink = document.getElementById("editPaiementJustifCurrentLink");
+  var justifApercuBtn = document.getElementById("editPaiementJustifCurrentApercuBtn");
   var supprCheck = document.getElementById("editPaiementSupprJustif");
 
   var urlTemplate = {{ url_for('clients.modifier_paiement', id=0)|tojson }};
@@ -263,6 +293,11 @@
       if (hasJustif) {
         if (justifWrap) justifWrap.classList.remove("d-none");
         if (justifLink) justifLink.href = justifUrl;
+        if (justifApercuBtn) {
+          justifApercuBtn.setAttribute("data-url", justifUrl);
+          justifApercuBtn.setAttribute("data-ref", ref);
+          justifApercuBtn.setAttribute("data-type", justifUrl.toLowerCase().indexOf(".pdf") !== -1 ? "pdf" : "image");
+        }
         if (justifHint) justifHint.textContent = "Téléversez un nouveau fichier pour remplacer le justificatif existant.";
       } else {
         if (justifWrap) justifWrap.classList.add("d-none");

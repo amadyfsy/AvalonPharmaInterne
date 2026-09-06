@@ -96,6 +96,7 @@
                 <option value="virement">Virement</option>
                 <option value="orange_money">Orange Money</option>
                 <option value="wave">Wave</option>
+                <option value="carte">Carte Bancaire</option>
               </select>
             </div>
             <div class="col-12">
@@ -104,8 +105,15 @@
             </div>
             <div class="col-12">
               <label class="form-label mb-1">Justificatif <span class="text-muted fw-normal">(reçu, chèque, virement…)</span></label>
-              <input type="file" name="justificatif" class="form-control" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg">
+              <input type="file" name="justificatif" id="encaisserJustifInput" class="form-control" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg">
               <div class="form-text">Facultatif (PDF, PNG, JPG).</div>
+              <div id="encaisserJustifPreviewWrap" class="mt-2 d-none">
+                <div class="p-2 border rounded bg-light d-flex align-items-center gap-2 small">
+                  <i class="bi bi-paperclip text-success fs-5"></i>
+                  <span id="encaisserJustifName" class="text-truncate flex-grow-1"></span>
+                  <img id="encaisserJustifThumb" src="" alt="Aperçu" class="rounded border d-none" style="max-height: 40px; max-width: 60px; object-fit: cover;">
+                </div>
+              </div>
             </div>
             <div class="col-12 d-grid mt-2">
               <button type="submit" class="btn btn-primary"><i class="bi bi-cash-coin me-1"></i> Encaisser</button>
@@ -185,4 +193,43 @@
       </div>
     </div>
   </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  var input = document.getElementById("encaisserJustifInput");
+  var wrap = document.getElementById("encaisserJustifPreviewWrap");
+  var nameEl = document.getElementById("encaisserJustifName");
+  var thumb = document.getElementById("encaisserJustifThumb");
+
+  if (input) {
+    input.addEventListener("change", function() {
+      if (!input.files || !input.files[0]) {
+        if (wrap) wrap.classList.add("d-none");
+        return;
+      }
+      var file = input.files[0];
+      if (nameEl) nameEl.textContent = file.name + " (" + Math.round(file.size / 1024) + " Ko)";
+      if (wrap) wrap.classList.remove("d-none");
+
+      if (file.type && file.type.indexOf("image/") === 0) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          if (thumb) {
+            thumb.src = e.target.result;
+            thumb.classList.remove("d-none");
+          }
+        };
+        reader.readAsDataURL(file);
+      } else {
+        if (thumb) {
+          thumb.src = "";
+          thumb.classList.add("d-none");
+        }
+      }
+    });
+  }
+})();
+</script>
 {% endblock %}

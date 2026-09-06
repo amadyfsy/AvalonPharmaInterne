@@ -1,0 +1,159 @@
+<!-- Modal Aperçu Justificatif de Paiement (Image & PDF) -->
+<div class="modal fade" id="modalApercuJustificatif" tabindex="-1" aria-labelledby="modalApercuJustificatifLabel" aria-hidden="true" style="z-index: 1065;">
+  <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-content shadow-lg border-0">
+      <div class="modal-header bg-light py-2 px-3">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-file-earmark-medical fs-5 text-primary"></i>
+          <h5 class="modal-title h6 mb-0" id="modalApercuJustificatifLabel">
+            Aperçu du justificatif
+            <span id="modalApercuRef" class="badge bg-primary-subtle text-primary border border-primary-subtle ms-2 font-monospace"></span>
+          </h5>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <a id="modalApercuNewTabBtn" href="#" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary" title="Ouvrir dans un nouvel onglet">
+            <i class="bi bi-box-arrow-up-right me-1"></i>Plein écran
+          </a>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+        </div>
+      </div>
+      <div class="modal-body p-0 position-relative bg-light d-flex align-items-center justify-content-center" style="min-height: 400px; max-height: 80vh; overflow: auto;">
+        <!-- Spinner chargement -->
+        <div id="modalApercuSpinner" class="text-center py-5 my-5">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Chargement du document...</span>
+          </div>
+          <div class="text-muted small mt-2">Chargement du document en cours...</div>
+        </div>
+
+        <!-- Conteneur Image (PNG, JPG, JPEG) -->
+        <div id="modalApercuImgContainer" class="d-none w-100 text-center p-3">
+          <img id="modalApercuImg" src="" alt="Justificatif de paiement" class="img-fluid rounded shadow-sm mx-auto d-block" style="max-height: 75vh; width: auto; object-fit: contain;">
+        </div>
+
+        <!-- Conteneur PDF (Iframe / Object) -->
+        <div id="modalApercuPdfContainer" class="d-none w-100 h-100" style="height: 75vh;">
+          <iframe id="modalApercuIframe" src="" class="w-100 h-100 border-0" style="min-height: 75vh;"></iframe>
+        </div>
+
+        <!-- Message erreur -->
+        <div id="modalApercuError" class="d-none text-center py-5">
+          <i class="bi bi-exclamation-triangle text-danger fs-1 mb-2"></i>
+          <p class="text-danger mb-2">Impossible de charger l'aperçu du justificatif directement.</p>
+          <a id="modalApercuFallbackLink" href="#" target="_blank" rel="noopener" class="btn btn-primary btn-sm">
+            <i class="bi bi-download me-1"></i>Télécharger le fichier
+          </a>
+        </div>
+      </div>
+      <div class="modal-footer py-2 px-3 justify-content-between bg-light">
+        <div class="small text-muted" id="modalApercuTypeInfo">
+          <i class="bi bi-info-circle me-1"></i>Supporte PDF, PNG, JPG, JPEG
+        </div>
+        <div class="d-flex gap-2">
+          <a id="modalApercuDownloadBtn" href="#" download class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-download me-1"></i>Télécharger
+          </a>
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Fermer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  function initApercuJustificatif() {
+    var modalEl = document.getElementById("modalApercuJustificatif");
+    if (!modalEl || modalEl.dataset.initialized) return;
+    modalEl.dataset.initialized = "1";
+
+    var refEl = document.getElementById("modalApercuRef");
+    var newTabBtn = document.getElementById("modalApercuNewTabBtn");
+    var downloadBtn = document.getElementById("modalApercuDownloadBtn");
+    var fallbackLink = document.getElementById("modalApercuFallbackLink");
+    var spinner = document.getElementById("modalApercuSpinner");
+    var imgContainer = document.getElementById("modalApercuImgContainer");
+    var imgEl = document.getElementById("modalApercuImg");
+    var pdfContainer = document.getElementById("modalApercuPdfContainer");
+    var iframeEl = document.getElementById("modalApercuIframe");
+    var errorEl = document.getElementById("modalApercuError");
+    var typeInfo = document.getElementById("modalApercuTypeInfo");
+
+    document.addEventListener("click", function(e) {
+      var btn = e.target.closest(".btn-apercu-justificatif");
+      if (!btn) return;
+
+      var url = btn.getAttribute("data-url") || "";
+      var ref = btn.getAttribute("data-ref") || "";
+      var explicitType = btn.getAttribute("data-type") || "";
+
+      if (!url) return;
+
+      if (refEl) refEl.textContent = ref ? "• " + ref : "";
+      if (newTabBtn) newTabBtn.href = url;
+      if (downloadBtn) {
+        downloadBtn.href = url;
+        downloadBtn.setAttribute("download", (ref ? "justificatif_" + ref : "justificatif"));
+      }
+      if (fallbackLink) fallbackLink.href = url;
+
+      if (spinner) spinner.classList.remove("d-none");
+      if (imgContainer) imgContainer.classList.add("d-none");
+      if (pdfContainer) pdfContainer.classList.add("d-none");
+      if (errorEl) errorEl.classList.add("d-none");
+
+      var isPdf = explicitType === "pdf" || url.toLowerCase().split("?")[0].indexOf(".pdf") !== -1;
+
+      if (isPdf) {
+        if (typeInfo) typeInfo.innerHTML = '<i class="bi bi-file-earmark-pdf text-danger me-1"></i>Document PDF';
+        if (iframeEl) {
+          iframeEl.onload = function() {
+            if (spinner) spinner.classList.add("d-none");
+            if (pdfContainer) pdfContainer.classList.remove("d-none");
+          };
+          iframeEl.onerror = function() {
+            if (spinner) spinner.classList.add("d-none");
+            if (errorEl) errorEl.classList.remove("d-none");
+          };
+          iframeEl.src = url;
+          // Sécurité au cas où onload ne se déclenche pas (certains iframes PDF)
+          setTimeout(function() {
+            if (spinner && !spinner.classList.contains("d-none")) {
+              spinner.classList.add("d-none");
+              if (pdfContainer) pdfContainer.classList.remove("d-none");
+            }
+          }, 800);
+        }
+      } else {
+        if (typeInfo) typeInfo.innerHTML = '<i class="bi bi-file-earmark-image text-success me-1"></i>Image justificatif (PNG / JPG)';
+        if (imgEl) {
+          imgEl.onload = function() {
+            if (spinner) spinner.classList.add("d-none");
+            if (imgContainer) imgContainer.classList.remove("d-none");
+          };
+          imgEl.onerror = function() {
+            if (spinner) spinner.classList.add("d-none");
+            if (errorEl) errorEl.classList.remove("d-none");
+          };
+          imgEl.src = url;
+        }
+      }
+    });
+
+    modalEl.addEventListener("hidden.bs.modal", function() {
+      if (iframeEl) iframeEl.src = "";
+      if (imgEl) imgEl.src = "";
+      if (spinner) spinner.classList.remove("d-none");
+      if (imgContainer) imgContainer.classList.add("d-none");
+      if (pdfContainer) pdfContainer.classList.add("d-none");
+      if (errorEl) errorEl.classList.add("d-none");
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initApercuJustificatif);
+  } else {
+    initApercuJustificatif();
+  }
+})();
+</script>
