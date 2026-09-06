@@ -241,19 +241,19 @@
     </div>
   </div>
 
-  <!-- Règlements & Encaissements -->
+  <!-- Paiements & Encaissements -->
   <div class="card shadow-sm mt-4">
     <div class="card-header fw-semibold d-flex flex-wrap justify-content-between align-items-center gap-2">
       <div class="d-flex align-items-center gap-2">
         <i class="bi bi-cash-coin text-success fs-5"></i>
-        <span>Règlements &amp; Encaissements</span>
+        <span>Paiements reçus</span>
         <span class="badge bg-secondary bg-opacity-25 text-dark">{{ paiements|length }} paiement(s)</span>
       </div>
       <div>
         {% set reste_num = facture.reste_a_payer|float if facture.reste_a_payer is not none else 0 %}
         {% if reste_num > 0 and facture.statut != 'annulee' %}
           <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalEncaisserFacture">
-            <i class="bi bi-plus-circle me-1"></i> Encaisser un règlement
+            <i class="bi bi-plus-circle me-1"></i> Enregistrer un paiement
           </button>
         {% endif %}
       </div>
@@ -323,7 +323,7 @@
       {% else %}
         <div class="p-4 text-center text-muted">
           <i class="bi bi-wallet2 fs-2 d-block mb-2 opacity-50"></i>
-          Aucun règlement enregistré pour cette facture.
+          Aucun paiement enregistré pour cette facture.
           {% set reste_num = facture.reste_a_payer|float if facture.reste_a_payer is not none else 0 %}
           {% if reste_num > 0 and facture.statut != 'annulee' %}
             <div class="mt-2">
@@ -633,7 +633,7 @@
                   <input type="number" step="0.01" min="0.01" max="{{ '%.2f'|format(facture.reste_a_payer|float) }}" name="montant" value="{{ '%.2f'|format(facture.reste_a_payer|float) }}" class="form-control" required>
                 </div>
                 <div class="col-12 col-md-6">
-                  <label class="form-label">Mode de règlement <span class="text-danger">*</span></label>
+                  <label class="form-label">Mode de paiement <span class="text-danger">*</span></label>
                   <select name="mode_paiement" class="form-select" required>
                     <option value="espece">Espèces</option>
                     <option value="cheque">Chèque</option>
@@ -674,7 +674,7 @@
           <input type="hidden" name="next" value="{{ url_for('ventes.facture_detail', id=facture.id) }}">
           <div class="modal-header">
             <h5 class="modal-title" id="modalEditPaiementFactureLabel">
-              <i class="bi bi-pencil-square me-2 text-primary"></i>Modifier le règlement <span id="factureEditPaiementRef"></span>
+              <i class="bi bi-pencil-square me-2 text-primary"></i>Modifier le paiement <span id="factureEditPaiementRef"></span>
             </h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
           </div>
@@ -685,7 +685,7 @@
                 <input type="date" class="form-control" name="date_paiement" id="factureEditPaiementDate" required>
               </div>
               <div class="col-12 col-md-6">
-                <label class="form-label">Mode de règlement</label>
+                <label class="form-label">Mode de paiement</label>
                 <select class="form-select" name="mode_paiement" id="factureEditPaiementMode" required>
                   <option value="espece">Espèces</option>
                   <option value="cheque">Chèque</option>

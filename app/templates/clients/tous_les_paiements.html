@@ -46,7 +46,7 @@
           </div>
         </div>
         <div class="col-6 col-md-3 col-lg-3">
-          <label class="form-label small text-muted mb-1" for="modeFiltre">Mode de règlement</label>
+          <label class="form-label small text-muted mb-1" for="modeFiltre">Mode de paiement</label>
           <select class="form-select" id="modeFiltre" name="mode">
             <option value="">Tous les modes</option>
             {% for code, label in mode_labels.items() %}
@@ -181,7 +181,7 @@
                 <input type="date" class="form-control" name="date_paiement" id="editPaiementDate" required>
               </div>
               <div class="col-12 col-md-6">
-                <label class="form-label" for="editPaiementMode">Mode de règlement</label>
+                <label class="form-label" for="editPaiementMode">Mode de paiement</label>
                 <select class="form-select" name="mode_paiement" id="editPaiementMode" required>
                   <option value="espece">Espèces</option>
                   <option value="cheque">Chèque</option>
