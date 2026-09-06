@@ -83,7 +83,7 @@
           <p class="small mb-3">
             <a href="{{ url_for('clients.paiements', id=client.id) }}">Voir l'historique des paiements</a>
           </p>
-          <form method="post" action="{{ url_for('clients.encaisser', id=client.id) }}" class="row g-2">
+          <form method="post" action="{{ url_for('clients.encaisser', id=client.id) }}" enctype="multipart/form-data" class="row g-2">
             <div class="col-12">
               <label class="form-label mb-1">Montant (FCFA)</label>
               <input type="number" step="0.01" min="0.01" name="montant" class="form-control" required>
@@ -91,6 +91,7 @@
             <div class="col-12">
               <label class="form-label mb-1">Mode de paiement</label>
               <select name="mode_paiement" class="form-select" required>
+                <option value="espece">Espèces</option>
                 <option value="cheque">Chèque</option>
                 <option value="virement">Virement</option>
                 <option value="orange_money">Orange Money</option>
@@ -101,8 +102,13 @@
               <label class="form-label mb-1">Date de paiement</label>
               <input type="date" name="date_paiement" value="{{ today.isoformat() }}" class="form-control" required>
             </div>
+            <div class="col-12">
+              <label class="form-label mb-1">Justificatif <span class="text-muted fw-normal">(reçu, chèque, virement…)</span></label>
+              <input type="file" name="justificatif" class="form-control" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg">
+              <div class="form-text">Facultatif (PDF, PNG, JPG).</div>
+            </div>
             <div class="col-12 d-grid mt-2">
-              <button type="submit" class="btn btn-primary">Encaisser</button>
+              <button type="submit" class="btn btn-primary"><i class="bi bi-cash-coin me-1"></i> Encaisser</button>
             </div>
           </form>
         </div>

@@ -389,6 +389,19 @@ def app(config_name='default'):
             from sqlalchemy import inspect, text
 
             inspector = inspect(db.engine)
+            if 'paiements_clients' in inspector.get_table_names():
+                paiement_columns = {c['name'] for c in inspector.get_columns('paiements_clients')}
+                if 'justificatif' not in paiement_columns:
+                    db.session.execute(text("ALTER TABLE paiements_clients ADD COLUMN justificatif VARCHAR(255) NULL"))
+                    db.session.commit()
+        except Exception as exc:
+            db.session.rollback()
+            app.logger.warning('Colonne justificatif non initialisée sur paiements_clients: %s', exc)
+
+        try:
+            from sqlalchemy import inspect, text
+
+            inspector = inspect(db.engine)
             if 'factures' in inspector.get_table_names():
                 facture_columns = {c['name'] for c in inspector.get_columns('factures')}
                 if 'bc' not in facture_columns:

@@ -7,6 +7,7 @@ from ...models.bon_livraison import BonLivraison, LigneBL
 from ...models.client import Client
 from ...models.depense import CategorieDepense, Depense
 from ...models.facture import Facture, LigneFacture
+from ...models.paiement_client import PaiementClient
 from ...models.produit import Lot, Produit
 from ...models.proforma import LigneProforma, Proforma
 from ...models.parametres_documents import ParametresDocuments
@@ -1270,6 +1271,13 @@ def facture_detail(id):
     depenses_liees_total = float(sum(float(d.montant_ttc or 0) for d in depenses_liees))
     depense_categories = CategorieDepense.query.order_by(CategorieDepense.nom).all()
     peut_ajouter_depense = user_has_permission(current_user, "depenses", "saisir")
+    from ..clients.routes import MODE_PAIEMENT_LABELS, MODES_PAIEMENT_AUTORISES
+    paiements = (
+        PaiementClient.query.options(joinedload(PaiementClient.createur))
+        .filter_by(facture_id=facture.id)
+        .order_by(PaiementClient.date_paiement.desc(), PaiementClient.id.desc())
+        .all()
+    )
     return render_template(
         "ventes/facture_detail.html",
         facture=facture,
@@ -1279,6 +1287,10 @@ def facture_detail(id):
         depenses_liees_total=depenses_liees_total,
         depense_categories=depense_categories,
         peut_ajouter_depense=peut_ajouter_depense,
+        paiements=paiements,
+        mode_labels=MODE_PAIEMENT_LABELS,
+        modes_autorises=MODES_PAIEMENT_AUTORISES,
+        today=dt.date.today(),
         format_fcfa=format_montant_espace,
         affiche_tva=document_affiche_tva(facture),
         has_cachet=has_cachet(),

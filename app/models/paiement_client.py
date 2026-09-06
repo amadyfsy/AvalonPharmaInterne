@@ -15,6 +15,7 @@ class PaiementClient(db.Model):
     montant = db.Column(db.Numeric(12, 2), nullable=False)
     mode_paiement = db.Column(db.String(50), nullable=False)
     date_paiement = db.Column(db.Date, nullable=False)
+    justificatif = db.Column(db.String(255), nullable=True)
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 

@@ -1,26 +1,23 @@
 {% extends "base.html" %}
 
-{% block title %}Paiements — {{ client.raison_sociale }} — Avalon Pharma{% endblock %}
+{% block title %}Tous les paiements — Avalon Pharma{% endblock %}
 
 {% block content %}
-  <div class="clients-detail-hero d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+  <div class="clients-hero d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
     <div>
       <nav aria-label="breadcrumb" class="mb-2">
         <ol class="breadcrumb mb-0 small">
+          <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}" class="text-white text-decoration-underline">Tableau de bord</a></li>
           <li class="breadcrumb-item"><a href="{{ url_for('clients.index') }}" class="text-white text-decoration-underline">Clients</a></li>
-          <li class="breadcrumb-item"><a href="{{ url_for('clients.detail', id=client.id) }}" class="text-white text-decoration-underline">{{ client.raison_sociale }}</a></li>
-          <li class="breadcrumb-item text-white active" aria-current="page">Paiements</li>
+          <li class="breadcrumb-item text-white active" aria-current="page">Tous les paiements</li>
         </ol>
       </nav>
-      <h1 class="h4 mb-1 fw-semibold text-white">Paiements du client</h1>
-      <p class="mb-0 small" style="opacity:.92;">{{ client.raison_sociale }} · Code {{ client.code }}</p>
+      <h1 class="h4 mb-1 fw-semibold text-white"><i class="bi bi-cash-stack me-2"></i>Historique des encaissements &amp; paiements</h1>
+      <p class="mb-0 small" style="opacity: .92;">Consultez, modifiez et téléversez des justificatifs pour tous les paiements enregistrés.</p>
     </div>
     <div class="d-flex flex-wrap gap-2">
-      <a href="{{ url_for('clients.tous_les_paiements') }}" class="btn btn-outline-light btn-sm">
-        <i class="bi bi-cash-stack me-1"></i> Tous les paiements
-      </a>
-      <a href="{{ url_for('clients.detail', id=client.id) }}" class="btn btn-outline-light btn-sm">
-        <i class="bi bi-arrow-left me-1"></i> Fiche client
+      <a href="{{ url_for('clients.index') }}" class="btn btn-outline-light btn-sm">
+        <i class="bi bi-people me-1"></i> Liste des clients
       </a>
     </div>
   </div>
@@ -29,20 +26,57 @@
     <div class="col-12 col-md-4">
       <div class="card shadow-sm clients-card-accent">
         <div class="card-body">
-          <div class="text-muted small">Total encaissé (historique)</div>
+          <div class="text-muted small">Total encaissé (sélection)</div>
           <div class="fs-4 fw-bold text-success">{{ "{:,.0f}".format(total_encaisse|float).replace(",", " ") }} FCFA</div>
-          <div class="small text-muted mt-1">{{ paiements|length }} ligne(s) enregistrée(s)</div>
+          <div class="small text-muted mt-1">{{ paiements|length }} opération(s) trouvée(s)</div>
         </div>
       </div>
     </div>
   </div>
 
+  <!-- Filtres -->
+  <div class="card shadow-sm border-0 mb-3 clients-card-accent">
+    <div class="card-body py-3">
+      <form method="get" action="{{ url_for('clients.tous_les_paiements') }}" class="row g-2 align-items-end">
+        <div class="col-12 col-md-5 col-lg-5">
+          <label class="form-label small text-muted mb-1" for="qPaiement">Recherche</label>
+          <div class="input-group">
+            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+            <input type="search" class="form-control border-start-0" id="qPaiement" name="q" value="{{ q }}" placeholder="Client, n° facture, référence ENC…" autocomplete="off">
+          </div>
+        </div>
+        <div class="col-6 col-md-3 col-lg-3">
+          <label class="form-label small text-muted mb-1" for="modeFiltre">Mode de règlement</label>
+          <select class="form-select" id="modeFiltre" name="mode">
+            <option value="">Tous les modes</option>
+            {% for code, label in mode_labels.items() %}
+              <option value="{{ code }}" {% if mode_filtre == code %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-md-3 col-lg-3">
+          <label class="form-label small text-muted mb-1" for="clientFiltre">Client</label>
+          <select class="form-select" id="clientFiltre" name="client_id">
+            <option value="">Tous les clients</option>
+            {% for c in clients %}
+              <option value="{{ c.id }}" {% if client_id_filtre == c.id %}selected{% endif %}>{{ c.raison_sociale }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-md-1 col-lg-1 d-flex gap-2">
+          <button type="submit" class="btn btn-primary w-100" title="Filtrer"><i class="bi bi-funnel"></i></button>
+          {% if q or mode_filtre or client_id_filtre %}
+            <a href="{{ url_for('clients.tous_les_paiements') }}" class="btn btn-outline-secondary" title="Réinitialiser"><i class="bi bi-x-lg"></i></a>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div class="card shadow-sm clients-card-accent">
-    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-      <strong>Historique des paiements</strong>
-      <a href="{{ url_for('clients.detail', id=client.id) }}#encaisser" class="btn btn-sm btn-primary">
-        <i class="bi bi-cash-coin me-1"></i> Encaisser un paiement
-      </a>
+    <div class="card-header border-0 pt-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <h2 class="h6 mb-0"><i class="bi bi-receipt me-2 text-primary"></i>Paiements enregistrés</h2>
+      <span class="badge bg-secondary bg-opacity-25 text-dark">{{ paiements|length }} paiement(s)</span>
     </div>
     <div class="card-body p-0">
       <div class="table-responsive">
@@ -51,8 +85,9 @@
             <tr>
               <th>Date</th>
               <th>Référence</th>
-              <th>Mode</th>
+              <th>Client</th>
               <th>Facture</th>
+              <th>Mode</th>
               <th class="text-end">Montant</th>
               <th class="text-center" style="width:120px;">Justificatif</th>
               <th class="text-end pe-3" style="width:140px;">Actions</th>
@@ -63,7 +98,13 @@
               <tr>
                 <td class="text-nowrap">{{ p.date_paiement.strftime('%d/%m/%Y') if p.date_paiement else '—' }}</td>
                 <td><code class="small">{{ p.reference }}</code></td>
-                <td><span class="badge bg-light text-dark border">{{ mode_labels.get(p.mode_paiement, p.mode_paiement) }}</span></td>
+                <td>
+                  {% if p.client %}
+                    <a href="{{ url_for('clients.detail', id=p.client.id) }}" class="fw-medium text-decoration-none">{{ p.client.raison_sociale }}</a>
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
                 <td>
                   {% if p.facture %}
                     <a href="{{ url_for('ventes.facture_detail', id=p.facture.id) }}" class="fw-medium text-decoration-none">{{ p.facture.numero }}</a>
@@ -71,13 +112,14 @@
                     <span class="text-muted">—</span>
                   {% endif %}
                 </td>
+                <td><span class="badge bg-light text-dark border">{{ mode_labels.get(p.mode_paiement, p.mode_paiement) }}</span></td>
                 <td class="text-end fw-semibold text-nowrap">{{ "{:,.0f}".format(p.montant|float).replace(",", " ") }} FCFA</td>
                 <td class="text-center">
                   {% if p.justificatif %}
                     <a href="{{ url_for('clients.paiement_justificatif_fichier', stored_name=p.justificatif) }}"
                        target="_blank" rel="noopener"
                        class="btn btn-sm btn-outline-success py-0 px-2"
-                       title="Voir / Télécharger le justificatif">
+                       title="Voir le justificatif">
                       <i class="bi bi-paperclip me-1"></i>Reçu
                     </a>
                   {% else %}
@@ -94,7 +136,6 @@
                           data-date="{{ p.date_paiement.strftime('%Y-%m-%d') if p.date_paiement else '' }}"
                           data-mode="{{ p.mode_paiement }}"
                           data-montant="{{ '%.2f'|format(p.montant|float) }}"
-                          data-facture-id="{{ p.facture_id or '' }}"
                           data-has-justificatif="{{ '1' if p.justificatif else '0' }}"
                           data-justificatif-url="{{ url_for('clients.paiement_justificatif_fichier', stored_name=p.justificatif) if p.justificatif else '' }}">
                     <i class="bi bi-pencil me-1"></i>Modifier
@@ -102,7 +143,7 @@
                   <form method="post"
                         action="{{ url_for('clients.supprimer_paiement', id=p.id) }}"
                         class="d-inline"
-                        onsubmit="return confirm('Confirmer la suppression du paiement {{ p.reference }} de {{ '{:,.0f}'.format(p.montant|float).replace(',', ' ') }} FCFA ? Le solde de la facture et du client sera recalculé.');">
+                        onsubmit="return confirm('Confirmer la suppression du paiement {{ p.reference }} de {{ '{:,.0f}'.format(p.montant|float).replace(',', ' ') }} FCFA ?');">
                     <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer ce paiement">
                       <i class="bi bi-trash"></i>
                     </button>
@@ -111,11 +152,8 @@
               </tr>
             {% else %}
               <tr>
-                <td colspan="7" class="text-center text-muted py-5">
-                  Aucun paiement enregistré pour ce client.
-                  <div class="mt-2">
-                    <a href="{{ url_for('clients.detail', id=client.id) }}#encaisser">Encaisser un paiement depuis la fiche client</a>
-                  </div>
+                <td colspan="8" class="text-center text-muted py-5">
+                  Aucun paiement trouvé avec les critères sélectionnés.
                 </td>
               </tr>
             {% endfor %}
@@ -153,18 +191,9 @@
                   <option value="carte">Carte Bancaire</option>
                 </select>
               </div>
-              <div class="col-12 col-md-6">
+              <div class="col-12">
                 <label class="form-label" for="editPaiementMontant">Montant (FCFA)</label>
                 <input type="number" step="0.01" min="0.01" class="form-control" name="montant" id="editPaiementMontant" required>
-              </div>
-              <div class="col-12 col-md-6">
-                <label class="form-label" for="editPaiementFacture">Facture associée</label>
-                <select class="form-select" name="facture_id" id="editPaiementFacture">
-                  <option value="">— Aucune facture —</option>
-                  {% for f in factures_client|default([]) %}
-                    <option value="{{ f.id }}">{{ f.numero }} ({{ "{:,.0f}".format(f.total_ttc|float).replace(",", " ") }} F - {{ f.statut }})</option>
-                  {% endfor %}
-                </select>
               </div>
               <div class="col-12">
                 <label class="form-label" for="editPaiementJustificatif">Justificatif (PDF, image, reçu, chèque…)</label>
@@ -205,7 +234,6 @@
   var dateEl = document.getElementById("editPaiementDate");
   var modeEl = document.getElementById("editPaiementMode");
   var montantEl = document.getElementById("editPaiementMontant");
-  var factureEl = document.getElementById("editPaiementFacture");
   var justifInput = document.getElementById("editPaiementJustificatif");
   var justifHint = document.getElementById("editPaiementJustifHint");
   var justifWrap = document.getElementById("editPaiementJustifCurrentWrap");
@@ -221,7 +249,6 @@
       var d = btn.getAttribute("data-date") || "";
       var m = btn.getAttribute("data-mode") || "espece";
       var montant = btn.getAttribute("data-montant") || "";
-      var fId = btn.getAttribute("data-facture-id") || "";
       var hasJustif = btn.getAttribute("data-has-justificatif") === "1";
       var justifUrl = btn.getAttribute("data-justificatif-url") || "";
 
@@ -230,7 +257,6 @@
       if (dateEl) dateEl.value = d;
       if (modeEl) modeEl.value = m;
       if (montantEl) montantEl.value = montant;
-      if (factureEl) factureEl.value = fId;
       if (justifInput) justifInput.value = "";
       if (supprCheck) supprCheck.checked = false;
 
