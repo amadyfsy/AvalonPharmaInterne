@@ -16,10 +16,16 @@
     loader.setAttribute('aria-hidden', 'false');
   }
 
-  function hideLoader() {
+  function hideLoader(immediate) {
+    clearTimeout(hideTimer);
+    if (immediate) {
+      loader.classList.add('is-hidden');
+      loader.setAttribute('aria-busy', 'false');
+      loader.setAttribute('aria-hidden', 'true');
+      return;
+    }
     var elapsed = Date.now() - shownAt;
     var wait = Math.max(0, MIN_VISIBLE_MS - elapsed);
-    clearTimeout(hideTimer);
     hideTimer = setTimeout(function () {
       loader.classList.add('is-hidden');
       loader.setAttribute('aria-busy', 'false');
@@ -27,14 +33,33 @@
     }, wait);
   }
 
+  // Rendre accessible globalement pour les scripts AJAX si besoin
+  window.showPageLoader = showLoader;
+  window.hidePageLoader = hideLoader;
+
   function shouldInterceptLink(a, event) {
     if (!a || event.defaultPrevented) return false;
     if (event.button !== 0) return false;
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return false;
     if (a.target && a.target !== '_self') return false;
     if (a.hasAttribute('download')) return false;
-    if (a.dataset.noLoader === '1') return false;
-    var skipClass = 'js-facture-download js-facture-print js-bl-download js-bl-print js-facture-print-choice';
+
+    // Éléments explicitement marqués ou enfants d'éléments marqués sans loader
+    if (a.dataset.noLoader === '1' || (a.closest && a.closest('[data-no-loader="1"]'))) return false;
+
+    // Pagination ou recherche en direct (AJAX partiel)
+    if (a.classList.contains('js-factures-page') || a.hasAttribute('data-factures-reset')) return false;
+    if (a.closest && (a.closest('#facturesLiveRoot') || a.closest('[data-partial-root]') || a.closest('[data-live-search]'))) {
+      return false;
+    }
+
+    // Contrôles Bootstrap (modals, dropdowns, onglets) et boutons JS
+    if (a.hasAttribute('data-bs-toggle') || a.hasAttribute('data-bs-target')) return false;
+    if (a.closest && a.closest('[data-bs-toggle]')) return false;
+    if (a.getAttribute('role') === 'button' || a.getAttribute('role') === 'tab') return false;
+    if (a.classList.contains('btn-apercu-justificatif') || (a.closest && a.closest('.btn-apercu-justificatif'))) return false;
+
+    var skipClass = 'js-facture-download js-facture-print js-bl-download js-bl-print js-facture-print-choice js-factures-page btn-apercu-justificatif';
     if (a.className && skipClass.split(' ').some(function (c) { return a.classList.contains(c); })) {
       return false;
     }
@@ -60,19 +85,21 @@
   }
 
   document.addEventListener('click', function (event) {
+    if (event.defaultPrevented) return;
     var a = event.target.closest && event.target.closest('a[href]');
     if (shouldInterceptLink(a, event)) {
       showLoader();
     }
-  }, true);
+  }, false);
 
   document.addEventListener('submit', function (event) {
+    if (event.defaultPrevented) return;
     var form = event.target;
     if (!form || form.tagName !== 'FORM') return;
-    if (form.dataset.noLoader === '1') return;
+    if (form.dataset.noLoader === '1' || form.dataset.liveSearch === '1') return;
     if (form.target && form.target !== '_self') return;
     showLoader();
-  }, true);
+  }, false);
 
   window.addEventListener('pageshow', function (event) {
     if (event.persisted) hideLoader();

@@ -98,7 +98,7 @@
 
   <div class="card shadow-sm border-0 mb-3 fact-filters">
     <div class="card-body">
-      <form id="facturesFiltersForm" method="get" action="{{ url_for('ventes.factures') }}" class="row g-3 align-items-end" role="search" data-live-search="1">
+      <form id="facturesFiltersForm" method="get" action="{{ url_for('ventes.factures') }}" class="row g-3 align-items-end" role="search" data-live-search="1" data-no-loader="1">
         <div class="col-md-4 col-lg-3">
           <label class="form-label small text-muted mb-1" for="factQ">Rechercher</label>
           <div class="input-group">
@@ -143,7 +143,7 @@
         </div>
         <div class="col-md-2 col-lg-2 d-flex align-items-end" id="facturesResetWrap">
           {% if q or statut_filtre or annee_filtre or mois_filtre %}
-            <a href="{{ url_for('ventes.factures') }}" class="btn btn-outline-secondary" data-factures-reset="1">Tout afficher</a>
+            <a href="{{ url_for('ventes.factures') }}" class="btn btn-outline-secondary" data-factures-reset="1" data-no-loader="1">Tout afficher</a>
           {% endif %}
         </div>
       </form>
@@ -191,7 +191,7 @@
         return params.has(k) && params.get(k);
       });
       if (hasFilter) {
-        resetWrap.innerHTML = '<a href="' + endpoint + '" class="btn btn-outline-secondary" data-factures-reset="1">Tout afficher</a>';
+        resetWrap.innerHTML = '<a href="' + endpoint + '" class="btn btn-outline-secondary" data-factures-reset="1" data-no-loader="1">Tout afficher</a>';
       } else {
         resetWrap.innerHTML = '';
       }
@@ -216,6 +216,7 @@
       if (abortCtrl) abortCtrl.abort();
       abortCtrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
 
+      if (window.hidePageLoader) window.hidePageLoader(true);
       root.classList.add('is-loading');
       syncResetButton(params);
 
@@ -241,7 +242,10 @@
           form.submit();
         })
         .finally(function () {
-          if (id === requestId) root.classList.remove('is-loading');
+          if (id === requestId) {
+            root.classList.remove('is-loading');
+            if (window.hidePageLoader) window.hidePageLoader(true);
+          }
         });
     }
 
@@ -296,6 +300,7 @@
         return;
       }
       e.preventDefault();
+      if (window.hidePageLoader) window.hidePageLoader(true);
       try {
         var u = new URL(href, window.location.origin);
         var page = parseInt(u.searchParams.get('page') || '1', 10) || 1;

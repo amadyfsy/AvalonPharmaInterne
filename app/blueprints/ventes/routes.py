@@ -728,25 +728,26 @@ def factures():
     if mois is not None and (mois < 1 or mois > 12):
         mois = None
 
-    annees_dispo = [
-        int(y)
-        for (y,) in db.session.query(extract('year', Facture.date_emission))
-        .filter(Facture.date_emission.isnot(None))
-        .distinct()
-        .order_by(extract('year', Facture.date_emission).desc())
-        .all()
-        if y is not None
-    ]
-    if annee and annee not in annees_dispo:
-        annee = None
+    is_partial = request.args.get("partial") == "1"
 
-    query = (
-        Facture.query.options(joinedload(Facture.client))
-        .outerjoin(Client, Facture.client_id == Client.id)
-    )
+    annees_dispo = []
+    if not is_partial:
+        annees_dispo = [
+            int(y)
+            for (y,) in db.session.query(extract('year', Facture.date_emission))
+            .filter(Facture.date_emission.isnot(None))
+            .distinct()
+            .order_by(extract('year', Facture.date_emission).desc())
+            .all()
+            if y is not None
+        ]
+        if annee and annee not in annees_dispo:
+            annee = None
+
+    query = Facture.query.options(joinedload(Facture.client))
     if q:
         pattern = f'%{q}%'
-        query = query.filter(
+        query = query.outerjoin(Client, Facture.client_id == Client.id).filter(
             or_(
                 Facture.numero.ilike(pattern),
                 Facture.bc.ilike(pattern),
