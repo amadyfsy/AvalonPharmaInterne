@@ -3,7 +3,7 @@ from datetime import date, datetime
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional
 
-from sqlalchemy import func, or_
+from sqlalchemy import extract, func, or_
 
 from ...extensions import db
 from ...models.client import Client
@@ -33,6 +33,21 @@ MODE_PAIEMENT_LABELS = {
     "carte": "Carte Bancaire",
 }
 MODES_PAIEMENT_AUTORISES = set(MODE_PAIEMENT_LABELS.keys())
+PAIEMENTS_PAR_PAGE = 25
+_MOIS_FILTRE_PAIEMENTS = (
+    (1, "Janvier"),
+    (2, "Février"),
+    (3, "Mars"),
+    (4, "Avril"),
+    (5, "Mai"),
+    (6, "Juin"),
+    (7, "Juillet"),
+    (8, "Août"),
+    (9, "Septembre"),
+    (10, "Octobre"),
+    (11, "Novembre"),
+    (12, "Décembre"),
+)
 
 
 def recalculer_facture_apres_paiements(facture: Facture) -> None:
@@ -179,14 +194,51 @@ def detail(id):
     )
 
 
+def _parse_date_arg(name: str) -> Optional[date]:
+    raw = (request.args.get(name) or "").strip()
+    if not raw:
+        return None
+    try:
+        return datetime.strptime(raw, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+
 @clients_bp.route('/paiements')
 @login_required
 @permission_required('ventes', 'read')
 def tous_les_paiements():
-    """Liste globale de tous les paiements clients avec filtres et recherche."""
+    """Page dédiée : historique de tous les paiements, avec filtres."""
     q = (request.args.get('q') or '').strip()
     mode = (request.args.get('mode') or '').strip().lower()
     client_id = request.args.get('client_id', type=int)
+    annee = request.args.get('annee', type=int)
+    mois = request.args.get('mois', type=int)
+    page = request.args.get('page', 1, type=int)
+    if page < 1:
+        page = 1
+    if mois is not None and (mois < 1 or mois > 12):
+        mois = None
+    if mode and mode not in MODES_PAIEMENT_AUTORISES:
+        mode = ''
+
+    date_filtre = _parse_date_arg('date')
+    date_debut = _parse_date_arg('date_debut')
+    date_fin = _parse_date_arg('date_fin')
+    if date_debut and date_fin and date_debut > date_fin:
+        date_debut, date_fin = date_fin, date_debut
+
+    annees_dispo = [
+        int(y)
+        for (y,) in db.session.query(extract('year', PaiementClient.date_paiement))
+        .filter(PaiementClient.date_paiement.isnot(None))
+        .distinct()
+        .order_by(extract('year', PaiementClient.date_paiement).desc())
+        .all()
+        if y is not None
+    ]
+    if annee and annee not in annees_dispo:
+        annee = None
 
     query = PaiementClient.query.options(
         joinedload(PaiementClient.client),
@@ -196,8 +248,22 @@ def tous_les_paiements():
 
     if client_id:
         query = query.filter(PaiementClient.client_id == client_id)
-    if mode and mode in MODES_PAIEMENT_AUTORISES:
+    if mode:
         query = query.filter(PaiementClient.mode_paiement == mode)
+
+    # Une date précise prime sur le mois/année ; sinon période, mois et/ou année.
+    if date_filtre:
+        query = query.filter(PaiementClient.date_paiement == date_filtre)
+    else:
+        if date_debut:
+            query = query.filter(PaiementClient.date_paiement >= date_debut)
+        if date_fin:
+            query = query.filter(PaiementClient.date_paiement <= date_fin)
+        if annee:
+            query = query.filter(extract('year', PaiementClient.date_paiement) == annee)
+        if mois:
+            query = query.filter(extract('month', PaiementClient.date_paiement) == mois)
+
     if q:
         like = f"%{q}%"
         query = query.join(Client, PaiementClient.client_id == Client.id).outerjoin(
@@ -208,26 +274,78 @@ def tous_les_paiements():
                 Client.raison_sociale.ilike(like),
                 Facture.numero.ilike(like),
             )
-        )
+        ).distinct()
 
-    paiements_list = query.order_by(
+    totaux = (
+        query.enable_eagerloads(False)
+        .order_by(None)
+        .with_entities(
+            func.count(func.distinct(PaiementClient.id)),
+            func.coalesce(func.sum(PaiementClient.montant), 0),
+            func.count(func.distinct(PaiementClient.client_id)),
+        )
+        .first()
+    )
+    nb_paiements = int(totaux[0] or 0)
+    total_encaisse = _q2(Decimal(totaux[1] or 0))
+    nb_clients = int(totaux[2] or 0)
+
+    pagination = query.order_by(
         PaiementClient.date_paiement.desc(),
         PaiementClient.id.desc(),
-    ).all()
+    ).paginate(page=page, per_page=PAIEMENTS_PAR_PAGE, error_out=False)
 
-    total_encaisse = _q2(sum(Decimal(p.montant or 0) for p in paiements_list))
-    clients_actifs = Client.query.filter_by(est_actif=True).order_by(Client.raison_sociale).all()
+    clients_filtre = (
+        Client.query.join(PaiementClient, PaiementClient.client_id == Client.id)
+        .distinct()
+        .order_by(Client.raison_sociale)
+        .all()
+    )
+
+    filtres_url = {}
+    if q:
+        filtres_url['q'] = q
+    if mode:
+        filtres_url['mode'] = mode
+    if client_id:
+        filtres_url['client_id'] = client_id
+    if date_filtre:
+        filtres_url['date'] = date_filtre.isoformat()
+    if date_debut and not date_filtre:
+        filtres_url['date_debut'] = date_debut.isoformat()
+    if date_fin and not date_filtre:
+        filtres_url['date_fin'] = date_fin.isoformat()
+    if annee and not date_filtre:
+        filtres_url['annee'] = annee
+    if mois and not date_filtre:
+        filtres_url['mois'] = mois
+
+    has_filtres = bool(
+        q or mode or client_id or date_filtre or date_debut or date_fin or annee or mois
+    )
 
     return render_template(
         'clients/tous_les_paiements.html',
-        paiements=paiements_list,
+        paiements=pagination.items,
+        pagination=pagination,
         total_encaisse=total_encaisse,
+        nb_paiements=nb_paiements,
+        nb_clients=nb_clients,
         mode_labels=MODE_PAIEMENT_LABELS,
         modes_autorises=MODES_PAIEMENT_AUTORISES,
         q=q,
         mode_filtre=mode,
         client_id_filtre=client_id,
-        clients=clients_actifs,
+        date_filtre=date_filtre,
+        date_debut=date_debut,
+        date_fin=date_fin,
+        annee_filtre=annee,
+        mois_filtre=mois,
+        annees_dispo=annees_dispo,
+        mois_dispo=_MOIS_FILTRE_PAIEMENTS,
+        clients=clients_filtre,
+        filtres_url=filtres_url,
+        has_filtres=has_filtres,
         today=date.today(),
     )
 
