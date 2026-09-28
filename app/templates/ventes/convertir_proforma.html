@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}Valider la proforma {{ proforma.numero }} — Avalon Pharma{% endblock %}
+
+{% block content %}
+  <div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+      <nav aria-label="fil d'ariane">
+        <ol class="breadcrumb mb-2">
+          <li class="breadcrumb-item"><a href="{{ url_for('ventes.proformas') }}">Proformas</a></li>
+          <li class="breadcrumb-item"><a href="{{ url_for('ventes.proforma_detail', id=proforma.id) }}">{{ proforma.numero }}</a></li>
+          <li class="breadcrumb-item active" aria-current="page">Validation</li>
+        </ol>
+      </nav>
+      <h1 class="page-title mb-1">Valider la proforma {{ proforma.numero }}</h1>
+      <p class="page-subtitle mb-0">
+        Conversion en <strong>facture + bon de livraison</strong>. Saisissez ici les dépenses liées (transport, etc.).
+      </p>
+    </div>
+    <a href="{{ url_for('ventes.proforma_detail', id=proforma.id) }}" class="btn btn-outline-secondary">Retour</a>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-header fw-semibold">Récapitulatif</div>
+        <div class="card-body">
+          <p class="mb-2"><strong>{{ proforma.client.raison_sociale if proforma.client else '—' }}</strong></p>
+          <dl class="row small mb-0">
+            <dt class="col-6">Émission</dt>
+            <dd class="col-6">{{ proforma.date_emission.strftime('%d/%m/%Y') if proforma.date_emission else '—' }}</dd>
+            <dt class="col-6">Validité</dt>
+            <dd class="col-6">{{ proforma.date_validite.strftime('%d/%m/%Y') if proforma.date_validite else '—' }}</dd>
+            <dt class="col-6">Lignes</dt>
+            <dd class="col-6">{{ proforma.lignes|length }}</dd>
+            <dt class="col-6">Total</dt>
+            <dd class="col-6 fw-semibold">{{ format_fcfa(proforma.total_ttc if affiche_tva else proforma.total_ht) }} FCFA</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-8">
+      <form method="post" enctype="multipart/form-data" id="convertirProformaForm">
+        <div class="card shadow-sm mb-3">
+          <div class="card-header fw-semibold">Facture &amp; livraison</div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label">Date d’échéance</label>
+                <input class="form-control" type="date" name="date_echeance" value="{{ default_echeance.isoformat() }}" required>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Date de livraison (BL)</label>
+                <input class="form-control" type="date" name="date_livraison" value="{{ today.isoformat() }}">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Transporteur / Livreur</label>
+                <input class="form-control" type="text" name="livreur" placeholder="Optionnel">
+              </div>
+              <div class="col-12">
+                <label class="form-label">Adresse de livraison</label>
+                <textarea class="form-control" name="adresse_livraison" rows="2" placeholder="Saisie ou reprise de la fiche client">{{ proforma.client.adresse if proforma.client and proforma.client.adresse else '' }}</textarea>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Notes (BL)</label>
+                <textarea class="form-control" name="notes_bl" rows="2" placeholder="Optionnel">{{ proforma.notes or '' }}</textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card shadow-sm mb-3 border-warning border-opacity-25">
+          <div class="card-header bg-warning-subtle d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-cash-coin me-2"></i>Dépenses liées à la vente</span>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="addDepenseLine">
+              <i class="bi bi-plus-lg me-1"></i> Ajouter
+            </button>
+          </div>
+          <div class="card-body">
+            <p class="small text-muted mb-3">
+              Transport, manutention, carburant… Ces montants sont enregistrés dans Dépenses, pas sur la facture client.
+              Laissez le montant à 0 s’il n’y a aucune dépense.
+            </p>
+            <div class="table-responsive">
+              <table class="table table-sm align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Type de dépense</th>
+                    <th>Description</th>
+                    <th style="width:140px;">Montant HT</th>
+                    <th style="width:150px;">Mode paiement</th>
+                    <th style="width:200px;">Justificatif</th>
+                    <th style="width:60px;"></th>
+                  </tr>
+                </thead>
+                <tbody id="depensesBody">
+                  <tr class="depense-row">
+                    <td>
+                      <select class="form-select" name="depense_categorie_id[]">
+                        {% for c in depense_categories %}
+                          <option value="{{ c.id }}" {% if default_depense_cat_id and c.id == default_depense_cat_id %}selected{% endif %}>{{ c.nom }}</option>
+                        {% endfor %}
+                      </select>
+                    </td>
+                    <td>
+                      <input class="form-control" type="text" name="depense_description[]" placeholder="Ex. Transport livraison">
+                    </td>
+                    <td>
+                      <input class="form-control depense-montant" type="number" min="0" step="0.01" name="depense_montant[]" value="0">
+                    </td>
+                    <td>
+                      <select class="form-select" name="depense_mode[]">
+                        <option value="espece">Espèce</option>
+                        <option value="virement">Virement</option>
+                        <option value="cheque">Chèque</option>
+                        <option value="carte">Carte</option>
+                      </select>
+                    </td>
+                    <td>
+                      <input class="form-control form-control-sm" type="file" name="depense_justificatif[]" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg">
+                    </td>
+                    <td>
+                      <button type="button" class="btn btn-sm btn-outline-danger removeDepenseLine" title="Supprimer">
+                        <i class="bi bi-x"></i>
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2">
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check2-circle me-1"></i> Valider (facture + BL)
+          </button>
+          <a href="{{ url_for('ventes.proforma_detail', id=proforma.id) }}" class="btn btn-outline-secondary">Annuler</a>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    var body = document.getElementById("depensesBody");
+    var addBtn = document.getElementById("addDepenseLine");
+    if (!body) return;
+
+    function bindRemove(btn) {
+      btn.addEventListener("click", function () {
+        var row = this.closest(".depense-row");
+        var all = body.querySelectorAll(".depense-row");
+        if (!row) return;
+        if (all.length > 1) {
+          row.remove();
+        } else {
+          row.querySelectorAll("input[type='text'], input[type='number']").forEach(function (i) {
+            i.value = i.name === "depense_montant[]" ? "0" : "";
+          });
+          var f = row.querySelector("input[type='file']");
+          if (f) f.value = "";
+        }
+      });
+    }
+
+    body.querySelectorAll(".removeDepenseLine").forEach(bindRemove);
+    if (addBtn) {
+      addBtn.addEventListener("click", function () {
+        var first = body.querySelector(".depense-row");
+        if (!first) return;
+        var clone = first.cloneNode(true);
+        clone.querySelectorAll("input[type='text']").forEach(function (i) { i.value = ""; });
+        clone.querySelectorAll("input[type='number']").forEach(function (i) { i.value = "0"; });
+        var f = clone.querySelector("input[type='file']");
+        if (f) f.value = "";
+        body.appendChild(clone);
+        var rm = clone.querySelector(".removeDepenseLine");
+        if (rm) bindRemove(rm);
+      });
+    }
+
+    var form = document.getElementById("convertirProformaForm");
+    if (form) {
+      form.addEventListener("submit", function (e) {
+        var err = "";
+        body.querySelectorAll(".depense-row").forEach(function (row) {
+          var mt = Number((row.querySelector("input[name='depense_montant[]']") || {}).value || 0);
+          var desc = ((row.querySelector("input[name='depense_description[]']") || {}).value || "").trim();
+          if ((mt > 0 || desc) && mt <= 0) {
+            err = "Chaque dépense renseignée doit avoir un montant HT supérieur à 0.";
+          }
+        });
+        if (err) {
+          e.preventDefault();
+          alert(err);
+        }
+      });
+    }
+  })();
+</script>
+{% endblock %}

@@ -121,6 +121,66 @@ def _creer_depense_liee_facture(
     return dep
 
 
+def _enregistrer_depenses_liees_depuis_form(facture: Facture, date_depense) -> int:
+    """Crée les dépenses liées saisies dans le formulaire vente / conversion proforma."""
+    dep_descriptions = request.form.getlist("depense_description[]")
+    dep_montants = request.form.getlist("depense_montant[]")
+    dep_modes = request.form.getlist("depense_mode[]")
+    dep_cat_ids = request.form.getlist("depense_categorie_id[]")
+    dep_justifs = request.files.getlist("depense_justificatif[]")
+    n_dep = max(
+        len(dep_descriptions),
+        len(dep_montants),
+        len(dep_cat_ids),
+        len(dep_modes),
+        len(dep_justifs),
+        0,
+    )
+    created = 0
+    cat_dep_default = _categorie_depense_vente()
+    for i in range(n_dep):
+        desc = (dep_descriptions[i] if i < len(dep_descriptions) else "").strip()
+        libelle = desc
+        cat_id = None
+        try:
+            cat_id = int(dep_cat_ids[i]) if i < len(dep_cat_ids) and dep_cat_ids[i] else None
+        except Exception:
+            cat_id = None
+        cat_dep = (
+            CategorieDepense.query.get(cat_id) if cat_id is not None else cat_dep_default
+        ) or cat_dep_default
+        cat_name = (cat_dep.nom or "").strip() if cat_dep else ""
+        if not libelle and cat_name:
+            libelle = cat_name
+        if not libelle:
+            continue
+        try:
+            montant_ht = float((dep_montants[i] if i < len(dep_montants) else "0") or 0)
+        except Exception:
+            montant_ht = 0.0
+        if montant_ht <= 0:
+            continue
+        mode = (dep_modes[i] if i < len(dep_modes) else "espece") or "espece"
+        if mode not in ("espece", "cheque", "virement", "carte"):
+            mode = "espece"
+        justif_file = dep_justifs[i] if i < len(dep_justifs) else None
+        if justif_file and not getattr(justif_file, "filename", None):
+            justif_file = None
+        if not cat_dep:
+            continue
+        _creer_depense_liee_facture(
+            facture=facture,
+            categorie=cat_dep,
+            libelle_base=libelle,
+            montant_ht=montant_ht,
+            mode_paiement=mode,
+            justificatif_file=justif_file,
+            date_depense=date_depense,
+        )
+        created += 1
+    return created
+
+
 def _libelle_base_depense_vente(libelle: str, facture_numero: str) -> str:
     suffix = f" (vente {facture_numero})"
     txt = (libelle or "").strip()
@@ -431,7 +491,7 @@ def nouvelle_vente():
 
                 db.session.commit()
                 flash(
-                    f'Proforma {numero} enregistrée seule. Vous pourrez la convertir en facture + bon de livraison plus tard.',
+                    f'Proforma {numero} enregistrée. Les dépenses liées seront demandées à la validation (conversion facture + BL).',
                     'success',
                 )
                 return redirect(
@@ -451,12 +511,6 @@ def nouvelle_vente():
             )
             livreur = (request.form.get('livreur') or '').strip() or None
             bl_notes = (request.form.get('notes_bl') or '').strip() or None
-            dep_libelles = request.form.getlist('depense_libelle[]')
-            dep_descriptions = request.form.getlist('depense_description[]')
-            dep_montants = request.form.getlist('depense_montant[]')
-            dep_modes = request.form.getlist('depense_mode[]')
-            dep_cat_ids = request.form.getlist('depense_categorie_id[]')
-            dep_justifs = request.files.getlist('depense_justificatif[]')
 
             numero_fact = _prochain_numero_facture(date_emission)
 
@@ -499,70 +553,7 @@ def nouvelle_vente():
             )
 
             # Dépenses d'accompagnement (transport, etc.) : enregistrées en base, non imprimées sur la facture.
-            dep_rows: list[dict] = []
-            n_dep = max(
-                len(dep_descriptions),
-                len(dep_montants),
-                len(dep_cat_ids),
-                len(dep_modes),
-                len(dep_justifs),
-            )
-            for i in range(n_dep):
-                desc = (dep_descriptions[i] if i < len(dep_descriptions) else "").strip()
-                libelle = desc
-                cat_id = None
-                try:
-                    cat_id = int(dep_cat_ids[i]) if i < len(dep_cat_ids) and dep_cat_ids[i] else None
-                except Exception:
-                    cat_id = None
-                cat_name = ""
-                if cat_id is not None:
-                    cat = CategorieDepense.query.get(cat_id)
-                    cat_name = (cat.nom or "").strip() if cat else ""
-                if not libelle and cat_name:
-                    libelle = cat_name
-                if not libelle:
-                    continue
-                montant_raw = dep_montants[i] if i < len(dep_montants) else "0"
-                try:
-                    montant_ht = float(montant_raw or 0)
-                except Exception:
-                    montant_ht = 0.0
-                if montant_ht <= 0:
-                    continue
-                mode = (dep_modes[i] if i < len(dep_modes) else "espece") or "espece"
-                if mode not in ("espece", "cheque", "virement", "carte"):
-                    mode = "espece"
-                justif_file = dep_justifs[i] if i < len(dep_justifs) else None
-                if justif_file and not justif_file.filename:
-                    justif_file = None
-                dep_rows.append(
-                    {
-                        "libelle": libelle,
-                        "montant_ht": montant_ht,
-                        "mode": mode,
-                        "cat_id": cat_id,
-                        "justificatif": justif_file,
-                    }
-                )
-
-            if dep_rows:
-                cat_dep_default = _categorie_depense_vente()
-                for row in dep_rows:
-                    cat_dep = (
-                        CategorieDepense.query.get(row["cat_id"])
-                        if row["cat_id"] is not None
-                        else cat_dep_default
-                    ) or cat_dep_default
-                    _creer_depense_liee_facture(
-                        facture=facture,
-                        categorie=cat_dep,
-                        libelle_base=row["libelle"],
-                        montant_ht=row["montant_ht"],
-                        mode_paiement=row["mode"],
-                        justificatif_file=row["justificatif"],
-                        date_depense=date_emission,
-                    )
+            _enregistrer_depenses_liees_depuis_form(facture, date_emission)
 
             db.session.commit()
             flash(
@@ -603,17 +594,39 @@ _STATUTS_PROFORMA = (
 )
 
 
+_STATUTS_PROFORMA_FILTRE = ('ouverts', 'tous') + _STATUTS_PROFORMA
+
+
 @ventes_bp.route('/proformas')
 @login_required
 @permission_required('ventes', 'read')
 def proformas():
     q = (request.args.get('q') or '').strip()
-    statut = (request.args.get('statut') or '').strip()
+    if 'statut' in request.args:
+        statut = (request.args.get('statut') or '').strip()
+    else:
+        statut = 'ouverts'
+    annee = request.args.get('annee', type=int)
+    mois = request.args.get('mois', type=int)
     page = request.args.get('page', 1, type=int)
     if page < 1:
         page = 1
-    if statut and statut not in _STATUTS_PROFORMA:
-        statut = ''
+    if statut not in _STATUTS_PROFORMA_FILTRE:
+        statut = 'ouverts'
+    if mois is not None and (mois < 1 or mois > 12):
+        mois = None
+
+    annees_dispo = [
+        int(y)
+        for (y,) in db.session.query(extract('year', Proforma.date_emission))
+        .filter(Proforma.date_emission.isnot(None))
+        .distinct()
+        .order_by(extract('year', Proforma.date_emission).desc())
+        .all()
+        if y is not None
+    ]
+    if annee and annee not in annees_dispo:
+        annee = None
 
     query = Proforma.query.options(joinedload(Proforma.client))
     if q:
@@ -624,8 +637,14 @@ def proformas():
                 Client.raison_sociale.ilike(pattern),
             )
         )
-    if statut:
+    if statut == 'ouverts':
+        query = query.filter(Proforma.statut != 'converti')
+    elif statut != 'tous':
         query = query.filter(Proforma.statut == statut)
+    if annee:
+        query = query.filter(extract('year', Proforma.date_emission) == annee)
+    if mois:
+        query = query.filter(extract('month', Proforma.date_emission) == mois)
 
     pagination = (
         query.order_by(
@@ -639,8 +658,14 @@ def proformas():
     filtres_url = {}
     if q:
         filtres_url['q'] = q
-    if statut:
+    if statut and statut != 'ouverts':
         filtres_url['statut'] = statut
+    if annee:
+        filtres_url['annee'] = annee
+    if mois:
+        filtres_url['mois'] = mois
+
+    has_filtres = bool(q or statut != 'ouverts' or annee or mois)
 
     return render_template(
         'ventes/proformas_index.html',
@@ -648,8 +673,14 @@ def proformas():
         pagination=pagination,
         q=q,
         statut_filtre=statut,
+        annee_filtre=annee,
+        mois_filtre=mois,
+        annees_dispo=annees_dispo,
+        mois_dispo=_MOIS_FILTRE,
         filtres_url=filtres_url,
+        has_filtres=has_filtres,
         statuts_proforma=_STATUTS_PROFORMA,
+        format_fcfa=format_montant_espace,
         has_cachet=has_cachet(),
     )
 
@@ -978,16 +1009,200 @@ def nouveau_proforma():
             db.session.rollback()
             flash(f"Erreur lors de l'enregistrement: {str(e)}", "danger")
 
-    return render_template('ventes/form_proforma.html', clients=clients, produits=produits, title="Nouveau Proforma")
+    return render_template(
+        'ventes/form_proforma.html',
+        clients=clients,
+        produits=produits,
+        proforma=None,
+        title="Nouveau Proforma",
+        form_action=url_for('ventes.nouveau_proforma'),
+    )
 
-@ventes_bp.route('/proformas/<int:id>/convertir', methods=['POST'])
+
+def _parse_proforma_post():
+    raw_client = request.form.get("client_id")
+    if not raw_client:
+        raise ValueError("Client requis.")
+    client_id = int(raw_client)
+    date_emission = datetime.strptime(request.form.get("date_emission"), "%Y-%m-%d").date()
+    date_validite = datetime.strptime(request.form.get("date_validite"), "%Y-%m-%d").date()
+    remise_globale = float(request.form.get("remise_globale", 0) or 0)
+    notes = request.form.get("notes") or ""
+
+    produit_ids = request.form.getlist("produit_id[]")
+    quantites = request.form.getlist("quantite[]")
+    prix_unitaires = request.form.getlist("prix_unitaire_ht[]")
+
+    lignes = []
+    total_ht_global = 0.0
+    tva_montant_global = 0.0
+    for i in range(len(produit_ids)):
+        if not produit_ids[i]:
+            continue
+        pid = int(produit_ids[i])
+        qte = int(quantites[i])
+        pu = float(prix_unitaires[i])
+        prod = Produit.query.get(pid)
+        if not prod:
+            raise ValueError(f"Produit {pid} introuvable.")
+        montant_ligne_ht = pu * qte
+        tva_ligne = montant_ligne_ht * (float(prod.tva) / 100)
+        total_ht_global += montant_ligne_ht
+        tva_montant_global += tva_ligne
+        lignes.append(
+            {
+                "produit_id": pid,
+                "quantite": qte,
+                "prix_unitaire_ht": pu,
+                "remise": 0,
+                "montant_ht": montant_ligne_ht,
+            }
+        )
+    if not lignes:
+        raise ValueError("Ajoutez au moins une ligne produit valide.")
+    return {
+        "client_id": client_id,
+        "date_emission": date_emission,
+        "date_validite": date_validite,
+        "remise_globale": remise_globale,
+        "notes": notes,
+        "lignes": lignes,
+        "total_ht_global": total_ht_global,
+        "tva_montant_global": tva_montant_global,
+    }
+
+
+def _apply_totals_to_proforma(proforma, data):
+    rem = data["remise_globale"]
+    total_ht_remise = data["total_ht_global"] * (1 - rem / 100)
+    tva_montant_remise = data["tva_montant_global"] * (1 - rem / 100)
+    proforma.client_id = data["client_id"]
+    proforma.date_emission = data["date_emission"]
+    proforma.date_validite = data["date_validite"]
+    proforma.remise_globale = rem
+    proforma.notes = data["notes"]
+    proforma.total_ht = total_ht_remise
+    proforma.tva_montant = tva_montant_remise
+    proforma.total_ttc = total_ht_remise + tva_montant_remise
+
+
+def _replace_lignes_proforma(proforma_id, lignes_specs):
+    LigneProforma.query.filter_by(proforma_id=proforma_id).delete(synchronize_session=False)
+    for spec in lignes_specs:
+        db.session.add(
+            LigneProforma(
+                proforma_id=proforma_id,
+                produit_id=spec["produit_id"],
+                quantite=spec["quantite"],
+                prix_unitaire_ht=spec["prix_unitaire_ht"],
+                remise=spec["remise"],
+                montant_ht=spec["montant_ht"],
+            )
+        )
+
+
+def _proforma_est_convertie(proforma: Proforma) -> bool:
+    if proforma.statut == "converti":
+        return True
+    return Facture.query.filter_by(proforma_id=proforma.id).first() is not None
+
+
+@ventes_bp.route("/proformas/<int:id>/modifier", methods=["GET", "POST"])
+@login_required
+@permission_required("ventes", "create")
+def modifier_proforma(id):
+    proforma = (
+        Proforma.query.options(joinedload(Proforma.lignes))
+        .filter_by(id=id)
+        .first_or_404()
+    )
+    if _proforma_est_convertie(proforma):
+        flash("Cette proforma a déjà été convertie : elle ne peut plus être modifiée.", "warning")
+        return redirect(url_for("ventes.proforma_detail", id=id))
+
+    clients = []
+    produits = Produit.query.filter_by(est_actif=True).order_by(Produit.designation).all()
+
+    if request.method == "POST":
+        try:
+            data = _parse_proforma_post()
+            _replace_lignes_proforma(proforma.id, data["lignes"])
+            _apply_totals_to_proforma(proforma, data)
+            db.session.commit()
+            flash(f"Proforma {proforma.numero} mise à jour.", "success")
+            return redirect(url_for("ventes.proforma_detail", id=proforma.id))
+        except ValueError as e:
+            db.session.rollback()
+            flash(str(e), "danger")
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Erreur lors de l'enregistrement : {e}", "danger")
+
+    return render_template(
+        "ventes/form_proforma.html",
+        clients=clients,
+        produits=produits,
+        proforma=proforma,
+        title=f"Modifier la proforma {proforma.numero}",
+        form_action=url_for("ventes.modifier_proforma", id=proforma.id),
+        client_initial_id=proforma.client_id,
+    )
+
+
+@ventes_bp.route("/proformas/<int:id>/supprimer", methods=["POST"])
+@login_required
+@permission_required("ventes", "create")
+def supprimer_proforma(id):
+    proforma = Proforma.query.get_or_404(id)
+    next_url = request.form.get("next") or request.referrer or url_for("ventes.proformas")
+    if _proforma_est_convertie(proforma):
+        flash("Impossible de supprimer une proforma déjà convertie en facture.", "warning")
+        return redirect(url_for("ventes.proforma_detail", id=id))
+    numero = proforma.numero
+    try:
+        db.session.delete(proforma)
+        db.session.commit()
+        flash(f"Proforma {numero} supprimée.", "info")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Suppression impossible : {e}", "danger")
+        return redirect(url_for("ventes.proforma_detail", id=id))
+    return redirect(next_url)
+
+
+@ventes_bp.route('/proformas/<int:id>/convertir', methods=['GET', 'POST'])
 @login_required
 @permission_required('ventes', 'update')
 def convertir_proforma(id):
-    proforma = Proforma.query.get_or_404(id)
-    if proforma.statut == 'converti':
+    proforma = (
+        Proforma.query.options(
+            joinedload(Proforma.client),
+            joinedload(Proforma.lignes).joinedload(LigneProforma.produit),
+        )
+        .filter_by(id=id)
+        .first_or_404()
+    )
+    if proforma.statut == 'converti' or Facture.query.filter_by(proforma_id=proforma.id).first():
         flash('Cette proforma a déjà été convertie en facture et bon de livraison.', 'warning')
-        return redirect(url_for('ventes.proformas'))
+        return redirect(url_for('ventes.proforma_detail', id=id))
+
+    today = dt.date.today()
+    depense_categories = CategorieDepense.query.order_by(CategorieDepense.nom).all()
+    default_depense_cat = get_categorie_by_code(CODE_VENTE_LIEE) or (
+        depense_categories[0] if depense_categories else None
+    )
+
+    if request.method == 'GET':
+        return render_template(
+            'ventes/convertir_proforma.html',
+            proforma=proforma,
+            today=today,
+            default_echeance=today + dt.timedelta(days=30),
+            depense_categories=depense_categories,
+            default_depense_cat_id=default_depense_cat.id if default_depense_cat else None,
+            format_fcfa=format_montant_espace,
+            affiche_tva=document_affiche_tva(proforma),
+        )
 
     try:
         client = proforma.client
@@ -995,9 +1210,19 @@ def convertir_proforma(id):
             flash('Client de la proforma introuvable.', 'danger')
             return redirect(url_for('ventes.proformas'))
 
-        today = dt.date.today()
+        raw_ech = (request.form.get('date_echeance') or '').strip()
+        date_echeance = (
+            datetime.strptime(raw_ech, '%Y-%m-%d').date()
+            if raw_ech
+            else today + dt.timedelta(days=30)
+        )
+        dl_str = request.form.get('date_livraison') or today.isoformat()
+        date_livraison = datetime.strptime(dl_str, '%Y-%m-%d').date()
+        adresse_liv = _adresse_livraison_client(client, request.form.get('adresse_livraison'))
+        livreur = (request.form.get('livreur') or '').strip() or None
+        bl_notes = (request.form.get('notes_bl') or '').strip() or (proforma.notes or '').strip() or None
+
         numero_fact = _prochain_numero_facture(today)
-        date_echeance = today + dt.timedelta(days=30)
 
         facture = Facture(
             numero=numero_fact,
@@ -1031,14 +1256,18 @@ def convertir_proforma(id):
         bl = assurer_bl_pour_facture(
             facture,
             statut="prepare",
-            date_livraison=today,
-            notes=(proforma.notes or "").strip() or None,
+            date_livraison=date_livraison,
+            adresse_override=adresse_liv,
+            livreur=livreur,
+            notes=bl_notes,
         )
+        nb_dep = _enregistrer_depenses_liees_depuis_form(facture, today)
 
         proforma.statut = 'converti'
         db.session.commit()
+        extra = f' {nb_dep} dépense(s) liée(s) enregistrée(s).' if nb_dep else ''
         flash(
-            f'Proforma convertie : facture et BL n° {numero_fact} créés (statut préparé).',
+            f'Proforma validée : facture et BL n° {numero_fact} créés (statut préparé).{extra}',
             'success',
         )
         return redirect(
@@ -1048,7 +1277,7 @@ def convertir_proforma(id):
         db.session.rollback()
         flash(f'Erreur lors de la conversion : {str(e)}', 'danger')
 
-    return redirect(url_for('ventes.proformas'))
+    return redirect(url_for('ventes.convertir_proforma', id=id))
 
 # --- CRUD Factures ---
 

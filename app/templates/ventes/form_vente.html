@@ -123,7 +123,7 @@
     <div>
       <h1 class="page-title">{{ title }}</h1>
       <p class="page-subtitle mb-0">
-        Vente directe → <strong>facture</strong> (émise) + <strong>bon de livraison</strong>. Mode proforma → devis seul, conversion facture + BL depuis la liste.
+        Vente directe → <strong>facture</strong> (émise) + <strong>bon de livraison</strong>. Mode proforma → devis seul, sans dépenses ; les dépenses liées sont demandées à la <strong>validation</strong> (conversion facture + BL).
       </p>
     </div>
     <div class="page-actions">
@@ -153,7 +153,7 @@
           <span class="badge rounded-pill text-bg-light text-dark border" data-step-pill="2">2. Lignes</span>
           <span class="badge rounded-pill text-bg-light text-dark border" data-step-pill="3">3. Paramètres</span>
           <span class="badge rounded-pill text-bg-light text-dark border" data-step-pill="4">4. Dépenses</span>
-          <span class="badge rounded-pill text-bg-light text-dark border" data-step-pill="5">5. Récapitulatif</span>
+          <span class="badge rounded-pill text-bg-light text-dark border" data-step-pill="5" id="pillRecap">5. Récapitulatif</span>
         </div>
       </div>
     </div>
@@ -174,7 +174,7 @@
         </div>
         <p class="small text-muted mb-0 mt-1" id="helpProforma">
           <span id="helpProformaOff">Décoché : enregistrement d’une <strong>vente ferme</strong> — génération automatique de la <strong>facture</strong> (statut émise) et du <strong>BL</strong> (préparé). Les PDF sont disponibles tout de suite.</span>
-          <span id="helpProformaOn" class="d-none">Coché : seule une <strong>proforma / devis</strong> est créée. Vous pourrez plus tard la convertir en <strong>facture + bon de livraison</strong> depuis la liste des proformas.</span>
+          <span id="helpProformaOn" class="d-none">Coché : seule une <strong>proforma / devis</strong> est créée, sans saisie de dépenses. À la validation, vous convertirez en <strong>facture + BL</strong> et renseignerez alors les dépenses liées.</span>
         </p>
       </div>
     </div>
@@ -420,7 +420,7 @@
       <div class="card shadow-sm mb-3 d-none" id="depensesProformaInfo">
         <div class="card-body">
           <p class="small text-muted mb-0">
-            Mode proforma : cette étape n’ajoute pas de dépenses. Vous pouvez poursuivre vers le récapitulatif.
+            Mode proforma : les dépenses liées ne sont pas saisies ici. Elles seront demandées au moment de la validation (conversion en facture + BL).
           </p>
         </div>
       </div>
@@ -473,9 +473,13 @@
       <div class="card shadow-sm mb-3">
         <div class="card-body">
           <h2 class="h6 mb-2">Récapitulatif final</h2>
-          <p class="text-muted small mb-0">
+          <p class="text-muted small mb-0" id="recapIntroFacture">
             Vérifiez les lignes et informations saisies avant validation.
             Les dépenses liées (transport/autres) sont enregistrées à part et ne figurent pas sur la facture client.
+          </p>
+          <p class="text-muted small mb-0 d-none" id="recapIntroProforma">
+            Vérifiez le devis avant enregistrement. Aucune dépense liée n’est demandée maintenant :
+            elles seront saisies à la validation de la proforma.
           </p>
         </div>
       </div>
@@ -541,7 +545,31 @@
       const btnPrevStep = document.getElementById("btnPrevStep");
       const btnNextStep = document.getElementById("btnNextStep");
       const recapContainer = document.getElementById("recapContainer");
+      const recapIntroFacture = document.getElementById("recapIntroFacture");
+      const recapIntroProforma = document.getElementById("recapIntroProforma");
+      const pillRecap = document.getElementById("pillRecap");
       let currentStep = 1;
+
+      function isProformaMode() {
+        return !!(chk && chk.checked);
+      }
+
+      function stepEnabled(n) {
+        if (n === 4 && isProformaMode()) return false;
+        return n >= 1 && n <= 5;
+      }
+
+      function nextStepFrom(from) {
+        var n = from + 1;
+        while (n <= 5 && !stepEnabled(n)) n++;
+        return n;
+      }
+
+      function prevStepFrom(from) {
+        var n = from - 1;
+        while (n >= 1 && !stepEnabled(n)) n--;
+        return n;
+      }
 
       function syncProformaMode() {
         const pro = chk && chk.checked;
@@ -568,13 +596,17 @@
         }
         if (blockVente) {
           blockVente.classList.toggle("d-none", pro);
-          blockVente.querySelectorAll("input, textarea").forEach(function (el) {
+          blockVente.querySelectorAll("input, textarea, select").forEach(function (el) {
             el.disabled = !!pro;
           });
         }
         if (depensesProformaInfo) {
-          depensesProformaInfo.classList.toggle("d-none", !pro);
+          depensesProformaInfo.classList.add("d-none");
         }
+        if (recapIntroFacture) recapIntroFacture.classList.toggle("d-none", pro);
+        if (recapIntroProforma) recapIntroProforma.classList.toggle("d-none", !pro);
+        if (pillRecap) pillRecap.textContent = pro ? "4. Récapitulatif" : "5. Récapitulatif";
+        if (pro && currentStep === 4) currentStep = 5;
         if (helpOn) helpOn.classList.toggle("d-none", !pro);
         if (helpOff) helpOff.classList.toggle("d-none", pro);
         if (btnLabel) {
@@ -589,17 +621,28 @@
         return 5;
       }
 
+      function visibleStepLabel(n) {
+        if (isProformaMode() && n === 5) return 4;
+        return n;
+      }
+
+      function visibleStepTotal() {
+        return isProformaMode() ? 4 : 5;
+      }
+
       function updateWizardUi() {
         const max = maxStep();
-        const modeTxt = (chk && chk.checked) ? "Proforma" : "Facture";
+        const modeTxt = isProformaMode() ? "Proforma" : "Facture";
+        if (!stepEnabled(currentStep)) currentStep = nextStepFrom(currentStep - 1);
         if (currentStep > max) currentStep = max;
         wizardSteps.forEach((stepEl) => {
           const stepN = Number(stepEl.getAttribute("data-step"));
-          stepEl.classList.toggle("d-none", stepN !== currentStep || stepN > max);
+          const show = stepEnabled(stepN) && stepN === currentStep;
+          stepEl.classList.toggle("d-none", !show);
         });
         stepPills.forEach((pill) => {
           const stepN = Number(pill.getAttribute("data-step-pill"));
-          if (stepN > max) {
+          if (!stepEnabled(stepN)) {
             pill.classList.add("d-none");
             return;
           }
@@ -610,17 +653,20 @@
           pill.classList.toggle("text-dark", !active);
           pill.classList.toggle("border", !active);
         });
-        const pct = Math.round((currentStep / max) * 100);
+        const vis = visibleStepLabel(currentStep);
+        const tot = visibleStepTotal();
+        const pct = Math.round((vis / tot) * 100);
         if (wizardProgress) wizardProgress.style.width = `${pct}%`;
-        if (wizardStepLabel) wizardStepLabel.textContent = `Étape ${currentStep} / ${max} — ${modeTxt}`;
+        if (wizardStepLabel) wizardStepLabel.textContent = `Étape ${vis} / ${tot} — ${modeTxt}`;
         if (wizardModeBadge) {
           wizardModeBadge.textContent = `Mode ${modeTxt}`;
           wizardModeBadge.classList.toggle("text-bg-primary", modeTxt === "Facture");
           wizardModeBadge.classList.toggle("text-bg-success", modeTxt === "Proforma");
         }
         if (btnPrevStep) btnPrevStep.classList.toggle("d-none", currentStep === 1);
-        if (btnNextStep) btnNextStep.classList.toggle("d-none", currentStep >= max);
-        if (btnSubmit) btnSubmit.classList.toggle("d-none", currentStep < max);
+        const isLast = nextStepFrom(currentStep) > 5;
+        if (btnNextStep) btnNextStep.classList.toggle("d-none", isLast);
+        if (btnSubmit) btnSubmit.classList.toggle("d-none", !isLast);
         if (btnSubmit) {
           btnSubmit.classList.toggle("btn-primary", modeTxt === "Facture");
           btnSubmit.classList.toggle("btn-success", modeTxt === "Proforma");
@@ -729,7 +775,7 @@
                     <tbody>${lignesMiniHtml}</tbody>
                   </table>
                 </div>
-                ${pro ? "" : `
+                ${pro ? `<p class="small text-muted mb-0 mt-3">Les dépenses liées seront demandées à la validation de la proforma.</p>` : `
                   <hr class="my-3">
                   <h3 class="h6 mb-2">Dépenses saisies</h3>
                   <div class="table-responsive">
@@ -969,8 +1015,9 @@
 
       if (btnPrevStep) {
         btnPrevStep.addEventListener("click", function () {
-          if (currentStep > 1) {
-            currentStep -= 1;
+          const prev = prevStepFrom(currentStep);
+          if (prev >= 1) {
+            currentStep = prev;
             updateWizardUi();
           }
         });
@@ -978,7 +1025,6 @@
 
       if (btnNextStep) {
         btnNextStep.addEventListener("click", function () {
-          const max = maxStep();
           if (currentStep === 2) {
             const nbLines = linesBody ? linesBody.querySelectorAll(".line-row").length : 0;
             if (!nbLines) {
@@ -986,8 +1032,9 @@
               return;
             }
           }
-          if (currentStep < max) {
-            currentStep += 1;
+          const nxt = nextStepFrom(currentStep);
+          if (nxt <= 5) {
+            currentStep = nxt;
             updateWizardUi();
           }
         });

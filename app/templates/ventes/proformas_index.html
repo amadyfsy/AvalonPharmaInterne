@@ -32,7 +32,7 @@
   <div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
     <div>
       <h1 class="page-title">Proformas</h1>
-      <p class="page-subtitle mb-0">Consultez, convertissez en facture + BL. Les filtres s’appliquent automatiquement.</p>
+      <p class="page-subtitle mb-0">Par défaut, seules les proformas non encore converties. Modifiez, supprimez ou filtrez comme les factures.</p>
     </div>
     <a href="{{ url_for('ventes.nouvelle_vente', mode='proforma') }}" class="btn btn-primary">
       <i class="bi bi-file-earmark-plus me-1"></i> Nouvelle proforma
@@ -42,25 +42,44 @@
   <div class="card shadow-sm border-0 mb-4">
     <div class="card-body">
       <form id="proformasFiltersForm" method="get" action="{{ url_for('ventes.proformas') }}" class="row g-3 align-items-end" role="search">
-        <div class="col-md-5 col-lg-6">
+        <div class="col-md-4 col-lg-3">
           <label class="form-label small text-muted mb-1" for="pfQ">Rechercher</label>
           <div class="input-group">
             <span class="input-group-text"><i class="bi bi-search"></i></span>
             <input type="search" class="form-control" id="pfQ" name="q" value="{{ q }}" placeholder="N° proforma, client…" autocomplete="off">
           </div>
         </div>
-        <div class="col-md-4 col-lg-3">
+        <div class="col-6 col-md-2 col-lg-2">
+          <label class="form-label small text-muted mb-1" for="pfAnnee">Année</label>
+          <select class="form-select" id="pfAnnee" name="annee">
+            <option value="" {% if not annee_filtre %}selected{% endif %}>Toutes</option>
+            {% for y in annees_dispo %}
+              <option value="{{ y }}" {% if annee_filtre == y %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-md-2 col-lg-2">
+          <label class="form-label small text-muted mb-1" for="pfMois">Mois</label>
+          <select class="form-select" id="pfMois" name="mois">
+            <option value="" {% if not mois_filtre %}selected{% endif %}>Tous</option>
+            {% for m, label in mois_dispo %}
+              <option value="{{ m }}" {% if mois_filtre == m %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3 col-lg-3">
           <label class="form-label small text-muted mb-1" for="pfStatut">Statut</label>
-          <select class="form-select" id="pfStatut" name="statut" onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()">
-            <option value="" {% if not statut_filtre %}selected{% endif %}>Tous les statuts</option>
+          <select class="form-select" id="pfStatut" name="statut">
+            <option value="ouverts" {% if statut_filtre == 'ouverts' %}selected{% endif %}>Non converties</option>
+            <option value="tous" {% if statut_filtre == 'tous' %}selected{% endif %}>Tous les statuts</option>
             {% for st in statuts_proforma %}
               <option value="{{ st }}" {% if statut_filtre == st %}selected{% endif %}>{{ libelle_statut_proforma(st) }}</option>
             {% endfor %}
           </select>
         </div>
-        <div class="col-md-3 col-lg-3 d-flex align-items-end">
-          {% if q or statut_filtre %}
-            <a href="{{ url_for('ventes.proformas') }}" class="btn btn-outline-secondary">Tout afficher</a>
+        <div class="col-md-1 col-lg-2 d-flex align-items-end">
+          {% if has_filtres %}
+            <a href="{{ url_for('ventes.proformas') }}" class="btn btn-outline-secondary">Réinitialiser</a>
           {% endif %}
         </div>
       </form>
@@ -68,7 +87,12 @@
         {% if pagination.total %}
           <strong>{{ pagination.total }}</strong> proforma(s)
           {% if q %} pour « {{ q }} »{% endif %}
-          {% if statut_filtre %} · statut : {{ libelle_statut_proforma(statut_filtre) }}{% endif %}
+          {% if annee_filtre %} · année {{ annee_filtre }}{% endif %}
+          {% if mois_filtre %} · {{ mois_dispo[mois_filtre - 1][1]|lower }}{% endif %}
+          {% if statut_filtre == 'ouverts' %} · non converties
+          {% elif statut_filtre == 'tous' %} · tous les statuts
+          {% elif statut_filtre %} · statut : {{ libelle_statut_proforma(statut_filtre) }}
+          {% endif %}
           {% if pagination.pages > 1 %} · page {{ pagination.page }}/{{ pagination.pages }}{% endif %}
         {% else %}
           Aucune proforma ne correspond aux critères.
@@ -88,7 +112,7 @@
               <th>Date</th>
               <th class="text-end">Total TTC</th>
               <th>Statut</th>
-              <th class="text-end" style="min-width:220px;">Actions</th>
+              <th class="text-end" style="min-width:260px;">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -101,13 +125,18 @@
                 </td>
                 <td>{{ p.client.raison_sociale if p.client else '—' }}</td>
                 <td>{{ p.date_emission.strftime('%d/%m/%Y') if p.date_emission else '' }}</td>
-                <td class="text-end">{{ "%.0f"|format(p.total_ttc) if p.total_ttc is not none else '—' }}</td>
+                <td class="text-end">{{ format_fcfa(p.total_ttc) if p.total_ttc is not none else '—' }}</td>
                 <td>{{ badge_statut_proforma(p.statut) }}</td>
                 <td class="text-end">
                   <div class="btn-group btn-group-sm" role="group">
                     <a class="btn btn-outline-secondary" href="{{ url_for('ventes.proforma_detail', id=p.id) }}" title="Voir">
                       <i class="bi bi-eye"></i>
                     </a>
+                    {% if p.statut != 'converti' %}
+                      <a class="btn btn-outline-primary" href="{{ url_for('ventes.modifier_proforma', id=p.id) }}" title="Modifier">
+                        <i class="bi bi-pencil"></i>
+                      </a>
+                    {% endif %}
                     <a class="btn btn-outline-primary js-facture-print"
                        href="{{ url_for('ventes.proforma_imprimer', id=p.id) }}"
                        data-doc-type="proforma"
@@ -125,9 +154,14 @@
                       <i class="bi bi-file-earmark-pdf"></i>
                     </a>
                     {% if p.statut != 'converti' %}
-                      <form method="post" action="{{ url_for('ventes.convertir_proforma', id=p.id) }}" class="d-inline" onsubmit="return confirm('Créer la facture (émise) et le bon de livraison à partir de cette proforma ?');">
-                        <button class="btn btn-primary" type="submit" title="Facture + BL">
-                          <i class="bi bi-arrow-repeat"></i>
+                      <a class="btn btn-primary" href="{{ url_for('ventes.convertir_proforma', id=p.id) }}" title="Valider (facture + BL)">
+                        <i class="bi bi-arrow-repeat"></i>
+                      </a>
+                      <form method="post" action="{{ url_for('ventes.supprimer_proforma', id=p.id) }}" class="d-inline"
+                            onsubmit="return confirm('Supprimer définitivement la proforma {{ p.numero }} ?');">
+                        <input type="hidden" name="next" value="{{ request.full_path }}">
+                        <button class="btn btn-outline-danger" type="submit" title="Supprimer">
+                          <i class="bi bi-trash"></i>
                         </button>
                       </form>
                     {% endif %}
@@ -138,9 +172,16 @@
               <tr>
                 <td colspan="6" class="text-center text-muted py-5">
                   <i class="bi bi-inbox d-block fs-2 mb-2 opacity-50"></i>
-                  {% if q or statut_filtre %}
+                  {% if has_filtres %}
                     Aucune proforma ne correspond aux filtres.
-                    <div class="mt-2"><a href="{{ url_for('ventes.proformas') }}">Voir toutes les proformas</a></div>
+                    <div class="mt-2"><a href="{{ url_for('ventes.proformas') }}">Voir les non converties</a>
+                      · <a href="{{ url_for('ventes.proformas', statut='tous') }}">Voir toutes</a></div>
+                  {% elif statut_filtre == 'ouverts' %}
+                    Aucune proforma en attente de conversion.
+                    <div class="mt-2">
+                      <a href="{{ url_for('ventes.nouvelle_vente', mode='proforma') }}">Créer une proforma</a>
+                      · <a href="{{ url_for('ventes.proformas', statut='tous') }}">Voir aussi les converties</a>
+                    </div>
                   {% else %}
                     Aucune proforma. <a href="{{ url_for('ventes.nouvelle_vente', mode='proforma') }}">Créer une proforma</a>.
                   {% endif %}
@@ -205,6 +246,10 @@
     search.addEventListener('search', function () {
       clearTimeout(t);
       submitForm();
+    });
+    ['pfAnnee', 'pfMois', 'pfStatut'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('change', submitForm);
     });
   })();
 </script>

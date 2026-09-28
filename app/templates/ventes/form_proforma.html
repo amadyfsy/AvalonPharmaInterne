@@ -1,14 +1,26 @@
 {% extends "base.html" %}
 
-{% block title %}Nouveau Proforma - Medical ERP{% endblock %}
+{% block title %}{{ title }} — Avalon Pharma{% endblock %}
 
 {% block content %}
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h4 mb-0">Nouvelle proforma</h1>
-    <a href="{{ url_for('ventes.proformas') }}" class="btn btn-secondary btn-sm">Retour</a>
+  <div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+      <nav aria-label="fil d'ariane">
+        <ol class="breadcrumb mb-2">
+          <li class="breadcrumb-item"><a href="{{ url_for('ventes.proformas') }}">Proformas</a></li>
+          <li class="breadcrumb-item active" aria-current="page">{{ title }}</li>
+        </ol>
+      </nav>
+      <h1 class="page-title mb-0">{{ title }}</h1>
+    </div>
+    {% if proforma %}
+      <a href="{{ url_for('ventes.proforma_detail', id=proforma.id) }}" class="btn btn-outline-secondary btn-sm">Annuler / Fiche</a>
+    {% else %}
+      <a href="{{ url_for('ventes.proformas') }}" class="btn btn-outline-secondary btn-sm">Retour liste</a>
+    {% endif %}
   </div>
 
-  <form method="post" id="proformaForm">
+  <form method="post" id="proformaForm" action="{{ form_action }}">
     <div class="row g-3 mb-3">
       <div class="col-12 col-md-6">
         {% include 'partials/_client_picker.html' %}
@@ -16,31 +28,39 @@
 
       <div class="col-12 col-md-3">
         <label class="form-label">Date émission</label>
-        <input class="form-control" type="date" name="date_emission" required>
+        <input class="form-control" type="date" name="date_emission" required
+               value="{{ proforma.date_emission.strftime('%Y-%m-%d') if proforma and proforma.date_emission else '' }}">
       </div>
 
       <div class="col-12 col-md-3">
         <label class="form-label">Date validité</label>
-        <input class="form-control" type="date" name="date_validite" required>
+        <input class="form-control" type="date" name="date_validite" required
+               value="{{ proforma.date_validite.strftime('%Y-%m-%d') if proforma and proforma.date_validite else '' }}">
       </div>
 
       <div class="col-12 col-md-4">
         <label class="form-label">Remise globale (%)</label>
-        <input class="form-control" type="number" step="0.01" name="remise_globale" value="0">
+        <input class="form-control" type="number" step="0.01" name="remise_globale"
+               value="{{ proforma.remise_globale if proforma else 0 }}">
       </div>
 
       <div class="col-12 col-md-8">
         <label class="form-label">Notes</label>
-        <textarea class="form-control" name="notes" rows="2"></textarea>
+        <textarea class="form-control" name="notes" rows="2">{{ proforma.notes if proforma else '' }}</textarea>
       </div>
     </div>
 
     <div class="card shadow-sm mb-3">
       <div class="card-header d-flex justify-content-between align-items-center">
         <span>Lignes</span>
-        <button type="button" class="btn btn-outline-primary btn-sm" id="addLine">
-          <i class="bi bi-plus-lg me-1"></i> Ajouter une ligne
-        </button>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-outline-success btn-sm" data-bs-toggle="modal" data-bs-target="#produitRapideModal">
+            <i class="bi bi-lightning-charge me-1"></i> Produit rapide
+          </button>
+          <button type="button" class="btn btn-outline-primary btn-sm" id="addLine">
+            <i class="bi bi-plus-lg me-1"></i> Ajouter une ligne
+          </button>
+        </div>
       </div>
       <div class="card-body">
         <div class="table-responsive">
@@ -54,29 +74,57 @@
               </tr>
             </thead>
             <tbody id="linesBody">
-              <tr class="line-row">
-                <td>
-                  <select class="form-select" name="produit_id[]" required>
-                    <option value="" disabled selected>Choisir...</option>
-                    {% for p in produits %}
-                      <option value="{{ p.id }}">{{ p.reference }} - {{ p.designation }}</option>
-                    {% else %}
-                      <option value="" disabled>Aucun produit</option>
-                    {% endfor %}
-                  </select>
-                </td>
-                <td>
-                  <input class="form-control" type="number" min="1" name="quantite[]" value="1" required>
-                </td>
-                <td>
-                  <input class="form-control" type="number" step="0.01" min="0" name="prix_unitaire_ht[]" required>
-                </td>
-                <td>
-                  <button type="button" class="btn btn-sm btn-outline-danger removeLine" title="Supprimer">
-                    <i class="bi bi-x"></i>
-                  </button>
-                </td>
-              </tr>
+              {% if proforma and proforma.lignes %}
+                {% for l in proforma.lignes|sort(attribute='id') %}
+                  <tr class="line-row">
+                    <td>
+                      <select class="form-select" name="produit_id[]" required>
+                        <option value="" disabled>Choisir...</option>
+                        {% for p in produits %}
+                          <option value="{{ p.id }}" {% if l.produit_id == p.id %}selected{% endif %}>{{ p.reference }} - {{ p.designation }}</option>
+                        {% else %}
+                          <option value="" disabled>Aucun produit</option>
+                        {% endfor %}
+                      </select>
+                    </td>
+                    <td>
+                      <input class="form-control" type="number" min="1" name="quantite[]" value="{{ l.quantite }}" required>
+                    </td>
+                    <td>
+                      <input class="form-control" type="number" step="0.01" min="0" name="prix_unitaire_ht[]" value="{{ l.prix_unitaire_ht }}" required>
+                    </td>
+                    <td>
+                      <button type="button" class="btn btn-sm btn-outline-danger removeLine" title="Supprimer">
+                        <i class="bi bi-x"></i>
+                      </button>
+                    </td>
+                  </tr>
+                {% endfor %}
+              {% else %}
+                <tr class="line-row">
+                  <td>
+                    <select class="form-select" name="produit_id[]" required>
+                      <option value="" disabled selected>Choisir...</option>
+                      {% for p in produits %}
+                        <option value="{{ p.id }}">{{ p.reference }} - {{ p.designation }}</option>
+                      {% else %}
+                        <option value="" disabled>Aucun produit</option>
+                      {% endfor %}
+                    </select>
+                  </td>
+                  <td>
+                    <input class="form-control" type="number" min="1" name="quantite[]" value="1" required>
+                  </td>
+                  <td>
+                    <input class="form-control" type="number" step="0.01" min="0" name="prix_unitaire_ht[]" required>
+                  </td>
+                  <td>
+                    <button type="button" class="btn btn-sm btn-outline-danger removeLine" title="Supprimer">
+                      <i class="bi bi-x"></i>
+                    </button>
+                  </td>
+                </tr>
+              {% endif %}
             </tbody>
           </table>
         </div>
@@ -93,74 +141,84 @@
   <script>
     (function () {
       const apiBase = "/ventes/api/produits/";
-      const form = document.getElementById("proformaForm");
       const linesBody = document.getElementById("linesBody");
       const addBtn = document.getElementById("addLine");
+      const clientSelect = document.getElementById("clientSelect");
+
+      {% if proforma and proforma.client_id %}
+      if (clientSelect) {
+        clientSelect.value = "{{ proforma.client_id }}";
+      }
+      {% endif %}
+
+      function bindRemove(btn) {
+        btn.addEventListener("click", function () {
+          const row = this.closest(".line-row");
+          const rows = document.querySelectorAll(".line-row");
+          if (row && rows.length > 1) row.remove();
+        });
+      }
 
       function updatePriceForRow(row) {
         const select = row.querySelector("select[name='produit_id[]']");
         const priceInput = row.querySelector("input[name='prix_unitaire_ht[]']");
         if (!select || !priceInput) return;
 
-        const attach = () => {
-          select.addEventListener("change", async function () {
-            const id = select.value;
-            if (!id) { priceInput.value = ""; return; }
-
-            try {
-              const res = await fetch(apiBase + id);
-              if (!res.ok) throw new Error("API error");
-              const data = await res.json();
-              priceInput.value = data.prix_vente_ht ?? "";
-            } catch (e) {
-              // silently ignore to not block the user
-            }
-          });
-        };
-
-        attach();
+        select.addEventListener("change", async function () {
+          const id = select.value;
+          if (!id) { priceInput.value = ""; return; }
+          try {
+            const res = await fetch(apiBase + id);
+            if (!res.ok) throw new Error("API error");
+            const data = await res.json();
+            priceInput.value = data.prix_vente_ht ?? "";
+          } catch (e) {
+            /* ignore */
+          }
+        });
       }
 
       function updateAllRows() {
         document.querySelectorAll(".line-row").forEach(updatePriceForRow);
       }
 
+      linesBody.querySelectorAll(".removeLine").forEach(bindRemove);
+
       addBtn.addEventListener("click", function () {
         const firstRow = document.querySelector(".line-row");
         const newRow = firstRow.cloneNode(true);
-
-        newRow.querySelectorAll("input").forEach(i => {
-          if (i.name === "quantite[]" ) i.value = 1;
+        newRow.querySelectorAll("input").forEach(function (i) {
+          if (i.name === "quantite[]") i.value = 1;
           if (i.name === "prix_unitaire_ht[]") i.value = "";
         });
-
-        newRow.querySelectorAll("select").forEach(s => {
-          s.selectedIndex = 0;
-        });
-
+        newRow.querySelectorAll("select").forEach(function (s) { s.selectedIndex = 0; });
         linesBody.appendChild(newRow);
-
-        // re-attach events for price auto-fill
         updatePriceForRow(newRow);
-        // re-attach remove line handlers
         const removeBtn = newRow.querySelector(".removeLine");
-        if (removeBtn) {
-          removeBtn.addEventListener("click", function () {
-            const row = this.closest(".line-row");
-            if (row) row.remove();
-          });
-        }
-      });
-
-      linesBody.querySelectorAll(".removeLine").forEach(btn => {
-        btn.addEventListener("click", function () {
-          const row = this.closest(".line-row");
-          if (row) row.remove();
-        });
+        if (removeBtn) bindRemove(removeBtn);
       });
 
       updateAllRows();
+
+      window.onProduitRapideCreated = function (p) {
+        if (!p || !p.id) return;
+        var label = (p.reference || '') + ' - ' + (p.designation || '');
+        document.querySelectorAll("select[name='produit_id[]']").forEach(function (sel) {
+          var opt = document.createElement('option');
+          opt.value = String(p.id);
+          opt.textContent = label;
+          sel.appendChild(opt);
+        });
+        var last = document.querySelector('.line-row:last-child select[name="produit_id[]"]');
+        var lastPrice = document.querySelector('.line-row:last-child input[name="prix_unitaire_ht[]"]');
+        if (last) {
+          last.value = String(p.id);
+          last.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        if (lastPrice) lastPrice.value = String(p.prix_vente_ht || 0);
+      };
     })();
   </script>
+  {% set produit_rapide_mode = 'callback' %}
+  {% include 'partials/_produit_rapide_modal.html' %}
 {% endblock %}
-

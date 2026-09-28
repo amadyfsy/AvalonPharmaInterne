@@ -55,10 +55,16 @@
         <i class="bi bi-printer me-1"></i> Aperçu
       </a>
       {% if proforma.statut != 'converti' %}
-        <form method="post" action="{{ url_for('ventes.convertir_proforma', id=proforma.id) }}" class="d-inline"
-              onsubmit="return confirm('Créer la facture (émise) et le bon de livraison à partir de cette proforma ?');">
-          <button class="btn btn-primary" type="submit">
-            <i class="bi bi-arrow-repeat me-1"></i> Convertir en facture + BL
+        <a href="{{ url_for('ventes.modifier_proforma', id=proforma.id) }}" class="btn btn-outline-primary">
+          <i class="bi bi-pencil me-1"></i> Modifier
+        </a>
+        <a href="{{ url_for('ventes.convertir_proforma', id=proforma.id) }}" class="btn btn-primary">
+          <i class="bi bi-arrow-repeat me-1"></i> Valider (facture + BL)
+        </a>
+        <form method="post" action="{{ url_for('ventes.supprimer_proforma', id=proforma.id) }}" class="d-inline"
+              onsubmit="return confirm('Supprimer définitivement la proforma {{ proforma.numero }} ?');">
+          <button class="btn btn-outline-danger" type="submit">
+            <i class="bi bi-trash me-1"></i> Supprimer
           </button>
         </form>
       {% endif %}
@@ -172,11 +178,10 @@
           Voir facture {{ facture_issue.numero }}
         </a>
       {% else %}
-        <p class="mb-2 text-muted">Pas encore convertie en facture + bon de livraison.</p>
-        <form method="post" action="{{ url_for('ventes.convertir_proforma', id=proforma.id) }}" class="d-inline"
-              onsubmit="return confirm('Créer la facture (émise) et le bon de livraison à partir de cette proforma ?');">
-          <button class="btn btn-primary btn-sm" type="submit">Convertir maintenant</button>
-        </form>
+        <p class="mb-2 text-muted">Pas encore validée. Les dépenses liées seront demandées à cette étape.</p>
+        <a href="{{ url_for('ventes.convertir_proforma', id=proforma.id) }}" class="btn btn-primary btn-sm">
+          Valider maintenant
+        </a>
       {% endif %}
     </div>
   </div>
