@@ -39,11 +39,11 @@
         <i class="bi bi-receipt"></i>
         <span>Factures</span>
       </a>
-      <a href="{{ url_for('clients.index') }}" class="nav-link{% if request.endpoint and request.endpoint.startswith('clients.') and request.endpoint != 'clients.tous_les_paiements' %} active{% endif %}">
+      <a href="{{ url_for('clients.index') }}" class="nav-link{% if request.endpoint and request.endpoint.startswith('clients.') and request.endpoint not in ('clients.tous_les_paiements', 'clients.paiement_detail') %} active{% endif %}">
         <i class="bi bi-people"></i>
         <span>Clients</span>
       </a>
-      <a href="{{ url_for('clients.tous_les_paiements') }}" class="nav-link{% if request.endpoint == 'clients.tous_les_paiements' %} active{% endif %}">
+      <a href="{{ url_for('clients.tous_les_paiements') }}" class="nav-link{% if request.endpoint in ('clients.tous_les_paiements', 'clients.paiement_detail') %} active{% endif %}">
         <i class="bi bi-cash-stack"></i>
         <span>Paiements</span>
       </a>

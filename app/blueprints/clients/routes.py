@@ -1,6 +1,7 @@
 import os
 from datetime import date, datetime
 from decimal import Decimal, ROUND_HALF_UP
+from types import SimpleNamespace
 from typing import Optional
 
 from sqlalchemy import extract, func, or_
@@ -19,7 +20,7 @@ from ...utils.paiement_justificatif import (
 from flask_login import current_user, login_required
 from sqlalchemy.orm import joinedload
 
-from flask import flash, jsonify, redirect, render_template, request, send_file, url_for
+from flask import abort, flash, jsonify, redirect, render_template, request, send_file, url_for
 
 from . import clients_bp
 from .forms import ClientForm
@@ -70,6 +71,51 @@ def recalculer_facture_apres_paiements(facture: Facture) -> None:
             facture.statut = "partiellement_payee"
         else:
             facture.statut = "emise"
+
+
+def _grouper_encaissements(lignes) -> list:
+    """Une ligne par encaissement (référence), montant = somme réellement encaissée."""
+    groupes: dict[str, dict] = {}
+    ordre: list[str] = []
+    for p in lignes:
+        ref = p.reference
+        g = groupes.get(ref)
+        if g is None:
+            g = {
+                "reference": ref,
+                "date_paiement": p.date_paiement,
+                "client": getattr(p, "client", None),
+                "client_id": p.client_id,
+                "mode_paiement": p.mode_paiement,
+                "montant": Decimal("0.00"),
+                "justificatif": p.justificatif,
+                "facture_ids": set(),
+            }
+            groupes[ref] = g
+            ordre.append(ref)
+        g["montant"] = _q2(g["montant"] + Decimal(p.montant or 0))
+        if p.date_paiement and (g["date_paiement"] is None or p.date_paiement < g["date_paiement"]):
+            g["date_paiement"] = p.date_paiement
+        if p.justificatif and not g["justificatif"]:
+            g["justificatif"] = p.justificatif
+        if p.facture_id:
+            g["facture_ids"].add(p.facture_id)
+    out = []
+    for ref in ordre:
+        g = groupes[ref]
+        out.append(
+            SimpleNamespace(
+                reference=g["reference"],
+                date_paiement=g["date_paiement"],
+                client=g["client"],
+                client_id=g["client_id"],
+                mode_paiement=g["mode_paiement"],
+                montant=g["montant"],
+                justificatif=g["justificatif"],
+                nb_factures=len(g["facture_ids"]),
+            )
+        )
+    return out
 
 
 def _paiement_ref(year: int) -> str:
@@ -240,11 +286,7 @@ def tous_les_paiements():
     if annee and annee not in annees_dispo:
         annee = None
 
-    query = PaiementClient.query.options(
-        joinedload(PaiementClient.client),
-        joinedload(PaiementClient.facture),
-        joinedload(PaiementClient.createur),
-    )
+    query = PaiementClient.query
 
     if client_id:
         query = query.filter(PaiementClient.client_id == client_id)
@@ -266,21 +308,19 @@ def tous_les_paiements():
 
     if q:
         like = f"%{q}%"
-        query = query.join(Client, PaiementClient.client_id == Client.id).outerjoin(
-            Facture, PaiementClient.facture_id == Facture.id
-        ).filter(
+        query = query.filter(
             or_(
                 PaiementClient.reference.ilike(like),
-                Client.raison_sociale.ilike(like),
-                Facture.numero.ilike(like),
+                PaiementClient.client.has(Client.raison_sociale.ilike(like)),
+                PaiementClient.facture.has(Facture.numero.ilike(like)),
             )
-        ).distinct()
+        )
 
     totaux = (
         query.enable_eagerloads(False)
         .order_by(None)
         .with_entities(
-            func.count(func.distinct(PaiementClient.id)),
+            func.count(func.distinct(PaiementClient.reference)),
             func.coalesce(func.sum(PaiementClient.montant), 0),
             func.count(func.distinct(PaiementClient.client_id)),
         )
@@ -290,10 +330,41 @@ def tous_les_paiements():
     total_encaisse = _q2(Decimal(totaux[1] or 0))
     nb_clients = int(totaux[2] or 0)
 
-    pagination = query.order_by(
-        PaiementClient.date_paiement.desc(),
-        PaiementClient.id.desc(),
-    ).paginate(page=page, per_page=PAIEMENTS_PAR_PAGE, error_out=False)
+    grouped = (
+        query.with_entities(
+            PaiementClient.reference.label("reference"),
+            func.min(PaiementClient.date_paiement).label("date_paiement"),
+            func.min(PaiementClient.client_id).label("client_id"),
+            func.min(PaiementClient.mode_paiement).label("mode_paiement"),
+            func.coalesce(func.sum(PaiementClient.montant), 0).label("montant"),
+            func.max(PaiementClient.justificatif).label("justificatif"),
+            func.count(func.distinct(PaiementClient.facture_id)).label("nb_factures"),
+        )
+        .group_by(PaiementClient.reference)
+        .order_by(
+            func.min(PaiementClient.date_paiement).desc(),
+            PaiementClient.reference.desc(),
+        )
+    )
+    pagination = grouped.paginate(page=page, per_page=PAIEMENTS_PAR_PAGE, error_out=False)
+    client_ids = {row.client_id for row in pagination.items if row.client_id}
+    clients_map = (
+        {c.id: c for c in Client.query.filter(Client.id.in_(client_ids)).all()}
+        if client_ids
+        else {}
+    )
+    paiements_page = [
+        SimpleNamespace(
+            reference=row.reference,
+            date_paiement=row.date_paiement,
+            client=clients_map.get(row.client_id),
+            mode_paiement=row.mode_paiement,
+            montant=row.montant,
+            justificatif=row.justificatif,
+            nb_factures=int(row.nb_factures or 0),
+        )
+        for row in pagination.items
+    ]
 
     clients_filtre = (
         Client.query.join(PaiementClient, PaiementClient.client_id == Client.id)
@@ -326,7 +397,7 @@ def tous_les_paiements():
 
     return render_template(
         'clients/tous_les_paiements.html',
-        paiements=pagination.items,
+        paiements=paiements_page,
         pagination=pagination,
         total_encaisse=total_encaisse,
         nb_paiements=nb_paiements,
@@ -356,25 +427,22 @@ def tous_les_paiements():
 def paiements(id):
     client = Client.query.get_or_404(id)
     paiements_list = (
-        PaiementClient.query.options(joinedload(PaiementClient.facture))
+        PaiementClient.query.options(
+            joinedload(PaiementClient.facture),
+            joinedload(PaiementClient.client),
+        )
         .filter_by(client_id=client.id)
         .order_by(PaiementClient.date_paiement.desc(), PaiementClient.id.desc())
         .all()
     )
     total_encaisse = _q2(sum(Decimal(p.montant or 0) for p in paiements_list))
-    factures_client = (
-        Facture.query.filter_by(client_id=client.id)
-        .order_by(Facture.numero.desc())
-        .all()
-    )
+    encaissements = _grouper_encaissements(paiements_list)
     return render_template(
         'clients/paiements.html',
         client=client,
-        paiements=paiements_list,
+        paiements=encaissements,
         total_encaisse=total_encaisse,
         mode_labels=MODE_PAIEMENT_LABELS,
-        modes_autorises=MODES_PAIEMENT_AUTORISES,
-        factures_client=factures_client,
         today=date.today(),
     )
 
@@ -505,6 +573,43 @@ def encaisser(id):
     return redirect(next_url)
 
 
+@clients_bp.route('/paiements/encaissement/<reference>')
+@login_required
+@permission_required('ventes', 'read')
+def paiement_detail(reference):
+    lignes = (
+        PaiementClient.query.options(
+            joinedload(PaiementClient.client),
+            joinedload(PaiementClient.facture),
+            joinedload(PaiementClient.createur),
+        )
+        .filter(PaiementClient.reference == reference)
+        .order_by(PaiementClient.id.asc())
+        .all()
+    )
+    if not lignes:
+        abort(404)
+    entete = lignes[0]
+    montant_total = _q2(sum(Decimal(p.montant or 0) for p in lignes))
+    justificatif = next((p.justificatif for p in lignes if p.justificatif), None)
+    factures_client = (
+        Facture.query.filter_by(client_id=entete.client_id)
+        .order_by(Facture.numero.desc())
+        .all()
+    )
+    return render_template(
+        'clients/paiement_detail.html',
+        reference=reference,
+        lignes=lignes,
+        entete=entete,
+        montant_total=montant_total,
+        justificatif=justificatif,
+        mode_labels=MODE_PAIEMENT_LABELS,
+        factures_client=factures_client,
+        today=date.today(),
+    )
+
+
 @clients_bp.route('/paiements/<int:id>/modifier', methods=['POST'])
 @login_required
 @permission_required('ventes', 'update')
@@ -592,8 +697,17 @@ def supprimer_paiement(id):
     ref = paiement.reference
     next_url = request.form.get('next') or request.referrer or url_for('clients.paiements', id=old_client_id)
 
+    partage_justificatif = False
     if paiement.justificatif:
-        remove_paiement_justificatif_file(paiement.justificatif)
+        partage_justificatif = (
+            PaiementClient.query.filter(
+                PaiementClient.id != paiement.id,
+                PaiementClient.justificatif == paiement.justificatif,
+            ).count()
+            > 0
+        )
+        if not partage_justificatif:
+            remove_paiement_justificatif_file(paiement.justificatif)
 
     db.session.delete(paiement)
     db.session.flush()
@@ -603,7 +717,14 @@ def supprimer_paiement(id):
     _recompute_client_solde(old_client_id)
 
     db.session.commit()
-    flash(f"Paiement {ref} supprimé.", "info")
+    reste = PaiementClient.query.filter_by(reference=ref).count()
+    detail_url = url_for('clients.paiement_detail', reference=ref)
+    if reste == 0 and next_url == detail_url:
+        next_url = url_for('clients.tous_les_paiements')
+    flash(
+        f"Paiement {ref} supprimé." if reste == 0 else f"Affectation du paiement {ref} supprimée.",
+        "info",
+    )
     return redirect(next_url)
 
 

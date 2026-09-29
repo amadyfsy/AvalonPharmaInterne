@@ -31,7 +31,7 @@
         <div class="card-body">
           <div class="text-muted small">Total encaissé (historique)</div>
           <div class="fs-4 fw-bold text-success">{{ "{:,.0f}".format(total_encaisse|float).replace(",", " ") }} FCFA</div>
-          <div class="small text-muted mt-1">{{ paiements|length }} ligne(s) enregistrée(s)</div>
+          <div class="small text-muted mt-1">{{ paiements|length }} encaissement(s)</div>
         </div>
       </div>
     </div>
@@ -52,25 +52,21 @@
               <th>Date</th>
               <th>Référence</th>
               <th>Mode</th>
-              <th>Facture</th>
-              <th class="text-end">Montant</th>
+              <th class="text-end">Montant encaissé</th>
               <th class="text-center" style="width:140px;">Justificatif</th>
-              <th class="text-end pe-3" style="width:140px;">Actions</th>
+              <th class="text-end pe-3" style="width:110px;"></th>
             </tr>
           </thead>
           <tbody>
             {% for p in paiements %}
               <tr>
                 <td class="text-nowrap">{{ p.date_paiement.strftime('%d/%m/%Y') if p.date_paiement else '—' }}</td>
-                <td><code class="small">{{ p.reference }}</code></td>
-                <td><span class="badge bg-light text-dark border">{{ mode_labels.get(p.mode_paiement, p.mode_paiement) }}</span></td>
                 <td>
-                  {% if p.facture %}
-                    <a href="{{ url_for('ventes.facture_detail', id=p.facture.id) }}" class="fw-medium text-decoration-none">{{ p.facture.numero }}</a>
-                  {% else %}
-                    <span class="text-muted">—</span>
-                  {% endif %}
+                  <a href="{{ url_for('clients.paiement_detail', reference=p.reference) }}" class="text-decoration-none">
+                    <code class="small">{{ p.reference }}</code>
+                  </a>
                 </td>
+                <td><span class="badge bg-light text-dark border">{{ mode_labels.get(p.mode_paiement, p.mode_paiement) }}</span></td>
                 <td class="text-end fw-semibold text-nowrap">{{ "{:,.0f}".format(p.montant|float).replace(",", " ") }} FCFA</td>
                 <td class="text-center text-nowrap">
                   {% if p.justificatif %}
@@ -98,33 +94,14 @@
                   {% endif %}
                 </td>
                 <td class="text-end pe-3 text-nowrap">
-                  <button type="button"
-                          class="btn btn-sm btn-outline-primary btn-edit-paiement"
-                          data-bs-toggle="modal"
-                          data-bs-target="#modalEditPaiement"
-                          data-paiement-id="{{ p.id }}"
-                          data-reference="{{ p.reference }}"
-                          data-date="{{ p.date_paiement.strftime('%Y-%m-%d') if p.date_paiement else '' }}"
-                          data-mode="{{ p.mode_paiement }}"
-                          data-montant="{{ '%.2f'|format(p.montant|float) }}"
-                          data-facture-id="{{ p.facture_id or '' }}"
-                          data-has-justificatif="{{ '1' if p.justificatif else '0' }}"
-                          data-justificatif-url="{{ url_for('clients.paiement_justificatif_fichier', stored_name=p.justificatif) if p.justificatif else '' }}">
-                    <i class="bi bi-pencil me-1"></i>Modifier
-                  </button>
-                  <form method="post"
-                        action="{{ url_for('clients.supprimer_paiement', id=p.id) }}"
-                        class="d-inline"
-                        onsubmit="return confirm('Confirmer la suppression du paiement {{ p.reference }} de {{ '{:,.0f}'.format(p.montant|float).replace(',', ' ') }} FCFA ? Le solde de la facture et du client sera recalculé.');">
-                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Supprimer ce paiement">
-                      <i class="bi bi-trash"></i>
-                    </button>
-                  </form>
+                  <a href="{{ url_for('clients.paiement_detail', reference=p.reference) }}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-eye me-1"></i>Détail
+                  </a>
                 </td>
               </tr>
             {% else %}
               <tr>
-                <td colspan="7" class="text-center text-muted py-5">
+                <td colspan="6" class="text-center text-muted py-5">
                   Aucun paiement enregistré pour ce client.
                   <div class="mt-2">
                     <a href="{{ url_for('clients.detail', id=client.id) }}#encaisser">Encaisser un paiement depuis la fiche client</a>
@@ -138,147 +115,5 @@
     </div>
   </div>
 
-  <!-- Modal Modifier Paiement -->
-  <div class="modal fade" id="modalEditPaiement" tabindex="-1" aria-labelledby="modalEditPaiementLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <form method="post" action="" enctype="multipart/form-data" id="formEditPaiement">
-          <div class="modal-header">
-            <h5 class="modal-title" id="modalEditPaiementLabel">
-              <i class="bi bi-pencil-square me-2 text-primary"></i>Modifier le paiement <span id="editPaiementRef"></span>
-            </h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
-          </div>
-          <div class="modal-body">
-            <div class="row g-3">
-              <div class="col-12 col-md-6">
-                <label class="form-label" for="editPaiementDate">Date du paiement</label>
-                <input type="date" class="form-control" name="date_paiement" id="editPaiementDate" required>
-              </div>
-              <div class="col-12 col-md-6">
-                <label class="form-label" for="editPaiementMode">Mode de paiement</label>
-                <select class="form-select" name="mode_paiement" id="editPaiementMode" required>
-                  <option value="espece">Espèces</option>
-                  <option value="cheque">Chèque</option>
-                  <option value="virement">Virement</option>
-                  <option value="orange_money">Orange Money</option>
-                  <option value="wave">Wave</option>
-                  <option value="carte">Carte Bancaire</option>
-                </select>
-              </div>
-              <div class="col-12 col-md-6">
-                <label class="form-label" for="editPaiementMontant">Montant (FCFA)</label>
-                <input type="number" step="0.01" min="0.01" class="form-control" name="montant" id="editPaiementMontant" required>
-              </div>
-              <div class="col-12 col-md-6">
-                <label class="form-label" for="editPaiementFacture">Facture associée</label>
-                <select class="form-select" name="facture_id" id="editPaiementFacture">
-                  <option value="">— Aucune facture —</option>
-                  {% for f in factures_client|default([]) %}
-                    <option value="{{ f.id }}">{{ f.numero }} ({{ "{:,.0f}".format(f.total_ttc|float).replace(",", " ") }} F - {{ f.statut }})</option>
-                  {% endfor %}
-                </select>
-              </div>
-              <div class="col-12">
-                <label class="form-label" for="editPaiementJustificatif">Justificatif (PDF, image, reçu, chèque…)</label>
-                <input type="file" class="form-control" name="justificatif" id="editPaiementJustificatif" accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg">
-                <div class="form-text" id="editPaiementJustifHint">Laissez vide pour conserver le justificatif actuel.</div>
-              </div>
-              <div class="col-12 d-none" id="editPaiementJustifCurrentWrap">
-                <div class="d-flex align-items-center justify-content-between p-2 rounded border bg-light">
-                  <span class="small"><i class="bi bi-paperclip me-1 text-success"></i> Justificatif actuel :</span>
-                  <div class="d-flex align-items-center gap-2">
-                    <button type="button"
-                            class="btn btn-sm btn-outline-success py-0 px-2 btn-apercu-justificatif"
-                            id="editPaiementJustifCurrentApercuBtn"
-                            data-bs-toggle="modal"
-                            data-bs-target="#modalApercuJustificatif"
-                            data-url=""
-                            data-ref=""
-                            data-type=""
-                            title="Voir l'aperçu">
-                      <i class="bi bi-eye me-1"></i>Aperçu
-                    </button>
-                    <a href="#" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary py-0 px-1" id="editPaiementJustifCurrentLink" title="Ouvrir dans un nouvel onglet">
-                      <i class="bi bi-box-arrow-up-right"></i>
-                    </a>
-                    <div class="form-check form-check-inline m-0 ms-1">
-                      <input class="form-check-input" type="checkbox" name="supprimer_justificatif" id="editPaiementSupprJustif" value="1">
-                      <label class="form-check-label small text-danger" for="editPaiementSupprJustif">Supprimer</label>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
-            <button type="submit" class="btn btn-primary">
-              <i class="bi bi-check-lg me-1"></i> Enregistrer les modifications
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal Aperçu Justificatif -->
   {% include "includes/modal_apercu_justificatif.html" %}
-{% endblock %}
-
-{% block scripts %}
-<script>
-(function () {
-  var form = document.getElementById("formEditPaiement");
-  var refEl = document.getElementById("editPaiementRef");
-  var dateEl = document.getElementById("editPaiementDate");
-  var modeEl = document.getElementById("editPaiementMode");
-  var montantEl = document.getElementById("editPaiementMontant");
-  var factureEl = document.getElementById("editPaiementFacture");
-  var justifInput = document.getElementById("editPaiementJustificatif");
-  var justifHint = document.getElementById("editPaiementJustifHint");
-  var justifWrap = document.getElementById("editPaiementJustifCurrentWrap");
-  var justifLink = document.getElementById("editPaiementJustifCurrentLink");
-  var justifApercuBtn = document.getElementById("editPaiementJustifCurrentApercuBtn");
-  var supprCheck = document.getElementById("editPaiementSupprJustif");
-
-  var urlTemplate = {{ url_for('clients.modifier_paiement', id=0)|tojson }};
-
-  document.querySelectorAll(".btn-edit-paiement").forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      var id = btn.getAttribute("data-paiement-id");
-      var ref = btn.getAttribute("data-reference") || "";
-      var d = btn.getAttribute("data-date") || "";
-      var m = btn.getAttribute("data-mode") || "espece";
-      var montant = btn.getAttribute("data-montant") || "";
-      var fId = btn.getAttribute("data-facture-id") || "";
-      var hasJustif = btn.getAttribute("data-has-justificatif") === "1";
-      var justifUrl = btn.getAttribute("data-justificatif-url") || "";
-
-      form.action = urlTemplate.replace("/paiements/0/", "/paiements/" + id + "/");
-      if (refEl) refEl.textContent = ref;
-      if (dateEl) dateEl.value = d;
-      if (modeEl) modeEl.value = m;
-      if (montantEl) montantEl.value = montant;
-      if (factureEl) factureEl.value = fId;
-      if (justifInput) justifInput.value = "";
-      if (supprCheck) supprCheck.checked = false;
-
-      if (hasJustif) {
-        if (justifWrap) justifWrap.classList.remove("d-none");
-        if (justifLink) justifLink.href = justifUrl;
-        if (justifApercuBtn) {
-          justifApercuBtn.setAttribute("data-url", justifUrl);
-          justifApercuBtn.setAttribute("data-ref", ref);
-          justifApercuBtn.setAttribute("data-type", justifUrl.toLowerCase().indexOf(".pdf") !== -1 ? "pdf" : "image");
-        }
-        if (justifHint) justifHint.textContent = "Téléversez un nouveau fichier pour remplacer le justificatif existant.";
-      } else {
-        if (justifWrap) justifWrap.classList.add("d-none");
-        if (justifHint) justifHint.textContent = "Justificatif facultatif (PDF, PNG, JPG).";
-      }
-    });
-  });
-})();
-</script>
 {% endblock %}
