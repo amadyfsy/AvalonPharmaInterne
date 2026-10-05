@@ -751,6 +751,14 @@ body.invoice-body {
     page-break-inside: avoid;
   }
 
+  .invoice-table th {
+    padding: 0.35rem 0.55rem;
+  }
+
+  .invoice-table td {
+    padding: 0.28rem 0.55rem;
+  }
+
   .invoice-info-grid {
     grid-template-columns: 1fr 1fr !important;
     align-items: stretch !important;

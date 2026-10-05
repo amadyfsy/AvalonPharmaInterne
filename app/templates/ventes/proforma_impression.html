@@ -21,10 +21,9 @@
   </div>
 
   {% set sorted_lignes = proforma.lignes|sort(attribute='id')|list %}
-  {% set page_size = 12 %}
-  {% set n_lignes = sorted_lignes|length %}
-  {% set n_chunks = ((n_lignes - 1) // page_size + 1) if n_lignes > 0 else 1 %}
-  {% set last_chunk_full = n_lignes > 0 and (n_lignes % page_size == 0) %}
+  {% set line_pages = sorted_lignes|pages_lignes_document %}
+  {% set n_chunks = line_pages|length %}
+  {% set last_chunk_full = n_chunks > 0 and (line_pages[-1]|length) > lignes_par_page_document() %}
   {% set total_pages = n_chunks + (1 if last_chunk_full else 0) %}
 
   {% set ns = namespace(sous_total=0) %}
@@ -38,7 +37,7 @@
       {% for page_idx in range(total_pages) %}
         {% set is_lines_page = page_idx < n_chunks %}
         {% set is_bottom_page = not is_lines_page %}
-        {% set page_lignes = sorted_lignes[page_idx * page_size : (page_idx + 1) * page_size] if is_lines_page else [] %}
+        {% set page_lignes = line_pages[page_idx] if is_lines_page else [] %}
         {% set page_num = page_idx + 1 %}
 
         <div class="invoice-page">

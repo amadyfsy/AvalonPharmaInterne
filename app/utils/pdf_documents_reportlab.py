@@ -12,6 +12,9 @@ from datetime import date
 from typing import Any, Callable
 from xml.sax.saxutils import escape
 
+from reportlab.graphics import renderPDF
+from reportlab.graphics.barcode.qr import QrCodeWidget
+from reportlab.graphics.shapes import Drawing
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.lib.pagesizes import A4
@@ -19,21 +22,9 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase import pdfmetrics
-from reportlab.graphics import renderPDF
-from reportlab.graphics.barcode.qr import QrCodeWidget
-from reportlab.graphics.shapes import Drawing
-from reportlab.platypus import (
-    BaseDocTemplate,
-    Frame,
-    Image,
-    PageBreak,
-    PageTemplate,
-    Paragraph,
-    SimpleDocTemplate,
-    Spacer,
-    Table,
-    TableStyle,
-)
+from reportlab.platypus import (BaseDocTemplate, Frame, Image, PageBreak,
+                                PageTemplate, Paragraph, SimpleDocTemplate,
+                                Spacer, Table, TableStyle)
 
 from .bl_helpers import bl_quantite_document
 from .ventes_totaux import document_affiche_tva
@@ -409,7 +400,7 @@ def build_proforma_pdf_bytesio(
         remise_pct = 0
     line_chunks = _chunk_facture_lines(lignes_sorted)
     needs_break_before_bottom = (
-        len(lignes_sorted) > 0 and len(line_chunks[-1]) >= _FACTURE_LINES_PER_PAGE
+        len(lignes_sorted) > 0 and len(line_chunks[-1]) > _FACTURE_LINES_PER_PAGE
     )
     page_info["total"] = len(line_chunks) + (1 if needs_break_before_bottom else 0)
 
@@ -588,7 +579,10 @@ def build_proforma_pdf_bytesio(
 _FACTURE_TOP_MM = 34
 _FACTURE_BOTTOM_MM = 16
 _FACTURE_SIDE_MM = 16
-_FACTURE_LINES_PER_PAGE = 12
+_FACTURE_LINES_PER_PAGE = 15
+# Sur une page qui n'est pas la dernière : si la suivante aurait plus de 5 lignes,
+# on en remonte 5 pour remplir le vide, puis on continue avec le reste.
+_FACTURE_LINES_FILL_EXTRA = 5
 
 
 def _facture_coords_line(doc_params: Any) -> str:
@@ -750,10 +744,25 @@ def _facture_draw_footer(canvas: Any, doc: Any, doc_params: Any) -> None:
     pass
 
 
-def _chunk_facture_lines(lignes: list, size: int = _FACTURE_LINES_PER_PAGE) -> list[list]:
+def _chunk_facture_lines(
+    lignes: list,
+    size: int = _FACTURE_LINES_PER_PAGE,
+    extra: int = _FACTURE_LINES_FILL_EXTRA,
+) -> list[list]:
+    """15 lignes par page. Si la page suivante en aurait plus de 5, on en ajoute 5 à la précédente."""
     if not lignes:
         return [[]]
-    return [lignes[i : i + size] for i in range(0, len(lignes), size)]
+    pages: list[list] = []
+    rest = list(lignes)
+    while rest:
+        if len(rest) <= size:
+            pages.append(rest)
+            break
+        suivant = len(rest) - size
+        take = size + extra if suivant > extra else size
+        pages.append(rest[:take])
+        rest = rest[take:]
+    return pages
 
 
 def _facture_pdf_lines_table(
@@ -799,8 +808,8 @@ def _facture_pdf_lines_table(
         ("ALIGN", (3, 1), (3, -1), "RIGHT"),
         ("LEFTPADDING", (0, 0), (-1, -1), 6),
         ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-        ("TOPPADDING", (0, 0), (-1, -1), 5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
         ("BACKGROUND", (0, 0), (-1, 0), _INV_PRIMARY),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
         ("FONTNAME", (0, 0), (-1, 0), "Times-Bold"),
@@ -1177,7 +1186,7 @@ def build_facture_pdf_bytesio(
         remise_pct = 0
     line_chunks = _chunk_facture_lines(lignes_sorted)
     needs_break_before_bottom = (
-        len(lignes_sorted) > 0 and len(line_chunks[-1]) >= _FACTURE_LINES_PER_PAGE
+        len(lignes_sorted) > 0 and len(line_chunks[-1]) > _FACTURE_LINES_PER_PAGE
     )
     page_info["total"] = len(line_chunks) + (1 if needs_break_before_bottom else 0)
 
