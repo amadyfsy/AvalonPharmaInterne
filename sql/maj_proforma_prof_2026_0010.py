@@ -159,6 +159,20 @@ def assurer_produit(Produit, Stock, db, produits, categorie_id, designation, pri
     return produit
 
 
+def produit_nom_complet(Produit, Stock, db, produits, categorie_id, designation, prix, anciens=()):
+    """Une ligne = un produit dont la désignation est le nom complet, pas un libellé court."""
+    produit = trouver_exact(produits, designation)
+    if produit:
+        return produit
+    for ancien in anciens:
+        produit = trouver_exact(produits, ancien)
+        if produit:
+            print(f"  ~ {produit.designation} -> {designation}")
+            produit.designation = designation
+            return produit
+    return assurer_produit(Produit, Stock, db, produits, categorie_id, designation, prix)
+
+
 def trouver_exact(produits, designation: str):
     key = norm(designation)
     for p in produits:
@@ -211,17 +225,19 @@ def main() -> None:
 
         specs = []
         for n in range(8, 31):
-            designation = f"Implant souple avec injecteur {n}DP"
-            produit = trouver_famille(produits, "souple", n=n) or trouver_exact(produits, designation)
-            if not produit:
-                produit = assurer_produit(Produit, Stock, db, produits, cat_id, designation, prix_souple)
+            designation = f"Implant souple avec injecteur D{n}"
+            produit = produit_nom_complet(
+                Produit, Stock, db, produits, cat_id, designation, prix_souple,
+                anciens=[f"Implant souple avec injecteur {n}DP"],
+            )
             specs.append((produit, SOUPLE[n], prix_souple))
 
         for n in range(8, 31):
-            designation = f"Implant rigide {n}DP"
-            produit = trouver_famille(produits, "rigide", n=n) or trouver_exact(produits, designation)
-            if not produit:
-                produit = assurer_produit(Produit, Stock, db, produits, cat_id, designation, prix_rigide)
+            designation = f"Implant rigide D{n}"
+            produit = produit_nom_complet(
+                Produit, Stock, db, produits, cat_id, designation, prix_rigide,
+                anciens=[f"Implant rigide {n}DP"],
+            )
             specs.append((produit, RIGIDE[n], prix_rigide))
 
         for conc, qty, prix_defaut, designation in VISQUEUX:
@@ -246,6 +262,7 @@ def main() -> None:
             taux = Decimal(str(produit.tva or 0))
             total_ht += montant
             tva += money(montant * taux / Decimal("100"))
+            print(f"  {produit.designation} | {qty} x {pu}")
             db.session.add(
                 LigneProforma(
                     proforma_id=proforma.id,
