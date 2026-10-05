@@ -1,5 +1,5 @@
 {# Pages BL (facture.css) — inclure dans invoice-shell après la facture si besoin #}
-{% set bl_lignes = bl.lignes|sort(attribute='id')|list %}
+{% set bl_lignes = bl.lignes|sort(attribute='id')|selectattr('quantite_commandee')|list %}
 {% set bl_page_size = 16 %}
 {% set bl_n = bl_lignes|length %}
 {% set bl_n_chunks = ((bl_n - 1) // bl_page_size + 1) if bl_n > 0 else 1 %}

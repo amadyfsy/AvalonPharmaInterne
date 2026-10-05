@@ -30,7 +30,7 @@
         </tr>
       </thead>
       <tbody>
-        {% for l in bl.lignes|sort(attribute='id') %}
+        {% for l in bl.lignes|sort(attribute='id') if l.quantite_commandee %}
           <tr>
             <td class="pdf-col-desc">
               {{ l.produit.designation if l.produit else '' }}

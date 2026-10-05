@@ -74,6 +74,11 @@
          {% if bl %}data-bl-num="{{ bl.numero }}"{% endif %}>
         <i class="bi bi-printer me-1"></i> Aperçu
       </a>
+      {% if facture.statut not in ['brouillon', 'annulee'] %}
+        <a href="{{ url_for('ventes.facture_nouvel_avoir', id=facture.id) }}" class="btn btn-outline-warning">
+          <i class="bi bi-receipt-cutoff me-1"></i> Avoir
+        </a>
+      {% endif %}
       {% if bl %}
         <a href="{{ url_for('ventes.bl_detail', id=bl.id) }}" class="btn btn-outline-success">
           <i class="bi bi-truck me-1"></i> Voir le BL
@@ -158,6 +163,10 @@
                 —
               {% endif %}
             </dd>
+            {% if total_avoirs %}
+              <dt class="col-5">Avoirs</dt>
+              <dd class="col-7 text-success">− {{ format_fcfa(total_avoirs) }} FCFA</dd>
+            {% endif %}
             <dt class="col-5">Reste à payer</dt>
             <dd class="col-7 fw-semibold {% if facture.reste_a_payer and facture.reste_a_payer|float > 0 %}text-danger{% else %}text-success{% endif %}">
               {{ format_fcfa(facture.reste_a_payer) }} FCFA
@@ -355,6 +364,9 @@
     <div class="card-footer bg-body-tertiary d-flex flex-wrap justify-content-between align-items-center gap-2 small">
       <div>
         <span class="text-muted">Total facturé :</span> <strong>{{ format_fcfa(facture.total_ttc) }} FCFA</strong>
+        {% if total_avoirs %}
+          · <span class="text-muted">Avoirs :</span> <strong class="text-success">− {{ format_fcfa(total_avoirs) }} FCFA</strong>
+        {% endif %}
         · <span class="text-muted">Total payé :</span> <strong class="text-success">{{ format_fcfa(facture.montant_paye) }} FCFA</strong>
       </div>
       <div>
@@ -365,6 +377,23 @@
       </div>
     </div>
   </div>
+
+  {% if avoirs %}
+    <div class="card shadow-sm mt-4">
+      <div class="card-header fw-semibold">Avoirs</div>
+      <ul class="list-group list-group-flush">
+        {% for a in avoirs %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <div>
+              <a href="{{ url_for('ventes.avoir_detail', id=a.id) }}" class="fw-medium text-decoration-none">{{ a.numero }}</a>
+              <div class="small text-muted">{{ a.date_emission.strftime('%d/%m/%Y') if a.date_emission else '' }}{% if a.motif %} — {{ a.motif }}{% endif %}</div>
+            </div>
+            <span class="fw-semibold">{{ format_fcfa(a.total_ttc) }} FCFA</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
 
   <div class="card shadow-sm mt-4 {% if not bl %}border-warning{% endif %}">
     <div class="card-header fw-semibold d-flex flex-wrap justify-content-between align-items-center gap-2">
@@ -384,7 +413,7 @@
             </div>
             <div class="small text-muted">
               Livraison le {{ bl.date_livraison.strftime('%d/%m/%Y') if bl.date_livraison else '—' }}
-              · {{ bl.lignes|length }} ligne(s)
+              · {{ bl.lignes|selectattr('quantite_commandee')|list|length }} ligne(s)
             </div>
             {% if bl.adresse_livraison %}
               <div class="small mt-1">{{ bl.adresse_livraison }}</div>

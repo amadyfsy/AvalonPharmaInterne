@@ -8,6 +8,7 @@ from .stock import Stock, MouvementStock
 from .facture import Facture, LigneFacture
 from .proforma import Proforma, LigneProforma
 from .bon_livraison import BonLivraison, LigneBL
+from .avoir import Avoir, LigneAvoir
 from .commande import CommandeFournisseur, LigneCommandeFournisseur
 from .depense import CategorieDepense, Depense
 from .tresorerie import TresorerieOperation
@@ -27,6 +28,7 @@ __all__ = [
     'Facture', 'LigneFacture',
     'Proforma', 'LigneProforma',
     'BonLivraison', 'LigneBL',
+    'Avoir', 'LigneAvoir',
     'CommandeFournisseur', 'LigneCommandeFournisseur',
     'CategorieDepense', 'Depense',
     'TresorerieOperation',

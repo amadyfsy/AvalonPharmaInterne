@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Nouvel avoir — {{ facture.numero }} — Avalon Pharma{% endblock %}
+
+{% block content %}
+  <div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+      <nav aria-label="fil d'ariane">
+        <ol class="breadcrumb mb-2">
+          <li class="breadcrumb-item"><a href="{{ url_for('ventes.factures') }}">Factures</a></li>
+          <li class="breadcrumb-item"><a href="{{ url_for('ventes.facture_detail', id=facture.id) }}">{{ facture.numero }}</a></li>
+          <li class="breadcrumb-item active">Avoir</li>
+        </ol>
+      </nav>
+      <h1 class="page-title mb-1">Avoir sur la facture {{ facture.numero }}</h1>
+      <p class="page-subtitle mb-0">
+        Choisissez les quantités à créditer. Le bon de livraison n'est pas créé ici :
+        s'il existe déjà, ces quantités y sont reportées. Une quantité à 0 n'est pas enregistrée.
+      </p>
+    </div>
+    <a href="{{ url_for('ventes.facture_detail', id=facture.id) }}" class="btn btn-outline-secondary">Retour</a>
+  </div>
+
+  {% if not lignes %}
+    <div class="alert alert-info">Toutes les quantités de cette facture sont déjà couvertes par un avoir.</div>
+  {% else %}
+    <form method="post" class="card shadow-sm">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Produit</th>
+                <th class="text-end">Facturée</th>
+                <th class="text-end">Déjà en avoir</th>
+                <th class="text-end">Reste livrable</th>
+                <th style="width:160px;">Quantité de l'avoir</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in lignes %}
+                <tr>
+                  <td>
+                    {% if row.ligne.produit %}
+                      <span class="text-muted small">{{ row.ligne.produit.reference }}</span><br>
+                      {{ row.ligne.produit.designation }}
+                    {% else %}
+                      Produit {{ row.ligne.produit_id }}
+                    {% endif %}
+                  </td>
+                  <td class="text-end">{{ row.ligne.quantite }}</td>
+                  <td class="text-end">{{ row.deja }}</td>
+                  <td class="text-end">{{ row.reste }}</td>
+                  <td>
+                    <input class="form-control text-end" type="number" min="0" max="{{ row.reste }}" step="1"
+                           name="qte_{{ row.ligne.id }}" value="0">
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card-footer">
+        <label class="form-label">Motif</label>
+        <input class="form-control mb-3" type="text" name="motif" placeholder="Quantité non disponible">
+        <button type="submit" class="btn btn-warning">Enregistrer l'avoir</button>
+      </div>
+    </form>
+  {% endif %}
+{% endblock %}

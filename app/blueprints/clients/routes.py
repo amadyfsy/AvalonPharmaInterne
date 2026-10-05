@@ -52,25 +52,12 @@ _MOIS_FILTRE_PAIEMENTS = (
 
 
 def recalculer_facture_apres_paiements(facture: Facture) -> None:
-    """Recalcule montant_paye, reste_a_payer et statut d'une facture depuis ses paiements réels."""
-    if not facture:
+    """Recalcule montant payé, avoirs et reste à payer d'une facture."""
+    if not facture or facture.statut == "annulee":
         return
-    total_paye = (
-        db.session.query(func.coalesce(func.sum(PaiementClient.montant), Decimal("0.00")))
-        .filter(PaiementClient.facture_id == facture.id)
-        .scalar()
-    )
-    total_paye = _q2(Decimal(total_paye or 0))
-    facture.montant_paye = total_paye
-    reste = max(Decimal("0.00"), _q2(Decimal(facture.total_ttc or 0) - total_paye))
-    facture.reste_a_payer = reste
-    if facture.statut != "annulee":
-        if reste <= Decimal("0.00"):
-            facture.statut = "payee"
-        elif total_paye > Decimal("0.00"):
-            facture.statut = "partiellement_payee"
-        else:
-            facture.statut = "emise"
+    from ...utils.avoir_service import ajuster_solde_facture
+
+    ajuster_solde_facture(facture)
 
 
 def _grouper_encaissements(lignes) -> list:
@@ -494,7 +481,8 @@ def encaisser(id):
         flash("Aucune facture impayée pour ce client.", "warning")
         return redirect(next_url)
 
-    # Si une facture cible est spécifiée, la traiter en priorité
+    # Facture ciblée d'abord, sinon les plus anciennes. Le montant est réparti
+    # dans cet ordre, sans sauter vers une autre facture au solde identique.
     if target_facture_id:
         tf = next((f for f in factures_ouvertes if f.id == target_facture_id), None)
         if tf:
@@ -509,23 +497,19 @@ def encaisser(id):
         return redirect(next_url)
 
     allocations = []
-    facture_exacte = next(
-        (f for f in factures_ouvertes if _q2(Decimal(f.reste_a_payer or 0)) == montant),
-        None,
-    )
-    if facture_exacte:
-        allocations.append((facture_exacte, montant))
-    else:
-        restant = montant
-        for f in factures_ouvertes:
-            if restant <= 0:
-                break
-            reste_facture = _q2(Decimal(f.reste_a_payer or 0))
-            if reste_facture <= 0:
-                continue
-            part = min(reste_facture, restant)
-            allocations.append((f, part))
-            restant = _q2(restant - part)
+    restant = montant
+    for f in factures_ouvertes:
+        if restant <= 0:
+            break
+        reste_facture = _q2(Decimal(f.reste_a_payer or 0))
+        if reste_facture <= 0:
+            continue
+        part = min(reste_facture, restant)
+        allocations.append((f, part))
+        restant = _q2(restant - part)
+    if restant > Decimal("0.00") or not allocations:
+        flash("Impossible d'affecter tout le montant aux factures ouvertes.", "danger")
+        return redirect(next_url)
 
     enc_ref = _paiement_ref(date_paiement_obj.year)
 
@@ -540,14 +524,6 @@ def encaisser(id):
             return redirect(next_url)
 
     for facture, part in allocations:
-        facture.montant_paye = _q2(Decimal(facture.montant_paye or 0) + part)
-        facture.reste_a_payer = _q2(Decimal(facture.reste_a_payer or 0) - part)
-        facture.mode_paiement = mode_paiement
-        if facture.reste_a_payer <= Decimal("0.00"):
-            facture.reste_a_payer = Decimal("0.00")
-            facture.statut = "payee"
-        else:
-            facture.statut = "partiellement_payee"
         db.session.add(
             PaiementClient(
                 client_id=client.id,
@@ -560,6 +536,10 @@ def encaisser(id):
                 created_by=current_user.id,
             )
         )
+    db.session.flush()
+    for facture, _part in allocations:
+        facture.mode_paiement = mode_paiement
+        recalculer_facture_apres_paiements(facture)
 
     _recompute_client_solde(client.id)
     db.session.commit()
@@ -651,25 +631,57 @@ def modifier_paiement(id):
     elif 'facture_id' in request.form and not new_facture_id:
         paiement.facture_id = None
 
+    meme_encaissement = PaiementClient.query.filter_by(reference=paiement.reference).all()
+    if paiement not in meme_encaissement:
+        meme_encaissement.append(paiement)
+
     paiement.montant = montant
-    paiement.mode_paiement = mode_paiement
-    paiement.date_paiement = date_paiement_obj
+    for ligne in meme_encaissement:
+        ligne.mode_paiement = mode_paiement
+        ligne.date_paiement = date_paiement_obj
 
-    # Gestion suppression justificatif
+    if paiement.facture_id:
+        facture_cible = Facture.query.get(paiement.facture_id)
+        if facture_cible:
+            autres = (
+                db.session.query(func.coalesce(func.sum(PaiementClient.montant), 0))
+                .filter(
+                    PaiementClient.facture_id == facture_cible.id,
+                    PaiementClient.id != paiement.id,
+                )
+                .scalar()
+            )
+            if _q2(Decimal(autres or 0) + montant) > _q2(Decimal(facture_cible.total_ttc or 0)):
+                flash(
+                    f"Ce montant dépasse le total de la facture {facture_cible.numero}.",
+                    "danger",
+                )
+                db.session.rollback()
+                return redirect(next_url)
+
+    # Un encaissement partage un seul justificatif, même s'il couvre plusieurs factures.
     if request.form.get('supprimer_justificatif') == '1':
-        remove_paiement_justificatif_file(paiement.justificatif)
-        paiement.justificatif = None
+        ancien = paiement.justificatif
+        if ancien:
+            for ligne in meme_encaissement:
+                if ligne.justificatif == ancien:
+                    ligne.justificatif = None
+            remove_paiement_justificatif_file(ancien)
 
-    # Téléversement d'un nouveau justificatif
     justif_file = request.files.get('justificatif')
     if justif_file and justif_file.filename:
         try:
-            if paiement.justificatif:
-                remove_paiement_justificatif_file(paiement.justificatif)
-            paiement.justificatif = upload_paiement_justificatif(justif_file, paiement.reference)
+            nouveau = upload_paiement_justificatif(justif_file, paiement.reference)
         except Exception as exc:
             flash(f"Erreur justificatif : {exc}", "danger")
+            db.session.rollback()
             return redirect(next_url)
+        anciens = {ligne.justificatif for ligne in meme_encaissement if ligne.justificatif}
+        for ligne in meme_encaissement:
+            ligne.justificatif = nouveau
+        for ancien in anciens:
+            if ancien != nouveau:
+                remove_paiement_justificatif_file(ancien)
 
     db.session.flush()
 

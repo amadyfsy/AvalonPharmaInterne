@@ -1488,6 +1488,8 @@ def build_bl_pdf_bytesio(
 
     data = [[Paragraph("DÉSIGNATION", hdr_l), Paragraph("QUANTITÉ", hdr_c)]]
     for l in sorted(getattr(bl, "lignes", None) or [], key=lambda x: x.id):
+        if int(bl_quantite_document(l) or 0) <= 0:
+            continue
         des = l.produit.designation if getattr(l, "produit", None) else ""
         if getattr(l, "lot", None) and getattr(l.lot, "numero_lot", None):
             des = f"{des} — Lot : {l.lot.numero_lot}"

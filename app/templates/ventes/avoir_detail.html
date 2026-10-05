@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Avoir {{ avoir.numero }} — Avalon Pharma{% endblock %}
+
+{% block content %}
+  <div class="page-header d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+    <div>
+      <h1 class="page-title mb-1">Avoir {{ avoir.numero }}</h1>
+      <p class="page-subtitle mb-0">
+        {{ avoir.client.raison_sociale if avoir.client else '—' }}
+        · {{ avoir.date_emission.strftime('%d/%m/%Y') if avoir.date_emission else '' }}
+      </p>
+    </div>
+    <div class="d-flex gap-2">
+      {% if avoir.bon_livraison %}
+        <a href="{{ url_for('ventes.bl_detail', id=avoir.bon_livraison.id) }}" class="btn btn-outline-success">BL</a>
+      {% endif %}
+      {% if avoir.facture %}
+        <a href="{{ url_for('ventes.facture_detail', id=avoir.facture.id) }}" class="btn btn-outline-primary">Facture {{ avoir.facture.numero }}</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-header fw-semibold">Quantités non livrées</div>
+    <div class="card-body p-0">
+      <table class="table align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Produit</th>
+            <th class="text-end">Quantité</th>
+            <th class="text-end">Montant HT</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for l in avoir.lignes if l.quantite %}
+            <tr>
+              <td>{{ l.produit.designation if l.produit else l.produit_id }}</td>
+              <td class="text-end">{{ l.quantite }}</td>
+              <td class="text-end">{{ format_fcfa(l.montant_ht) }} FCFA</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="card-footer d-flex justify-content-between">
+      <span class="text-muted">{{ avoir.motif or '' }}</span>
+      <strong>Total {{ format_fcfa(avoir.total_ttc) }} FCFA</strong>
+    </div>
+  </div>
+{% endblock %}

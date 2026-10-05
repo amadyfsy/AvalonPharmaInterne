@@ -382,6 +382,10 @@ def app(config_name='default'):
             from .models.paiement_client import PaiementClient
 
             PaiementClient.__table__.create(bind=db.engine, checkfirst=True)
+            from .models.avoir import Avoir, LigneAvoir
+
+            Avoir.__table__.create(bind=db.engine, checkfirst=True)
+            LigneAvoir.__table__.create(bind=db.engine, checkfirst=True)
         except Exception as exc:
             app.logger.warning('Table paiements_clients non initialisée: %s', exc)
 

@@ -3,6 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import extract, func, or_
 from ...extensions import db
+from ...models.avoir import Avoir, LigneAvoir
 from ...models.bon_livraison import BonLivraison, LigneBL
 from ...models.client import Client
 from ...models.depense import CategorieDepense, Depense
@@ -456,10 +457,7 @@ def nouvelle_vente():
                 ).date()
                 notes = request.form.get('notes', '')
                 annee = date_emission.year
-                count = Proforma.query.filter(
-                    db.extract('year', Proforma.date_emission) == annee
-                ).count()
-                numero = f'PROF-{annee}-{count + 1:04d}'
+                numero = _prochain_numero_proforma(annee)
 
                 proforma = Proforma(
                     numero=numero,
@@ -899,7 +897,98 @@ def bl_detail(id):
         .filter_by(id=id)
         .first_or_404()
     )
-    return render_template('ventes/bl_detail.html', bl=bl, has_cachet=has_cachet())
+    facture = Facture.query.get(bl.facture_id) if bl.facture_id else None
+    avoirs = (
+        Avoir.query.filter_by(facture_id=facture.id).order_by(Avoir.id.desc()).all()
+        if facture
+        else []
+    )
+    return render_template(
+        "ventes/bl_detail.html",
+        bl=bl,
+        facture=facture,
+        avoirs=avoirs,
+        has_cachet=has_cachet(),
+    )
+
+
+@ventes_bp.route("/factures/<int:id>/avoir", methods=["GET", "POST"])
+@login_required
+@permission_required("ventes", "update")
+def facture_nouvel_avoir(id):
+    facture = (
+        Facture.query.options(
+            joinedload(Facture.client),
+            joinedload(Facture.lignes).joinedload(LigneFacture.produit),
+        )
+        .filter_by(id=id)
+        .first_or_404()
+    )
+    if facture.statut in ("brouillon", "annulee"):
+        flash("Un avoir ne peut pas être émis sur cette facture.", "warning")
+        return redirect(url_for("ventes.facture_detail", id=id))
+    from ...utils.avoir_service import creer_avoir_depuis_facture, quantites_avoir_par_produit
+
+    deja = quantites_avoir_par_produit(facture.id)
+    lignes = []
+    for lf in sorted(facture.lignes, key=lambda l: l.id):
+        reste = int(lf.quantite or 0) - int(deja.get(int(lf.produit_id), 0))
+        if reste <= 0:
+            continue
+        lignes.append({"ligne": lf, "reste": reste, "deja": int(deja.get(int(lf.produit_id), 0))})
+    if request.method == "POST":
+        qtes = {}
+        for row in lignes:
+            raw = request.form.get(f"qte_{row['ligne'].id}") or "0"
+            try:
+                qtes[row["ligne"].id] = int(raw)
+            except ValueError:
+                flash("Quantité invalide.", "danger")
+                return redirect(url_for("ventes.facture_nouvel_avoir", id=id))
+        try:
+            avoir = creer_avoir_depuis_facture(
+                facture,
+                qtes,
+                current_user.id,
+                motif=request.form.get("motif"),
+            )
+            db.session.commit()
+        except Exception as exc:
+            db.session.rollback()
+            flash(str(exc), "danger")
+            return redirect(url_for("ventes.facture_nouvel_avoir", id=id))
+        flash(
+            f"Avoir {avoir.numero} enregistré. Les quantités sont reportées sur le bon de livraison s'il existe déjà.",
+            "success",
+        )
+        return redirect(url_for("ventes.avoir_detail", id=avoir.id))
+    return render_template(
+        "ventes/form_avoir.html",
+        facture=facture,
+        lignes=lignes,
+        format_fcfa=format_montant_espace,
+    )
+
+
+@ventes_bp.route("/avoirs/<int:id>")
+@login_required
+@permission_required("ventes", "read")
+def avoir_detail(id):
+    avoir = (
+        Avoir.query.options(
+            joinedload(Avoir.client),
+            joinedload(Avoir.facture),
+            joinedload(Avoir.bon_livraison),
+            joinedload(Avoir.lignes).joinedload(LigneAvoir.produit),
+        )
+        .filter_by(id=id)
+        .first_or_404()
+    )
+    return render_template(
+        "ventes/avoir_detail.html",
+        avoir=avoir,
+        format_fcfa=format_montant_espace,
+    )
 
 
 # --- API AJAX pour les Lignes Dynamiques ---
@@ -944,10 +1033,8 @@ def nouveau_proforma():
                 flash("Veuillez ajouter au moins un produit.", "danger")
                 return redirect(request.url)
 
-            # Numéro automatique (ex: PROF-2023-0001)
             annee = date_emission.year
-            count = Proforma.query.filter(db.extract('year', Proforma.date_emission) == annee).count()
-            numero = f"PROF-{annee}-{count+1:04d}"
+            numero = _prochain_numero_proforma(annee)
 
             total_ht_global = 0.0
             tva_montant_global = 0.0
@@ -1284,6 +1371,25 @@ def convertir_proforma(id):
 FACTURE_EDITABLE_STATUTS = frozenset({"brouillon", "emise", "partiellement_payee"})
 
 
+def _prochain_numero_proforma(annee: int) -> str:
+    """PROF-AAAA-NNNN : prochain rang libre, pas le nombre de lignes de l'année."""
+    prefix = f"PROF-{annee}-"
+    rows = (
+        db.session.query(Proforma.numero)
+        .filter(Proforma.numero.like(f"{prefix}%"))
+        .all()
+    )
+    max_seq = 0
+    for (num,) in rows:
+        if not num or not str(num).startswith(prefix):
+            continue
+        try:
+            max_seq = max(max_seq, int(str(num)[len(prefix) :]))
+        except ValueError:
+            continue
+    return f"{prefix}{max_seq + 1:04d}"
+
+
 def _prochain_numero_facture(d_emission, exclude_facture_id=None):
     """
     Numéro YYYY/MM/NN (ex. 2026/06/02) : année/mois d'émission,
@@ -1379,16 +1485,9 @@ def _apply_totals_to_facture(facture, data):
     if facture.statut == "brouillon":
         facture.reste_a_payer = total_ttc
     else:
-        mp = float(facture.montant_paye or 0)
-        tt = float(total_ttc)
-        reste = max(0.0, tt - mp)
-        facture.reste_a_payer = reste
-        if reste <= 0.001:
-            facture.statut = "payee"
-        elif mp > 0.001:
-            facture.statut = "partiellement_payee"
-        else:
-            facture.statut = "emise"
+        from ...utils.avoir_service import ajuster_solde_facture
+
+        ajuster_solde_facture(facture)
 
 
 def _replace_lignes_facture(facture_id, lignes_specs):
@@ -1448,8 +1547,19 @@ def _sync_bl_depuis_facture(facture: Facture, bl: BonLivraison | None) -> bool:
 def _bl_desaligne_depuis_facture(facture: Facture, bl: BonLivraison | None) -> bool:
     if bl is None or bl.statut != "prepare":
         return False
-    f_map = {lf.produit_id: int(lf.quantite or 0) for lf in (facture.lignes or [])}
-    b_map = {lb.produit_id: int(lb.quantite_commandee or 0) for lb in (bl.lignes or [])}
+    from ...utils.avoir_service import quantite_nette_livraison, quantites_avoir_par_produit
+
+    avoirs = quantites_avoir_par_produit(facture.id)
+    f_map = {}
+    for lf in facture.lignes or []:
+        net = quantite_nette_livraison(int(lf.quantite or 0), int(lf.produit_id), avoirs)
+        if net > 0:
+            f_map[lf.produit_id] = net
+    b_map = {
+        lb.produit_id: int(lb.quantite_commandee or 0)
+        for lb in (bl.lignes or [])
+        if int(lb.quantite_commandee or 0) > 0
+    }
     return f_map != b_map
 
 
@@ -1508,10 +1618,19 @@ def facture_detail(id):
         .order_by(PaiementClient.date_paiement.desc(), PaiementClient.id.desc())
         .all()
     )
+    avoirs = (
+        Avoir.query.options(joinedload(Avoir.lignes))
+        .filter_by(facture_id=facture.id)
+        .order_by(Avoir.id.desc())
+        .all()
+    )
+    total_avoirs = float(sum(float(a.total_ttc or 0) for a in avoirs))
     return render_template(
         "ventes/facture_detail.html",
         facture=facture,
         bl=bl,
+        avoirs=avoirs,
+        total_avoirs=total_avoirs,
         proforma_src=proforma,
         depenses_liees=depenses_liees,
         depenses_liees_total=depenses_liees_total,

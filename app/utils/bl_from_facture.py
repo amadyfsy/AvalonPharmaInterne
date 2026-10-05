@@ -26,9 +26,14 @@ def _lignes_facture(facture: Facture) -> list[LigneFacture]:
 
 
 def _ecrire_lignes_bl(facture: Facture, bl: BonLivraison, *, livre: bool) -> None:
+    from .avoir_service import quantite_nette_livraison, quantites_avoir_par_produit
+
+    avoirs = quantites_avoir_par_produit(facture.id)
     LigneBL.query.filter_by(bl_id=bl.id).delete(synchronize_session=False)
     for lf in _lignes_facture(facture):
-        qty = int(lf.quantite or 0)
+        qty = quantite_nette_livraison(int(lf.quantite or 0), int(lf.produit_id), avoirs)
+        if qty <= 0:
+            continue
         db.session.add(
             LigneBL(
                 bl_id=bl.id,
