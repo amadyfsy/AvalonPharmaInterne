@@ -44,6 +44,7 @@ class ParametresDocuments(db.Model):
     slogan = db.Column(db.String(255), nullable=False, default="Serving those who care for others")
     site_web = db.Column(db.String(255), nullable=False, default="https://avalonpharmasenegal.com")
     pied_de_page = db.Column(db.Text, nullable=True)
+    conditions_commerciales = db.Column(db.Text, nullable=True)
     devise_libelle = db.Column(db.String(80), nullable=False, default="francs")
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -76,20 +77,34 @@ class ParametresDocuments(db.Model):
                 cols = {c["name"] for c in inspect(db.engine).get_columns("parametres_documents")}
             except Exception:
                 return
-            if "cachet_filename" in cols:
-                _CACHET_SCHEMA_READY = True
-                return
-            try:
-                db.session.execute(
-                    text(
-                        "ALTER TABLE parametres_documents "
-                        "ADD COLUMN cachet_filename VARCHAR(255)"
+            if "cachet_filename" not in cols:
+                try:
+                    db.session.execute(
+                        text(
+                            "ALTER TABLE parametres_documents "
+                            "ADD COLUMN cachet_filename VARCHAR(255)"
+                        )
                     )
-                )
-                db.session.commit()
-                _CACHET_SCHEMA_READY = True
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+            if "conditions_commerciales" not in cols:
+                try:
+                    db.session.execute(
+                        text(
+                            "ALTER TABLE parametres_documents "
+                            "ADD COLUMN conditions_commerciales TEXT"
+                        )
+                    )
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+            try:
+                cols = {c["name"] for c in inspect(db.engine).get_columns("parametres_documents")}
             except Exception:
-                db.session.rollback()
+                return
+            if "cachet_filename" in cols and "conditions_commerciales" in cols:
+                _CACHET_SCHEMA_READY = True
 
         def _ensure_company_coords(row):
             """Complète les coordonnées Avalon si absentes (facture = BL)."""

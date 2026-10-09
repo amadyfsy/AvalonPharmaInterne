@@ -17,6 +17,10 @@ class ParametresDocumentsForm(FlaskForm):
     slogan = StringField("Slogan (à droite du logo sur les factures)", validators=[Optional(), Length(max=255)])
     site_web = StringField("Site web (QR code facture)", validators=[Optional(), Length(max=255)])
     pied_de_page = TextAreaField("Pied de page (PDF)", validators=[Optional()])
+    conditions_commerciales = TextAreaField(
+        "Conditions commerciales",
+        validators=[Optional()],
+    )
     logo = FileField(
         "Logo (en-tête PDF)",
         validators=[Optional(), FileAllowed(["png", "jpg", "jpeg", "gif"], "Images uniquement")],

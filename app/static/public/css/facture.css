@@ -658,6 +658,28 @@ body.invoice-body {
   object-fit: contain;
 }
 
+.invoice-conditions {
+  margin-top: 0.85rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--inv-border);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--inv-ink);
+}
+
+.invoice-conditions__title {
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--inv-primary);
+  margin-bottom: 0.2rem;
+}
+
+.invoice-conditions__text {
+  white-space: pre-wrap;
+}
+
 .footer-section {
   display: none !important;
 }

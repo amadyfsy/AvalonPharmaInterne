@@ -569,10 +569,55 @@ def build_proforma_pdf_bytesio(
     sig_table = Table(sig_data, colWidths=[65 * mm])
     sig_table.hAlign = "RIGHT"
     story.append(sig_table)
+    _append_conditions_commerciales(story, doc_params, usable_w)
 
     doc.build(story)
     buffer.seek(0)
     return buffer
+
+
+def _append_conditions_commerciales(story: list, doc_params: Any, usable_w: float) -> None:
+    """Bloc « Conditions commerciales » en bas de proforma et de facture."""
+    text = (getattr(doc_params, "conditions_commerciales", None) or "").strip()
+    if not text:
+        return
+    label = ParagraphStyle(
+        "cond_label",
+        fontName="Times-Bold",
+        fontSize=8,
+        leading=10,
+        textColor=_INV_PRIMARY,
+        spaceAfter=2,
+    )
+    body = ParagraphStyle(
+        "cond_body",
+        fontName="Times-Roman",
+        fontSize=8,
+        leading=11,
+        textColor=_INV_INK,
+    )
+    story.append(Spacer(1, 4 * mm))
+    block = Table(
+        [
+            [Paragraph("CONDITIONS COMMERCIALES", label)],
+            [Paragraph(escape(text).replace("\n", "<br/>"), body)],
+        ],
+        colWidths=[usable_w],
+    )
+    block.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ("TOPPADDING", (0, 0), (-1, -1), 1),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 1),
+                ("LINEABOVE", (0, 0), (-1, 0), 0.4, _INV_BORDER),
+                ("TOPPADDING", (0, 0), (-1, 0), 4),
+            ]
+        )
+    )
+    story.append(block)
 
 
 # Marges facture PDF : en-tête logo + infos société (sans pied de page).
@@ -1366,6 +1411,7 @@ def build_facture_pdf_bytesio(
     sig_table = Table(sig_data, colWidths=[65 * mm])
     sig_table.hAlign = 'RIGHT'
     story.append(sig_table)
+    _append_conditions_commerciales(story, doc_params, usable_w)
 
     doc.build(story)
     buffer.seek(0)

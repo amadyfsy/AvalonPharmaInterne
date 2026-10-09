@@ -1,0 +1,6 @@
+{% if doc_params and (doc_params.conditions_commerciales or '')|trim %}
+  <div class="invoice-conditions">
+    <div class="invoice-conditions__title">Conditions commerciales</div>
+    <div class="invoice-conditions__text">{{ doc_params.conditions_commerciales }}</div>
+  </div>
+{% endif %}

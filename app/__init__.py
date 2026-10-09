@@ -249,6 +249,13 @@ def app(config_name='default'):
                             "VARCHAR(255) NOT NULL DEFAULT 'https://avalonpharmasenegal.com'"
                         )
                     )
+                if 'conditions_commerciales' not in doc_columns:
+                    db.session.execute(
+                        text(
+                            "ALTER TABLE parametres_documents "
+                            "ADD COLUMN conditions_commerciales TEXT"
+                        )
+                    )
                 db.session.commit()
         except Exception as exc:
             db.session.rollback()
