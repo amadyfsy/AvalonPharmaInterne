@@ -1,6 +1,12 @@
-{% if doc_params and (doc_params.conditions_commerciales or '')|trim %}
+{% set cc = namespace(text='') %}
+{% if proforma is defined and proforma and proforma.conditions_commerciales %}
+  {% set cc.text = proforma.conditions_commerciales|trim %}
+{% elif facture is defined and facture and facture.conditions_commerciales %}
+  {% set cc.text = facture.conditions_commerciales|trim %}
+{% endif %}
+{% if cc.text %}
   <div class="invoice-conditions">
     <div class="invoice-conditions__title">Conditions commerciales</div>
-    <div class="invoice-conditions__text">{{ doc_params.conditions_commerciales }}</div>
+    <div class="invoice-conditions__text">{{ cc.text }}</div>
   </div>
 {% endif %}

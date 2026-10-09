@@ -48,6 +48,10 @@
         <label class="form-label">Notes</label>
         <textarea class="form-control" name="notes" rows="2">{{ proforma.notes if proforma else '' }}</textarea>
       </div>
+      <div class="col-12">
+        <label class="form-label">Conditions commerciales</label>
+        <textarea class="form-control" name="conditions_commerciales" rows="3" placeholder="Imprimées uniquement sur ce proforma.">{{ proforma.conditions_commerciales if proforma and proforma.conditions_commerciales else '' }}</textarea>
+      </div>
     </div>
 
     <div class="card shadow-sm mb-3">

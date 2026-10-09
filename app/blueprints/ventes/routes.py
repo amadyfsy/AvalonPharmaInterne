@@ -456,6 +456,7 @@ def nouvelle_vente():
                     request.form.get('date_validite'), '%Y-%m-%d'
                 ).date()
                 notes = request.form.get('notes', '')
+                conditions = (request.form.get('conditions_commerciales') or '').strip() or None
                 annee = date_emission.year
                 numero = _prochain_numero_proforma(annee)
 
@@ -470,6 +471,7 @@ def nouvelle_vente():
                     total_ttc=total_ttc,
                     statut='envoye',
                     notes=notes,
+                    conditions_commerciales=conditions,
                     commercial_id=current_user.id,
                 )
                 db.session.add(proforma)
@@ -509,6 +511,7 @@ def nouvelle_vente():
             )
             livreur = (request.form.get('livreur') or '').strip() or None
             bl_notes = (request.form.get('notes_bl') or '').strip() or None
+            conditions = (request.form.get('conditions_commerciales') or '').strip() or None
 
             numero_fact = _prochain_numero_facture(date_emission)
 
@@ -525,6 +528,7 @@ def nouvelle_vente():
                 reste_a_payer=total_ttc,
                 statut='emise',
                 commercial_id=current_user.id,
+                conditions_commerciales=conditions,
             )
             db.session.add(facture)
             db.session.flush()
@@ -1023,6 +1027,7 @@ def nouveau_proforma():
             date_validite = datetime.strptime(request.form.get('date_validite'), '%Y-%m-%d').date()
             remise_globale = float(request.form.get('remise_globale', 0) or 0)
             notes = request.form.get('notes', '')
+            conditions = (request.form.get('conditions_commerciales') or '').strip() or None
             
             # Récupérer les données des lignes (tableaux)
             produit_ids = request.form.getlist('produit_id[]')
@@ -1050,6 +1055,7 @@ def nouveau_proforma():
                 total_ttc=0, # sera mis à jour
                 statut='brouillon',
                 notes=notes,
+                conditions_commerciales=conditions,
                 commercial_id=current_user.id
             )
             db.session.add(proforma)
@@ -1115,6 +1121,7 @@ def _parse_proforma_post():
     date_validite = datetime.strptime(request.form.get("date_validite"), "%Y-%m-%d").date()
     remise_globale = float(request.form.get("remise_globale", 0) or 0)
     notes = request.form.get("notes") or ""
+    conditions = (request.form.get("conditions_commerciales") or "").strip() or None
 
     produit_ids = request.form.getlist("produit_id[]")
     quantites = request.form.getlist("quantite[]")
@@ -1153,6 +1160,7 @@ def _parse_proforma_post():
         "date_validite": date_validite,
         "remise_globale": remise_globale,
         "notes": notes,
+        "conditions_commerciales": conditions,
         "lignes": lignes,
         "total_ht_global": total_ht_global,
         "tva_montant_global": tva_montant_global,
@@ -1168,6 +1176,7 @@ def _apply_totals_to_proforma(proforma, data):
     proforma.date_validite = data["date_validite"]
     proforma.remise_globale = rem
     proforma.notes = data["notes"]
+    proforma.conditions_commerciales = data.get("conditions_commerciales")
     proforma.total_ht = total_ht_remise
     proforma.tva_montant = tva_montant_remise
     proforma.total_ttc = total_ht_remise + tva_montant_remise
@@ -1324,6 +1333,7 @@ def convertir_proforma(id):
             reste_a_payer=proforma.total_ttc,
             statut='emise',
             commercial_id=proforma.commercial_id,
+            conditions_commerciales=proforma.conditions_commerciales,
         )
         db.session.add(facture)
         db.session.flush()
@@ -1420,6 +1430,7 @@ def _parse_facture_post():
     bc = (request.form.get("bc") or "").strip() or None
     raw_date_bc = (request.form.get("date_bc") or "").strip()
     date_bc = datetime.strptime(raw_date_bc, "%Y-%m-%d").date() if raw_date_bc else None
+    conditions = (request.form.get("conditions_commerciales") or "").strip() or None
 
     produit_ids = request.form.getlist("produit_id[]")
     quantites = request.form.getlist("quantite[]")
@@ -1462,6 +1473,7 @@ def _parse_facture_post():
         "remise_globale": remise_globale,
         "bc": bc,
         "date_bc": date_bc,
+        "conditions_commerciales": conditions,
         "lignes": lignes,
         "total_ht_global": total_ht_global,
         "tva_montant_global": tva_montant_global,
@@ -1479,6 +1491,7 @@ def _apply_totals_to_facture(facture, data):
     facture.remise_globale = rem
     facture.bc = data.get("bc")
     facture.date_bc = data.get("date_bc")
+    facture.conditions_commerciales = data.get("conditions_commerciales")
     facture.total_ht = total_ht_remise
     facture.tva_montant = tva_montant_remise
     facture.total_ttc = total_ttc

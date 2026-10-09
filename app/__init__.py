@@ -419,10 +419,29 @@ def app(config_name='default'):
                     db.session.execute(text("ALTER TABLE factures ADD COLUMN bc VARCHAR(80) NULL"))
                 if 'date_bc' not in facture_columns:
                     db.session.execute(text("ALTER TABLE factures ADD COLUMN date_bc DATE NULL"))
+                if 'conditions_commerciales' not in facture_columns:
+                    db.session.execute(
+                        text("ALTER TABLE factures ADD COLUMN conditions_commerciales TEXT NULL")
+                    )
                 db.session.commit()
         except Exception as exc:
             db.session.rollback()
             app.logger.warning('Colonnes bc/date_bc non initialisées sur factures: %s', exc)
+
+        try:
+            from sqlalchemy import inspect, text
+
+            inspector = inspect(db.engine)
+            if 'proformas' in inspector.get_table_names():
+                proforma_columns = {c['name'] for c in inspector.get_columns('proformas')}
+                if 'conditions_commerciales' not in proforma_columns:
+                    db.session.execute(
+                        text("ALTER TABLE proformas ADD COLUMN conditions_commerciales TEXT NULL")
+                    )
+                    db.session.commit()
+        except Exception as exc:
+            db.session.rollback()
+            app.logger.warning('Colonne conditions_commerciales non initialisée sur proformas: %s', exc)
 
         try:
             from sqlalchemy import inspect, text

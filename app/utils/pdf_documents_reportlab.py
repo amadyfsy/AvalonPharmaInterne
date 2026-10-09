@@ -569,16 +569,18 @@ def build_proforma_pdf_bytesio(
     sig_table = Table(sig_data, colWidths=[65 * mm])
     sig_table.hAlign = "RIGHT"
     story.append(sig_table)
-    _append_conditions_commerciales(story, doc_params, usable_w)
+    _append_conditions_commerciales(
+        story, getattr(proforma, "conditions_commerciales", None), usable_w
+    )
 
     doc.build(story)
     buffer.seek(0)
     return buffer
 
 
-def _append_conditions_commerciales(story: list, doc_params: Any, usable_w: float) -> None:
-    """Bloc « Conditions commerciales » en bas de proforma et de facture."""
-    text = (getattr(doc_params, "conditions_commerciales", None) or "").strip()
+def _append_conditions_commerciales(story: list, text: str | None, usable_w: float) -> None:
+    """Bloc « Conditions commerciales » propre à cette proforma ou cette facture."""
+    text = (text or "").strip()
     if not text:
         return
     label = ParagraphStyle(
@@ -1411,7 +1413,9 @@ def build_facture_pdf_bytesio(
     sig_table = Table(sig_data, colWidths=[65 * mm])
     sig_table.hAlign = 'RIGHT'
     story.append(sig_table)
-    _append_conditions_commerciales(story, doc_params, usable_w)
+    _append_conditions_commerciales(
+        story, getattr(facture, "conditions_commerciales", None), usable_w
+    )
 
     doc.build(story)
     buffer.seek(0)

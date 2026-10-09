@@ -16,6 +16,7 @@ class Proforma(db.Model):
     total_ttc = db.Column(db.Numeric(12, 2), nullable=False)
     statut = db.Column(db.Enum('brouillon', 'envoye', 'accepte', 'refuse', 'converti', name='statut_proformas'), default='brouillon')
     notes = db.Column(db.Text, nullable=True)
+    conditions_commerciales = db.Column(db.Text, nullable=True)
     commercial_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 

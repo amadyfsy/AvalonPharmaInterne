@@ -22,6 +22,7 @@ class Facture(db.Model):
     montant_paye = db.Column(db.Numeric(12, 2), default=0.00)
     reste_a_payer = db.Column(db.Numeric(12, 2), nullable=False)
     commercial_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    conditions_commerciales = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     lignes = db.relationship('LigneFacture', backref='facture', lazy=True, cascade='all, delete-orphan')

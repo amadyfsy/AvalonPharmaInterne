@@ -79,7 +79,6 @@ def documents():
         site = (form.site_web.data or "").strip()
         row.site_web = site if site else "https://avalonpharmasenegal.com"
         row.pied_de_page = form.pied_de_page.data or None
-        row.conditions_commerciales = (form.conditions_commerciales.data or "").strip() or None
 
         if form.supprimer_logo.data and row.logo_filename:
             _remove_param_file(row.logo_filename)

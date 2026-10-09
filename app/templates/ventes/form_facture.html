@@ -54,6 +54,10 @@
         <input class="form-control" type="date" name="date_bc"
                value="{{ facture.date_bc.strftime('%Y-%m-%d') if facture and facture.date_bc else '' }}">
       </div>
+      <div class="col-12">
+        <label class="form-label">Conditions commerciales</label>
+        <textarea class="form-control" name="conditions_commerciales" rows="3" placeholder="Imprimées uniquement sur cette facture.">{{ facture.conditions_commerciales if facture and facture.conditions_commerciales else '' }}</textarea>
+      </div>
     </div>
 
     <div class="card shadow-sm mb-3">
