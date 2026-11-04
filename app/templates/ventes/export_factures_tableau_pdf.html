@@ -5,37 +5,66 @@
   <title>Tableau des factures</title>
   <style>
     @page { size: A4 landscape; margin: 12mm; }
-    body { font-family: Arial, Helvetica, sans-serif; font-size: 9px; color: #222; margin: 0; }
-    h1 { font-size: 15px; margin: 0 0 4px; color: #721818; }
-    .meta { color: #666; margin-bottom: 10px; font-size: 9px; }
-    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    th, td { border: 1px solid #d0d0d0; padding: 4px 5px; vertical-align: top; word-wrap: break-word; }
-    th { background: #721818; color: #fff; font-weight: bold; text-align: center; font-size: 8px; text-transform: uppercase; }
+    body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #222; margin: 0; }
+    .banner { width: 100%; margin-bottom: 14px; border-bottom: 2px solid #721818; padding-bottom: 10px; }
+    .banner td { border: none; vertical-align: middle; padding: 0; }
+    .logo { max-height: 58px; max-width: 160px; }
+    .title { font-size: 16px; font-weight: bold; color: #721818; margin: 0 0 4px; }
+    .meta { color: #666; font-size: 12px; margin: 0; }
+    table.data { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 12px; }
+    table.data th, table.data td {
+      border: 1px solid #bfbfbf;
+      padding: 5px 6px;
+      vertical-align: middle;
+      word-wrap: break-word;
+    }
+    table.data th {
+      background: #721818;
+      color: #fff;
+      font-weight: bold;
+      text-align: center;
+      font-size: 11px;
+      text-transform: uppercase;
+    }
     td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    tr.inv-start { background: #f7fbfb; }
-    tr.inv-start td.num-facture { font-weight: bold; color: #721818; }
+    td.center { text-align: center; }
+    td.num-facture { text-align: center; font-weight: bold; color: #721818; }
+    tr.band { background: #f7fbfb; }
     .reste-due { color: #b42318; font-weight: bold; }
     .reste-ok { color: #198754; font-weight: bold; }
     .col-fact { width: 9%; }
     .col-desc { width: 26%; }
-    .col-qty { width: 6%; }
+    .col-qty { width: 7%; }
     .col-pu { width: 8%; }
     .col-tot { width: 9%; }
     .col-totf { width: 9%; }
-    .col-cli { width: 16%; }
+    .col-cli { width: 15%; }
     .col-date { width: 8%; }
     .col-reste { width: 9%; }
   </style>
 </head>
 <body>
-  <h1>Tableau des factures — Avalon Pharma</h1>
-  <p class="meta">
-    {{ filtre_label }}
-    · {{ rows|length }} ligne(s)
-    · Généré le {{ genere_le.strftime('%d/%m/%Y à %H:%M') }}
-  </p>
+  <table class="banner">
+    <tr>
+      <td style="width:180px;">
+        {% if logo_data_uri %}
+          <img class="logo" src="{{ logo_data_uri }}" alt="Logo">
+        {% else %}
+          <strong style="color:#721818;font-size:14px;">{{ company_name }}</strong>
+        {% endif %}
+      </td>
+      <td>
+        <p class="title">Tableau des factures — {{ company_name }}</p>
+        <p class="meta">
+          {{ filtre_label }}
+          · {{ rows|length }} ligne(s)
+          · Généré le {{ genere_le.strftime('%d/%m/%Y à %H:%M') }}
+        </p>
+      </td>
+    </tr>
+  </table>
 
-  <table>
+  <table class="data">
     <thead>
       <tr>
         <th class="col-fact">Facture</th>
@@ -51,18 +80,22 @@
     </thead>
     <tbody>
       {% for row in rows %}
-        <tr class="{% if row.is_header %}inv-start{% endif %}">
-          <td class="num-facture">{{ row.numero or '' }}</td>
+        <tr class="{% if row.block_even %}band{% endif %}">
+          {% if row.rowspan %}
+            <td class="num-facture" rowspan="{{ row.rowspan }}">{{ row.numero }}</td>
+          {% endif %}
           <td>{{ row.description or '' }}</td>
           <td class="num">{% if row.quantite is not none %}{{ row.quantite }}{% endif %}</td>
           <td class="num">{% if row.pu is not none %}{{ format_fcfa(row.pu) }}{% endif %}</td>
           <td class="num">{% if row.total_ligne is not none %}{{ format_fcfa(row.total_ligne) }}{% endif %}</td>
-          <td class="num">{% if row.total_facture is not none %}{{ format_fcfa(row.total_facture) }}{% endif %}</td>
-          <td>{{ row.client or '' }}</td>
-          <td>{{ row.date or '' }}</td>
-          <td class="num {% if row.reste_a_payer is not none %}{% if row.reste_a_payer > 0 %}reste-due{% else %}reste-ok{% endif %}{% endif %}">
-            {% if row.reste_a_payer is not none %}{{ format_fcfa(row.reste_a_payer) }}{% endif %}
-          </td>
+          {% if row.rowspan %}
+            <td class="num" rowspan="{{ row.rowspan }}">{% if row.total_facture is not none %}{{ format_fcfa(row.total_facture) }}{% endif %}</td>
+            <td class="center" rowspan="{{ row.rowspan }}">{{ row.client or '' }}</td>
+            <td class="center" rowspan="{{ row.rowspan }}">{{ row.date or '' }}</td>
+            <td class="num {% if row.reste_a_payer is not none %}{% if row.reste_a_payer > 0 %}reste-due{% else %}reste-ok{% endif %}{% endif %}" rowspan="{{ row.rowspan }}">
+              {% if row.reste_a_payer is not none %}{{ format_fcfa(row.reste_a_payer) }}{% endif %}
+            </td>
+          {% endif %}
         </tr>
       {% else %}
         <tr><td colspan="9">Aucune facture pour ces critères.</td></tr>

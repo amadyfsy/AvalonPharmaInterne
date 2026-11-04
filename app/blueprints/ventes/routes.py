@@ -32,7 +32,9 @@ from ...utils.nombre_lettres import format_montant_espace
 from ...utils.parametres_pdf import (
     get_cachet_filepath,
     get_logo_filepath,
+    get_parametres_documents,
     has_cachet,
+    logo_data_uri,
     merge_browser_print_logo,
     pdf_company_context,
 )
@@ -913,6 +915,14 @@ def export_tableau_factures():
     client_slug = _slug_export(client.raison_sociale) if client else ""
     filename = factures_export_filename(annee, mois, client_slug, ext=fmt)
 
+    doc_params = get_parametres_documents()
+    company_name = (
+        (getattr(doc_params, "raison_sociale", None) or "").strip()
+        or current_app.config.get("COMPANY_NAME")
+        or "Avalon Pharma"
+    )
+    logo_path = get_logo_filepath()
+
     if fmt == 'pdf':
         rows = build_facture_tableau_rows(factures)
         html = render_template(
@@ -921,6 +931,8 @@ def export_tableau_factures():
             filtre_label=filtre_label,
             format_fcfa=format_montant_espace,
             genere_le=datetime.now(),
+            logo_data_uri=logo_data_uri(),
+            company_name=company_name,
         )
         pdf_io = generate_pdf(html)
         return send_file(
@@ -934,6 +946,8 @@ def export_tableau_factures():
         factures,
         sheet_title="Factures",
         filtre_label=filtre_label,
+        logo_path=logo_path,
+        company_name=company_name,
     )
     return send_file(
         excel_io,

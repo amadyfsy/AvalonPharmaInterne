@@ -2,16 +2,21 @@
 
 Colonnes :
   Facture | Description | Quantité | PU | Total | Total facture | Client | Date | Reste à payer
+
+Les colonnes Facture / Total facture / Client / Date / Reste à payer sont fusionnées
+verticalement sur toutes les lignes produits d'une même facture.
 """
 
 from __future__ import annotations
 
 import io
+import os
 from datetime import date
 from decimal import Decimal
 from typing import Iterable
 
 import openpyxl
+from openpyxl.drawing.image import Image as XLImage
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
@@ -28,6 +33,12 @@ HEADERS = (
     "Reste à payer",
 )
 
+# Colonnes à fusionner verticalement (1-indexed) : Facture, Total facture, Client, Date, Reste
+MERGE_COLS = (1, 6, 7, 8, 9)
+
+FONT_NAME = "Calibri"
+FONT_SIZE = 12
+
 
 def _num(v) -> float | None:
     if v is None:
@@ -35,9 +46,9 @@ def _num(v) -> float | None:
     return float(Decimal(str(v)))
 
 
-def build_facture_tableau_rows(factures: Iterable) -> list[dict]:
-    """Construit les lignes plates (1re ligne facture complète, suivantes = produits)."""
-    rows: list[dict] = []
+def build_facture_blocks(factures: Iterable) -> list[dict]:
+    """Un bloc = une facture + ses lignes produits (pour fusions)."""
+    blocks: list[dict] = []
     for facture in factures:
         client_nom = ""
         if getattr(facture, "client", None):
@@ -49,58 +60,71 @@ def build_facture_tableau_rows(factures: Iterable) -> list[dict]:
         )
         total_facture = _num(facture.total_ttc)
         reste = _num(facture.reste_a_payer)
-        lignes = list(getattr(facture, "lignes", None) or [])
-        if not lignes:
-            rows.append(
+        lignes_out = []
+        for ligne in list(getattr(facture, "lignes", None) or []):
+            designation = ""
+            if getattr(ligne, "produit", None):
+                designation = (ligne.produit.designation or "").strip()
+            lignes_out.append(
                 {
-                    "numero": facture.numero,
+                    "description": designation,
+                    "quantite": int(ligne.quantite or 0),
+                    "pu": _num(ligne.prix_unitaire_ht),
+                    "total_ligne": _num(ligne.montant_ht),
+                }
+            )
+        if not lignes_out:
+            lignes_out.append(
+                {
                     "description": "",
                     "quantite": None,
                     "pu": None,
                     "total_ligne": None,
-                    "total_facture": total_facture,
-                    "client": client_nom,
-                    "date": date_str,
-                    "reste_a_payer": reste,
-                    "is_header": True,
                 }
             )
-            continue
-        for idx, ligne in enumerate(lignes):
-            designation = ""
-            if getattr(ligne, "produit", None):
-                designation = (ligne.produit.designation or "").strip()
-            base = {
-                "description": designation,
-                "quantite": int(ligne.quantite or 0),
-                "pu": _num(ligne.prix_unitaire_ht),
-                "total_ligne": _num(ligne.montant_ht),
+        blocks.append(
+            {
+                "numero": facture.numero,
+                "client": client_nom,
+                "date": date_str,
+                "total_facture": total_facture,
+                "reste_a_payer": reste,
+                "lignes": lignes_out,
             }
-            if idx == 0:
-                rows.append(
-                    {
-                        **base,
-                        "numero": facture.numero,
-                        "total_facture": total_facture,
-                        "client": client_nom,
-                        "date": date_str,
-                        "reste_a_payer": reste,
-                        "is_header": True,
-                    }
-                )
-            else:
-                rows.append(
-                    {
-                        **base,
-                        "numero": "",
-                        "total_facture": None,
-                        "client": "",
-                        "date": "",
-                        "reste_a_payer": None,
-                        "is_header": False,
-                    }
-                )
+        )
+    return blocks
+
+
+def build_facture_tableau_rows(factures: Iterable) -> list[dict]:
+    """Lignes plates (PDF / compat) avec rowspan sur la 1re ligne du bloc."""
+    rows: list[dict] = []
+    for block_idx, block in enumerate(build_facture_blocks(factures)):
+        n = len(block["lignes"])
+        for idx, ligne in enumerate(block["lignes"]):
+            rows.append(
+                {
+                    "numero": block["numero"] if idx == 0 else "",
+                    "description": ligne["description"],
+                    "quantite": ligne["quantite"],
+                    "pu": ligne["pu"],
+                    "total_ligne": ligne["total_ligne"],
+                    "total_facture": block["total_facture"] if idx == 0 else None,
+                    "client": block["client"] if idx == 0 else "",
+                    "date": block["date"] if idx == 0 else "",
+                    "reste_a_payer": block["reste_a_payer"] if idx == 0 else None,
+                    "is_header": idx == 0,
+                    "rowspan": n if idx == 0 else 0,
+                    "block_even": block_idx % 2 == 0,
+                }
+            )
     return rows
+
+
+def _base_font(*, bold: bool = False, color: str | None = None, size: int = FONT_SIZE) -> Font:
+    kwargs = {"name": FONT_NAME, "size": size, "bold": bold}
+    if color:
+        kwargs["color"] = color
+    return Font(**kwargs)
 
 
 def generate_factures_tableau_excel(
@@ -108,69 +132,133 @@ def generate_factures_tableau_excel(
     *,
     sheet_title: str = "Factures",
     filtre_label: str = "",
+    logo_path: str | None = None,
+    company_name: str = "Avalon Pharma",
 ) -> io.BytesIO:
-    rows = build_facture_tableau_rows(factures)
+    blocks = build_facture_blocks(factures)
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = (sheet_title or "Factures")[:31]
 
     header_fill = PatternFill(start_color="721818", end_color="721818", fill_type="solid")
-    header_font = Font(color="FFFFFF", bold=True, name="Calibri", size=11)
-    title_font = Font(bold=True, name="Calibri", size=13, color="721818")
-    meta_font = Font(name="Calibri", size=10, color="666666")
+    band_fill = PatternFill(start_color="F7FBFB", end_color="F7FBFB", fill_type="solid")
+    alt_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
     thin = Border(
-        left=Side(style="thin", color="D0D0D0"),
-        right=Side(style="thin", color="D0D0D0"),
-        top=Side(style="thin", color="D0D0D0"),
-        bottom=Side(style="thin", color="D0D0D0"),
+        left=Side(style="thin", color="BFBFBF"),
+        right=Side(style="thin", color="BFBFBF"),
+        top=Side(style="thin", color="BFBFBF"),
+        bottom=Side(style="thin", color="BFBFBF"),
     )
-    header_row_fill = PatternFill(start_color="F7FBFB", end_color="F7FBFB", fill_type="solid")
-    money_align = Alignment(horizontal="right", vertical="center")
-    left_align = Alignment(horizontal="left", vertical="center", wrap_text=True)
+    center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    left = Alignment(horizontal="left", vertical="center", wrap_text=True)
+    right = Alignment(horizontal="right", vertical="center")
 
-    ws.merge_cells("A1:I1")
-    ws["A1"] = "Tableau des factures — Avalon Pharma"
-    ws["A1"].font = title_font
-    ws.merge_cells("A2:I2")
-    ws["A2"] = filtre_label or f"Export du {date.today().strftime('%d/%m/%Y')}"
-    ws["A2"].font = meta_font
+    # ---- En-tête : logo + titre ----
+    # Lignes 1-4 réservées au bandeau
+    ws.merge_cells("C1:I2")
+    title_cell = ws["C1"]
+    title_cell.value = f"Tableau des factures — {company_name}"
+    title_cell.font = _base_font(bold=True, color="721818", size=16)
+    title_cell.alignment = Alignment(horizontal="left", vertical="center")
 
+    ws.merge_cells("C3:I3")
+    meta_cell = ws["C3"]
+    meta_cell.value = filtre_label or f"Export du {date.today().strftime('%d/%m/%Y')}"
+    meta_cell.font = _base_font(color="666666", size=12)
+    meta_cell.alignment = Alignment(horizontal="left", vertical="center")
+
+    ws.row_dimensions[1].height = 22
+    ws.row_dimensions[2].height = 22
+    ws.row_dimensions[3].height = 20
+    ws.row_dimensions[4].height = 8
+
+    if logo_path and os.path.isfile(logo_path):
+        try:
+            img = XLImage(logo_path)
+            # Conserver proportions, hauteur ~55 px
+            max_h = 55
+            if img.height and img.height > max_h:
+                ratio = max_h / float(img.height)
+                img.height = max_h
+                img.width = int(img.width * ratio)
+            img.anchor = "A1"
+            ws.add_image(img)
+            ws.merge_cells("A1:B3")
+        except Exception:
+            ws.merge_cells("A1:B3")
+            ws["A1"] = company_name
+            ws["A1"].font = _base_font(bold=True, color="721818", size=14)
+    else:
+        ws.merge_cells("A1:B3")
+        ws["A1"] = company_name
+        ws["A1"].font = _base_font(bold=True, color="721818", size=14)
+        ws["A1"].alignment = Alignment(horizontal="center", vertical="center")
+
+    header_row = 5
     for col, title in enumerate(HEADERS, 1):
-        cell = ws.cell(row=4, column=col, value=title)
+        cell = ws.cell(row=header_row, column=col, value=title)
         cell.fill = header_fill
-        cell.font = header_font
-        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.font = _base_font(bold=True, color="FFFFFF")
+        cell.alignment = center
         cell.border = thin
+    ws.row_dimensions[header_row].height = 22
 
-    for r_idx, row in enumerate(rows, 5):
-        values = [
-            row["numero"],
-            row["description"],
-            row["quantite"],
-            row["pu"],
-            row["total_ligne"],
-            row["total_facture"],
-            row["client"],
-            row["date"],
-            row["reste_a_payer"],
-        ]
-        for c_idx, value in enumerate(values, 1):
-            cell = ws.cell(row=r_idx, column=c_idx, value=value)
-            cell.border = thin
-            cell.alignment = left_align if c_idx in (1, 2, 7, 8) else money_align
-            if c_idx in (4, 5, 6, 9) and isinstance(value, (int, float)):
-                cell.number_format = "#,##0"
-            if row.get("is_header"):
-                cell.fill = header_row_fill
-                if c_idx == 1:
-                    cell.font = Font(bold=True, color="721818", name="Calibri")
+    data_start = header_row + 1
+    current_row = data_start
 
-    widths = (14, 42, 10, 12, 14, 14, 28, 12, 14)
+    for block_idx, block in enumerate(blocks):
+        n = len(block["lignes"])
+        start = current_row
+        end = current_row + n - 1
+        fill = band_fill if block_idx % 2 == 0 else alt_fill
+
+        for i, ligne in enumerate(block["lignes"]):
+            r = current_row + i
+            values = [
+                block["numero"] if i == 0 else None,
+                ligne["description"],
+                ligne["quantite"],
+                ligne["pu"],
+                ligne["total_ligne"],
+                block["total_facture"] if i == 0 else None,
+                block["client"] if i == 0 else None,
+                block["date"] if i == 0 else None,
+                block["reste_a_payer"] if i == 0 else None,
+            ]
+            for c_idx, value in enumerate(values, 1):
+                cell = ws.cell(row=r, column=c_idx, value=value)
+                cell.border = thin
+                cell.fill = fill
+                cell.font = _base_font(bold=(c_idx == 1 and i == 0), color="721818" if c_idx == 1 and i == 0 else None)
+                if c_idx in (1, 7, 8):
+                    cell.alignment = center
+                elif c_idx == 2:
+                    cell.alignment = left
+                else:
+                    cell.alignment = right
+                if c_idx in (4, 5, 6, 9) and isinstance(value, (int, float)):
+                    cell.number_format = "#,##0"
+            ws.row_dimensions[r].height = 18
+
+        if n > 1:
+            for col in MERGE_COLS:
+                letter = get_column_letter(col)
+                ws.merge_cells(f"{letter}{start}:{letter}{end}")
+                top = ws.cell(row=start, column=col)
+                top.alignment = center
+                if col == 1:
+                    top.font = _base_font(bold=True, color="721818")
+
+        current_row = end + 1
+
+    widths = (16, 44, 11, 12, 14, 14, 30, 12, 14)
     for i, w in enumerate(widths, 1):
         ws.column_dimensions[get_column_letter(i)].width = w
 
-    ws.auto_filter.ref = f"A4:I{max(4, 4 + len(rows))}"
-    ws.freeze_panes = "A5"
+    last_data = max(header_row, current_row - 1)
+    ws.auto_filter.ref = f"A{header_row}:I{last_data}"
+    ws.freeze_panes = f"A{data_start}"
+    ws.print_title_rows = f"{header_row}:{header_row}"
 
     output = io.BytesIO()
     wb.save(output)
