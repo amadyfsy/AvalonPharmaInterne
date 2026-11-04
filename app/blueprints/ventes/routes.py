@@ -49,6 +49,7 @@ from ...utils.pdf_generator import generate_pdf
 from ...utils.factures_tableau_export import (
     build_facture_sections_by_month,
     build_facture_tableau_rows,
+    compute_totaux,
     export_filename as factures_export_filename,
     generate_factures_tableau_excel,
 )
@@ -928,15 +929,20 @@ def export_tableau_factures():
 
     if fmt == 'pdf':
         if split_by_month:
-            sections = build_facture_sections_by_month(factures)
+            sections, totaux_global = build_facture_sections_by_month(factures)
             rows = []
+            totaux = None
         else:
             sections = None
+            totaux_global = None
             rows = build_facture_tableau_rows(factures)
+            totaux = compute_totaux(factures)
         html = render_template(
             'ventes/export_factures_tableau_pdf.html',
             rows=rows,
             sections=sections,
+            totaux=totaux,
+            totaux_global=totaux_global,
             split_by_month=split_by_month,
             filtre_label=filtre_label,
             format_fcfa=format_montant_espace,

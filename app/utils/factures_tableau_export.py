@@ -121,6 +121,43 @@ def group_factures_by_month(factures: Iterable) -> OrderedDict[int, list]:
     return groups
 
 
+def compute_totaux(factures: Iterable) -> dict:
+    """Chiffre d'affaires (sum TTC) et reste à payer."""
+    ca = 0.0
+    reste = 0.0
+    nb = 0
+    for facture in factures:
+        nb += 1
+        t = _num(getattr(facture, "total_ttc", None))
+        r = _num(getattr(facture, "reste_a_payer", None))
+        if t is not None:
+            ca += t
+        if r is not None:
+            reste += r
+    return {
+        "chiffre_affaires": ca,
+        "reste_a_payer": reste,
+        "nb_factures": nb,
+    }
+
+
+def compute_totaux_from_blocks(blocks: list[dict]) -> dict:
+    ca = 0.0
+    reste = 0.0
+    for block in blocks:
+        t = block.get("total_facture")
+        r = block.get("reste_a_payer")
+        if t is not None:
+            ca += float(t)
+        if r is not None:
+            reste += float(r)
+    return {
+        "chiffre_affaires": ca,
+        "reste_a_payer": reste,
+        "nb_factures": len(blocks),
+    }
+
+
 def build_facture_blocks(factures: Iterable) -> list[dict]:
     blocks: list[dict] = []
     for facture in factures:
@@ -189,19 +226,25 @@ def build_facture_tableau_rows(factures: Iterable) -> list[dict]:
     return rows
 
 
-def build_facture_sections_by_month(factures: Iterable) -> list[dict]:
-    """Sections PDF : une par mois présent (titre + rows)."""
+def build_facture_sections_by_month(factures: Iterable) -> tuple[list[dict], dict]:
+    """Sections PDF : une par mois (titre + rows + totaux) et totaux globaux."""
     sections: list[dict] = []
+    grand = {"chiffre_affaires": 0.0, "reste_a_payer": 0.0, "nb_factures": 0}
     for mois_num, facts in group_factures_by_month(factures).items():
         title = mois_label(mois_num) if mois_num else "Sans date"
+        tot = compute_totaux(facts)
+        grand["chiffre_affaires"] += tot["chiffre_affaires"]
+        grand["reste_a_payer"] += tot["reste_a_payer"]
+        grand["nb_factures"] += tot["nb_factures"]
         sections.append(
             {
                 "mois": mois_num,
                 "title": title,
                 "rows": build_facture_tableau_rows(facts),
+                "totaux": tot,
             }
         )
-    return sections
+    return sections, grand
 
 
 def _font(*, bold: bool = False, color: str | None = None, size: int = FONT_SIZE) -> Font:
@@ -339,11 +382,130 @@ def _write_sheet(
 
         current = end + 1
 
+    # ---- Totaux CA + reste à payer ----
+    totaux = compute_totaux_from_blocks(blocks)
+    current += 1  # ligne vide
+    total_fill = PatternFill(
+        start_color=COLOR_MINT, end_color=COLOR_MINT, fill_type="solid"
+    )
+    burgundy_fill = PatternFill(
+        start_color=COLOR_BURGUNDY, end_color=COLOR_BURGUNDY, fill_type="solid"
+    )
+
+    # Ligne libellés
+    for c in range(1, 10):
+        cell = ws.cell(row=current, column=c)
+        cell.fill = burgundy_fill
+        cell.border = thin
+        cell.font = _font(bold=True, color=COLOR_WHITE)
+        cell.alignment = center
+    ws.merge_cells(f"A{current}:E{current}")
+    ws.cell(row=current, column=1).value = "TOTAL"
+    ws.cell(row=current, column=6).value = "Chiffre d'affaires"
+    ws.cell(row=current, column=7).value = f"{totaux['nb_factures']} facture(s)"
+    ws.merge_cells(f"G{current}:H{current}")
+    ws.cell(row=current, column=9).value = "Reste à payer"
+
+    # Ligne montants
+    current += 1
+    for c in range(1, 10):
+        cell = ws.cell(row=current, column=c)
+        cell.fill = total_fill
+        cell.border = thin
+    ws.merge_cells(f"A{current}:E{current}")
+    ca_cell = ws.cell(row=current, column=6, value=totaux["chiffre_affaires"])
+    ca_cell.font = _font(bold=True, color=COLOR_BURGUNDY)
+    ca_cell.alignment = right
+    ca_cell.number_format = "#,##0"
+    ws.merge_cells(f"G{current}:H{current}")
+    reste_cell = ws.cell(row=current, column=9, value=totaux["reste_a_payer"])
+    reste_cell.font = _font(bold=True, color=COLOR_BURGUNDY)
+    reste_cell.alignment = right
+    reste_cell.number_format = "#,##0"
+
     widths = (18.5, 37.25, 12, 13.75, 15.88, 20.63, 43.0, 13.0, 16.0)
     for i, w in enumerate(widths, 1):
         ws.column_dimensions[get_column_letter(i)].width = w
 
     ws.freeze_panes = f"A{header_r2 + 1}"
+
+
+def _write_synthese_sheet(
+    ws,
+    groups: OrderedDict,
+    *,
+    filtre_label: str = "",
+    company_name: str = "Avalon Pharma",
+) -> None:
+    """Onglet synthèse : CA et reste par mois + total."""
+    thin = Border(
+        left=Side(style="thin", color=COLOR_BURGUNDY_DARK),
+        right=Side(style="thin", color=COLOR_BURGUNDY_DARK),
+        top=Side(style="thin", color=COLOR_BURGUNDY_DARK),
+        bottom=Side(style="thin", color=COLOR_BURGUNDY_DARK),
+    )
+    header_fill = PatternFill(
+        start_color=COLOR_BURGUNDY, end_color=COLOR_BURGUNDY, fill_type="solid"
+    )
+    total_fill = PatternFill(
+        start_color=COLOR_MINT, end_color=COLOR_MINT, fill_type="solid"
+    )
+    alt_fill = PatternFill(
+        start_color=COLOR_MINT_SOFT, end_color=COLOR_MINT_SOFT, fill_type="solid"
+    )
+    center = Alignment(horizontal="center", vertical="center")
+    right = Alignment(horizontal="right", vertical="center")
+    left = Alignment(horizontal="left", vertical="center")
+
+    ws["A1"] = f"Synthèse — {company_name}"
+    ws["A1"].font = _font(bold=True, size=14, color=COLOR_BURGUNDY)
+    ws.merge_cells("A1:D1")
+    ws["A2"] = filtre_label or f"Export du {date.today().strftime('%d/%m/%Y')}"
+    ws["A2"].font = _font(size=11, color=COLOR_MUTED)
+    ws.merge_cells("A2:D2")
+
+    headers = ("Mois", "Nb factures", "Chiffre d'affaires", "Reste à payer")
+    for col, title in enumerate(headers, 1):
+        cell = ws.cell(row=4, column=col, value=title)
+        cell.fill = header_fill
+        cell.font = _font(bold=True, color=COLOR_WHITE)
+        cell.alignment = center
+        cell.border = thin
+
+    row = 5
+    grand = {"chiffre_affaires": 0.0, "reste_a_payer": 0.0, "nb_factures": 0}
+    for idx, (mois_num, facts) in enumerate(groups.items()):
+        tot = compute_totaux(facts)
+        grand["chiffre_affaires"] += tot["chiffre_affaires"]
+        grand["reste_a_payer"] += tot["reste_a_payer"]
+        grand["nb_factures"] += tot["nb_factures"]
+        label = mois_label(mois_num) if mois_num else "Sans date"
+        values = (label, tot["nb_factures"], tot["chiffre_affaires"], tot["reste_a_payer"])
+        for c, val in enumerate(values, 1):
+            cell = ws.cell(row=row, column=c, value=val)
+            cell.border = thin
+            cell.font = _font(color=COLOR_INK)
+            if idx % 2 == 1:
+                cell.fill = alt_fill
+            cell.alignment = left if c == 1 else (center if c == 2 else right)
+            if c in (3, 4):
+                cell.number_format = "#,##0"
+        row += 1
+
+    for c, val in enumerate(
+        ("TOTAL", grand["nb_factures"], grand["chiffre_affaires"], grand["reste_a_payer"]),
+        1,
+    ):
+        cell = ws.cell(row=row, column=c, value=val)
+        cell.border = thin
+        cell.font = _font(bold=True, color=COLOR_BURGUNDY)
+        cell.fill = total_fill
+        cell.alignment = center if c <= 2 else right
+        if c in (3, 4):
+            cell.number_format = "#,##0"
+
+    for i, w in enumerate((18, 14, 22, 18), 1):
+        ws.column_dimensions[get_column_letter(i)].width = w
 
 
 def generate_factures_tableau_excel(
@@ -360,7 +522,6 @@ def generate_factures_tableau_excel(
 
     if split_by_month:
         groups = group_factures_by_month(factures_list)
-        # Supprimer la feuille par défaut ; créer une feuille par mois présent
         default = wb.active
         wb.remove(default)
         if not groups:
@@ -373,6 +534,14 @@ def generate_factures_tableau_excel(
                 company_name=company_name,
             )
         else:
+            if len(groups) > 1:
+                syn = wb.create_sheet(title="Synthese", index=0)
+                _write_synthese_sheet(
+                    syn,
+                    groups,
+                    filtre_label=filtre_label,
+                    company_name=company_name,
+                )
             for mois_num, facts in groups.items():
                 title = sheet_title_mois(mois_num) if mois_num else "Sans date"
                 mois_filtre = filtre_label

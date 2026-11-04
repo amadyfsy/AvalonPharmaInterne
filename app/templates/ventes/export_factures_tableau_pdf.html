@@ -38,9 +38,29 @@
       font-size: 12px;
     }
     tr.alt td { background: #eef8f9; }
+    tr.totaux-label th, tr.totaux-label td {
+      background: #721818;
+      color: #fff;
+      font-weight: bold;
+      text-align: center;
+    }
+    tr.totaux-values td {
+      background: #b0dbdd;
+      font-weight: bold;
+      color: #721818;
+    }
     td.num { text-align: right; white-space: nowrap; }
     td.center { text-align: center; }
     td.facture { text-align: center; font-weight: bold; color: #721818; }
+    .synthese { margin-bottom: 18px; }
+    .synthese h2 {
+      font-size: 13px;
+      color: #721818;
+      margin: 0 0 8px;
+      border-left: 4px solid #721818;
+      padding: 6px 10px;
+      background: #eef8f9;
+    }
   </style>
 </head>
 <body>
@@ -62,7 +82,24 @@
   </table>
   {% endmacro %}
 
-  {% macro data_table(rows) %}
+  {% macro totaux_rows(totaux) %}
+    {% if totaux %}
+      <tr class="totaux-label">
+        <td colspan="5">TOTAL</td>
+        <td>Chiffre d'affaires</td>
+        <td colspan="2">{{ totaux.nb_factures }} facture(s)</td>
+        <td>Reste à payer</td>
+      </tr>
+      <tr class="totaux-values">
+        <td colspan="5"></td>
+        <td class="num">{{ format_fcfa(totaux.chiffre_affaires) }}</td>
+        <td colspan="2"></td>
+        <td class="num">{{ format_fcfa(totaux.reste_a_payer) }}</td>
+      </tr>
+    {% endif %}
+  {% endmacro %}
+
+  {% macro data_table(rows, totaux=None) %}
   <table class="data">
     <thead>
       <tr>
@@ -97,16 +134,51 @@
       {% else %}
         <tr><td colspan="9">Aucune facture pour ces critères.</td></tr>
       {% endfor %}
+      {{ totaux_rows(totaux) }}
     </tbody>
   </table>
   {% endmacro %}
 
   {% if sections and sections|length > 1 %}
+    <div class="section">
+      {{ banner() }}
+      <div class="synthese">
+        <h2>Synthèse par mois</h2>
+        <table class="data">
+          <thead>
+            <tr>
+              <th style="width:25%;">Mois</th>
+              <th style="width:15%;">Nb factures</th>
+              <th style="width:30%;">Chiffre d'affaires</th>
+              <th style="width:30%;">Reste à payer</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for section in sections %}
+              <tr class="{% if loop.index0 % 2 %}alt{% endif %}">
+                <td>{{ section.title }}</td>
+                <td class="center">{{ section.totaux.nb_factures }}</td>
+                <td class="num">{{ format_fcfa(section.totaux.chiffre_affaires) }}</td>
+                <td class="num">{{ format_fcfa(section.totaux.reste_a_payer) }}</td>
+              </tr>
+            {% endfor %}
+            {% if totaux_global %}
+            <tr class="totaux-values">
+              <td><strong>TOTAL</strong></td>
+              <td class="center">{{ totaux_global.nb_factures }}</td>
+              <td class="num">{{ format_fcfa(totaux_global.chiffre_affaires) }}</td>
+              <td class="num">{{ format_fcfa(totaux_global.reste_a_payer) }}</td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
     {% for section in sections %}
       <div class="section">
         {{ banner() }}
         <p class="month-title">{{ section.title }}</p>
-        {{ data_table(section.rows) }}
+        {{ data_table(section.rows, section.totaux) }}
       </div>
     {% endfor %}
   {% elif sections and sections|length == 1 %}
@@ -114,10 +186,10 @@
     {% if split_by_month %}
       <p class="month-title">{{ sections[0].title }}</p>
     {% endif %}
-    {{ data_table(sections[0].rows) }}
+    {{ data_table(sections[0].rows, sections[0].totaux) }}
   {% else %}
     {{ banner() }}
-    {{ data_table(rows or []) }}
+    {{ data_table(rows or [], totaux) }}
   {% endif %}
 </body>
 </html>
