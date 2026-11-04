@@ -87,6 +87,9 @@
       <p class="page-subtitle mb-0">Consultez, modifiez les brouillons et exportez en PDF. La recherche filtre en direct, sans recharger la page.</p>
     </div>
     <div class="d-flex flex-wrap gap-2">
+      <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalExportTableauFactures">
+        <i class="bi bi-download me-1"></i> Exporter tableau
+      </button>
       <a href="{{ url_for('ventes.nouvelle_vente') }}" class="btn btn-primary">
         <i class="bi bi-cart-plus me-1"></i> Nouvelle vente
       </a>
@@ -155,12 +158,25 @@
   </div>
 
   {% include 'ventes/_modal_imprimer_facture.html' %}
+  {% include 'ventes/_modal_export_tableau_factures.html' %}
 {% endblock %}
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='public/js/facture-print.js') }}"></script>
 <script>
   (function () {
+    var exportModal = document.getElementById('modalExportTableauFactures');
+    if (exportModal) {
+      exportModal.addEventListener('show.bs.modal', function () {
+        var anneePage = document.getElementById('factAnnee');
+        var moisPage = document.getElementById('factMois');
+        var anneeExp = document.getElementById('exportAnnee');
+        var moisExp = document.getElementById('exportMois');
+        if (anneePage && anneeExp) anneeExp.value = anneePage.value || '';
+        if (moisPage && moisExp) moisExp.value = moisPage.value || '';
+      });
+    }
+
     var form = document.getElementById('facturesFiltersForm');
     var search = document.getElementById('factQ');
     var root = document.getElementById('facturesLiveRoot');

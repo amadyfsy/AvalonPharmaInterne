@@ -1,4 +1,6 @@
 import datetime as dt
+import re
+import unicodedata
 from datetime import datetime
 
 from sqlalchemy import extract, func, or_
@@ -42,6 +44,11 @@ from ...utils.pdf_documents_reportlab import (
     build_proforma_pdf_bytesio,
 )
 from ...utils.pdf_generator import generate_pdf
+from ...utils.factures_tableau_export import (
+    build_facture_tableau_rows,
+    export_filename as factures_export_filename,
+    generate_factures_tableau_excel,
+)
 from flask_login import current_user, login_required
 from sqlalchemy.orm import joinedload
 
@@ -818,6 +825,14 @@ def factures():
         for bl_row in BonLivraison.query.filter(BonLivraison.facture_id.in_(facture_ids)).all():
             bl_par_facture[bl_row.facture_id] = bl_row
 
+    clients_export = []
+    if not is_partial:
+        clients_export = (
+            Client.query.filter_by(est_actif=True)
+            .order_by(Client.raison_sociale.asc())
+            .all()
+        )
+
     ctx = dict(
         factures=pagination.items,
         pagination=pagination,
@@ -830,12 +845,102 @@ def factures():
         filtres_url=filtres_url,
         statuts_facture=_STATUTS_FACTURE,
         bl_par_facture=bl_par_facture,
+        clients_export=clients_export,
         format_fcfa=format_montant_espace,
         has_cachet=has_cachet(),
     )
     if request.args.get("partial") == "1":
         return render_template("ventes/_factures_results.html", **ctx)
     return render_template("ventes/factures_index.html", **ctx)
+
+
+def _slug_export(text: str) -> str:
+    text = unicodedata.normalize("NFKD", text or "")
+    text = "".join(c for c in text if not unicodedata.combining(c))
+    text = re.sub(r"[^A-Za-z0-9]+", "-", text).strip("-")
+    return text[:40] or "client"
+
+
+def _filtre_label_export(annee, mois, client) -> str:
+    parts = []
+    if annee:
+        parts.append(f"année {annee}")
+    if mois:
+        label = dict(_MOIS_FILTRE).get(mois, str(mois))
+        parts.append(label)
+    if client:
+        parts.append(client.raison_sociale)
+    if not parts:
+        return f"Toutes les factures · export du {dt.date.today().strftime('%d/%m/%Y')}"
+    return " · ".join(parts) + f" · export du {dt.date.today().strftime('%d/%m/%Y')}"
+
+
+@ventes_bp.route('/factures/export-tableau')
+@login_required
+@permission_required('ventes', 'read')
+def export_tableau_factures():
+    """Télécharge le tableau des factures (Excel ou PDF), style feuille Excel Avalon."""
+    annee = request.args.get('annee', type=int)
+    mois = request.args.get('mois', type=int)
+    client_id = request.args.get('client_id', type=int)
+    fmt = (request.args.get('format') or 'xlsx').strip().lower()
+    if fmt not in ('xlsx', 'pdf'):
+        fmt = 'xlsx'
+    if mois is not None and (mois < 1 or mois > 12):
+        mois = None
+
+    client = Client.query.get(client_id) if client_id else None
+
+    query = Facture.query.options(
+        joinedload(Facture.client),
+        joinedload(Facture.lignes).joinedload(LigneFacture.produit),
+    ).filter(Facture.statut != 'annulee')
+
+    if annee:
+        query = query.filter(extract('year', Facture.date_emission) == annee)
+    if mois:
+        query = query.filter(extract('month', Facture.date_emission) == mois)
+    if client:
+        query = query.filter(Facture.client_id == client.id)
+
+    factures = query.order_by(
+        Facture.date_emission.asc(),
+        Facture.numero.asc(),
+        Facture.id.asc(),
+    ).all()
+
+    filtre_label = _filtre_label_export(annee, mois, client)
+    client_slug = _slug_export(client.raison_sociale) if client else ""
+    filename = factures_export_filename(annee, mois, client_slug, ext=fmt)
+
+    if fmt == 'pdf':
+        rows = build_facture_tableau_rows(factures)
+        html = render_template(
+            'ventes/export_factures_tableau_pdf.html',
+            rows=rows,
+            filtre_label=filtre_label,
+            format_fcfa=format_montant_espace,
+            genere_le=datetime.now(),
+        )
+        pdf_io = generate_pdf(html)
+        return send_file(
+            pdf_io,
+            download_name=filename,
+            as_attachment=True,
+            mimetype='application/pdf',
+        )
+
+    excel_io = generate_factures_tableau_excel(
+        factures,
+        sheet_title="Factures",
+        filtre_label=filtre_label,
+    )
+    return send_file(
+        excel_io,
+        download_name=filename,
+        as_attachment=True,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
 
 @ventes_bp.route('/bons-livraison')
 @login_required

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Tableau des factures</title>
+  <style>
+    @page { size: A4 landscape; margin: 12mm; }
+    body { font-family: Arial, Helvetica, sans-serif; font-size: 9px; color: #222; margin: 0; }
+    h1 { font-size: 15px; margin: 0 0 4px; color: #721818; }
+    .meta { color: #666; margin-bottom: 10px; font-size: 9px; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th, td { border: 1px solid #d0d0d0; padding: 4px 5px; vertical-align: top; word-wrap: break-word; }
+    th { background: #721818; color: #fff; font-weight: bold; text-align: center; font-size: 8px; text-transform: uppercase; }
+    td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    tr.inv-start { background: #f7fbfb; }
+    tr.inv-start td.num-facture { font-weight: bold; color: #721818; }
+    .reste-due { color: #b42318; font-weight: bold; }
+    .reste-ok { color: #198754; font-weight: bold; }
+    .col-fact { width: 9%; }
+    .col-desc { width: 26%; }
+    .col-qty { width: 6%; }
+    .col-pu { width: 8%; }
+    .col-tot { width: 9%; }
+    .col-totf { width: 9%; }
+    .col-cli { width: 16%; }
+    .col-date { width: 8%; }
+    .col-reste { width: 9%; }
+  </style>
+</head>
+<body>
+  <h1>Tableau des factures — Avalon Pharma</h1>
+  <p class="meta">
+    {{ filtre_label }}
+    · {{ rows|length }} ligne(s)
+    · Généré le {{ genere_le.strftime('%d/%m/%Y à %H:%M') }}
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th class="col-fact">Facture</th>
+        <th class="col-desc">Description</th>
+        <th class="col-qty">Quantité</th>
+        <th class="col-pu">PU</th>
+        <th class="col-tot">Total</th>
+        <th class="col-totf">Total facture</th>
+        <th class="col-cli">Client</th>
+        <th class="col-date">Date</th>
+        <th class="col-reste">Reste à payer</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+        <tr class="{% if row.is_header %}inv-start{% endif %}">
+          <td class="num-facture">{{ row.numero or '' }}</td>
+          <td>{{ row.description or '' }}</td>
+          <td class="num">{% if row.quantite is not none %}{{ row.quantite }}{% endif %}</td>
+          <td class="num">{% if row.pu is not none %}{{ format_fcfa(row.pu) }}{% endif %}</td>
+          <td class="num">{% if row.total_ligne is not none %}{{ format_fcfa(row.total_ligne) }}{% endif %}</td>
+          <td class="num">{% if row.total_facture is not none %}{{ format_fcfa(row.total_facture) }}{% endif %}</td>
+          <td>{{ row.client or '' }}</td>
+          <td>{{ row.date or '' }}</td>
+          <td class="num {% if row.reste_a_payer is not none %}{% if row.reste_a_payer > 0 %}reste-due{% else %}reste-ok{% endif %}{% endif %}">
+            {% if row.reste_a_payer is not none %}{{ format_fcfa(row.reste_a_payer) }}{% endif %}
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="9">Aucune facture pour ces critères.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>
