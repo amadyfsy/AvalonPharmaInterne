@@ -47,6 +47,7 @@ from ...utils.pdf_documents_reportlab import (
 )
 from ...utils.pdf_generator import generate_pdf
 from ...utils.factures_tableau_export import (
+    build_facture_sections_by_month,
     build_facture_tableau_rows,
     export_filename as factures_export_filename,
     generate_factures_tableau_excel,
@@ -912,6 +913,8 @@ def export_tableau_factures():
     ).all()
 
     filtre_label = _filtre_label_export(annee, mois, client)
+    # Tous les mois (pas de filtre mois) → 1 onglet / section par mois
+    split_by_month = mois is None
     client_slug = _slug_export(client.raison_sociale) if client else ""
     filename = factures_export_filename(annee, mois, client_slug, ext=fmt)
 
@@ -924,10 +927,17 @@ def export_tableau_factures():
     logo_path = get_logo_filepath()
 
     if fmt == 'pdf':
-        rows = build_facture_tableau_rows(factures)
+        if split_by_month:
+            sections = build_facture_sections_by_month(factures)
+            rows = []
+        else:
+            sections = None
+            rows = build_facture_tableau_rows(factures)
         html = render_template(
             'ventes/export_factures_tableau_pdf.html',
             rows=rows,
+            sections=sections,
+            split_by_month=split_by_month,
             filtre_label=filtre_label,
             format_fcfa=format_montant_espace,
             genere_le=datetime.now(),
@@ -942,12 +952,19 @@ def export_tableau_factures():
             mimetype='application/pdf',
         )
 
+    sheet_title = "Factures"
+    if mois:
+        sheet_title = dict(_MOIS_FILTRE).get(mois, f"Mois {mois}")
+    elif annee:
+        sheet_title = str(annee)
+
     excel_io = generate_factures_tableau_excel(
         factures,
-        sheet_title="Factures",
+        sheet_title=sheet_title,
         filtre_label=filtre_label,
         logo_path=logo_path,
         company_name=company_name,
+        split_by_month=split_by_month,
     )
     return send_file(
         excel_io,

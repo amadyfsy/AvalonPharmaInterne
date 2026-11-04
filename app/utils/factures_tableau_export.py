@@ -1,16 +1,18 @@
-"""Export tableau des factures — présentation fidèle aux feuilles Excel Avalon.
+"""Export tableau des factures — présentation Avalon (charte + fusions).
 
-Structure comme Factures.xlsx :
-  - bandeau logo + titre au-dessus
-  - en-têtes sur 2 lignes fusionnées (noir / blanc, Times 12)
+Structure :
+  - bandeau logo à gauche, titre / filtre alignés à droite
+  - en-têtes burgundy (#721818), Times 12
   - colonnes : Facture | Descrption | quantite | pu | Total | Total | Client | Date | Reste à payer
-  - fusion verticale Facture / Total facture / Client / Date / Reste sur les lignes produits
+  - fusion verticale Facture / Total facture / Client / Date / Reste
+  - si tous les mois : un onglet Excel (ou section PDF) par mois
 """
 
 from __future__ import annotations
 
 import io
 import os
+from collections import OrderedDict
 from datetime import date
 from decimal import Decimal
 from typing import Iterable
@@ -25,7 +27,6 @@ except Exception:  # pragma: no cover
     XLImage = None
 
 
-# Noms d'en-tête comme la feuille d'origine (+ Reste à payer)
 HEADERS = (
     "Facture",
     "Descrption",
@@ -38,11 +39,49 @@ HEADERS = (
     "Reste à payer",
 )
 
-# Colonnes fusionnées verticalement (1-index) : Facture, Total facture, Client, Date, Reste
 MERGE_COLS = (1, 6, 7, 8, 9)
 
 FONT_NAME = "Times New Roman"
 FONT_SIZE = 12
+
+# Charte Avalon
+COLOR_BURGUNDY = "721818"
+COLOR_BURGUNDY_DARK = "5A1218"
+COLOR_MINT = "B0DBDD"
+COLOR_MINT_SOFT = "EEF8F9"
+COLOR_INK = "212529"
+COLOR_MUTED = "6C757D"
+COLOR_WHITE = "FFFFFF"
+
+MOIS_NOMS = (
+    "Janvier",
+    "Février",
+    "Mars",
+    "Avril",
+    "Mai",
+    "Juin",
+    "Juillet",
+    "Août",
+    "Septembre",
+    "Octobre",
+    "Novembre",
+    "Décembre",
+)
+
+MOIS_SHEET = (
+    "Janvier",
+    "Fevrier",
+    "Mars",
+    "Avril",
+    "Mai",
+    "Juin",
+    "Juillet",
+    "Aout",
+    "Septembre",
+    "Octobre",
+    "Novembre",
+    "Decembre",
+)
 
 
 def _num(v) -> float | None:
@@ -58,6 +97,28 @@ def _numero_affiche(numero: str) -> str:
     if n.lower().startswith("no "):
         return n
     return f"No {n}"
+
+
+def mois_label(mois: int) -> str:
+    if 1 <= mois <= 12:
+        return MOIS_NOMS[mois - 1]
+    return str(mois)
+
+
+def sheet_title_mois(mois: int) -> str:
+    if 1 <= mois <= 12:
+        return MOIS_SHEET[mois - 1][:31]
+    return f"Mois {mois}"[:31]
+
+
+def group_factures_by_month(factures: Iterable) -> OrderedDict[int, list]:
+    """Groupe les factures par mois (1–12), ordre chronologique. Sans date → 0."""
+    groups: OrderedDict[int, list] = OrderedDict()
+    for facture in factures:
+        d = getattr(facture, "date_emission", None)
+        key = int(d.month) if d else 0
+        groups.setdefault(key, []).append(facture)
+    return groups
 
 
 def build_facture_blocks(factures: Iterable) -> list[dict]:
@@ -128,6 +189,21 @@ def build_facture_tableau_rows(factures: Iterable) -> list[dict]:
     return rows
 
 
+def build_facture_sections_by_month(factures: Iterable) -> list[dict]:
+    """Sections PDF : une par mois présent (titre + rows)."""
+    sections: list[dict] = []
+    for mois_num, facts in group_factures_by_month(factures).items():
+        title = mois_label(mois_num) if mois_num else "Sans date"
+        sections.append(
+            {
+                "mois": mois_num,
+                "title": title,
+                "rows": build_facture_tableau_rows(facts),
+            }
+        )
+    return sections
+
+
 def _font(*, bold: bool = False, color: str | None = None, size: int = FONT_SIZE) -> Font:
     kw = {"name": FONT_NAME, "size": size, "bold": bold}
     if color:
@@ -135,44 +211,46 @@ def _font(*, bold: bool = False, color: str | None = None, size: int = FONT_SIZE
     return Font(**kw)
 
 
-def generate_factures_tableau_excel(
+def _write_sheet(
+    ws,
     factures: Iterable,
     *,
-    sheet_title: str = "Factures",
     filtre_label: str = "",
     logo_path: str | None = None,
     company_name: str = "Avalon Pharma",
-) -> io.BytesIO:
+) -> None:
     blocks = build_facture_blocks(factures)
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = (sheet_title or "Factures")[:31]
 
     thin = Border(
-        left=Side(style="thin", color="000000"),
-        right=Side(style="thin", color="000000"),
-        top=Side(style="thin", color="000000"),
-        bottom=Side(style="thin", color="000000"),
+        left=Side(style="thin", color=COLOR_BURGUNDY_DARK),
+        right=Side(style="thin", color=COLOR_BURGUNDY_DARK),
+        top=Side(style="thin", color=COLOR_BURGUNDY_DARK),
+        bottom=Side(style="thin", color=COLOR_BURGUNDY_DARK),
     )
-    header_fill = PatternFill(start_color="000000", end_color="000000", fill_type="solid")
+    header_fill = PatternFill(
+        start_color=COLOR_BURGUNDY, end_color=COLOR_BURGUNDY, fill_type="solid"
+    )
+    alt_fill = PatternFill(
+        start_color=COLOR_MINT_SOFT, end_color=COLOR_MINT_SOFT, fill_type="solid"
+    )
     center = Alignment(horizontal="center", vertical="center", wrap_text=True)
     left = Alignment(horizontal="left", vertical="center", wrap_text=True)
     right = Alignment(horizontal="right", vertical="center")
+    right_top = Alignment(horizontal="right", vertical="center", wrap_text=True)
 
-    # ---- Bandeau logo + titre (au-dessus du tableau) ----
     ws.row_dimensions[1].height = 28
     ws.row_dimensions[2].height = 18
     ws.row_dimensions[3].height = 10
 
     ws.merge_cells("C1:I1")
     ws["C1"] = f"Tableau des factures — {company_name}"
-    ws["C1"].font = _font(bold=True, size=14)
-    ws["C1"].alignment = Alignment(horizontal="left", vertical="center")
+    ws["C1"].font = _font(bold=True, size=14, color=COLOR_BURGUNDY)
+    ws["C1"].alignment = right_top
 
     ws.merge_cells("C2:I2")
     ws["C2"] = filtre_label or f"Export du {date.today().strftime('%d/%m/%Y')}"
-    ws["C2"].font = _font(size=12)
-    ws["C2"].alignment = Alignment(horizontal="left", vertical="center")
+    ws["C2"].font = _font(size=11, color=COLOR_MUTED)
+    ws["C2"].alignment = right_top
 
     logo_ok = False
     if logo_path and os.path.isfile(logo_path) and XLImage is not None:
@@ -191,17 +269,16 @@ def generate_factures_tableau_excel(
     if not logo_ok:
         ws.merge_cells("A1:B2")
         ws["A1"] = company_name
-        ws["A1"].font = _font(bold=True, size=12)
+        ws["A1"].font = _font(bold=True, size=12, color=COLOR_BURGUNDY)
         ws["A1"].alignment = center
     else:
         ws.merge_cells("A1:B2")
 
-    # ---- En-têtes sur 2 lignes (comme la feuille d'origine) ----
     header_r1, header_r2 = 4, 5
     for col, title in enumerate(HEADERS, 1):
         cell = ws.cell(row=header_r1, column=col, value=title)
         cell.fill = header_fill
-        cell.font = _font(bold=True, color="FFFFFF")
+        cell.font = _font(bold=True, color=COLOR_WHITE)
         cell.alignment = center
         cell.border = thin
         cell2 = ws.cell(row=header_r2, column=col, value=None)
@@ -213,16 +290,15 @@ def generate_factures_tableau_excel(
     ws.row_dimensions[header_r1].height = 18
     ws.row_dimensions[header_r2].height = 18
 
-    # ---- Données ----
     current = header_r2 + 1
-    for block in blocks:
+    for block_idx, block in enumerate(blocks):
         n = len(block["lignes"])
         start = current
         end = current + n - 1
+        use_alt = block_idx % 2 == 1
 
         for i, ligne in enumerate(block["lignes"]):
             r = current + i
-            # Valeur uniquement sur 1re ligne pour les colonnes fusionnées
             values = [
                 block["numero"] if i == 0 else None,
                 ligne["description"],
@@ -237,7 +313,9 @@ def generate_factures_tableau_excel(
             for c_idx, value in enumerate(values, 1):
                 cell = ws.cell(row=r, column=c_idx, value=value)
                 cell.border = thin
-                cell.font = _font()
+                cell.font = _font(color=COLOR_INK)
+                if use_alt:
+                    cell.fill = alt_fill
                 if c_idx in (1, 7, 8):
                     cell.alignment = center
                 elif c_idx == 2:
@@ -255,16 +333,73 @@ def generate_factures_tableau_excel(
                 ws.merge_cells(f"{letter}{start}:{letter}{end}")
                 top = ws.cell(row=start, column=col)
                 top.alignment = center
-                top.font = _font()
+                top.font = _font(color=COLOR_INK)
+                if use_alt:
+                    top.fill = alt_fill
 
         current = end + 1
 
-    # Largeurs proches de la feuille d'origine
     widths = (18.5, 37.25, 12, 13.75, 15.88, 20.63, 43.0, 13.0, 16.0)
     for i, w in enumerate(widths, 1):
         ws.column_dimensions[get_column_letter(i)].width = w
 
     ws.freeze_panes = f"A{header_r2 + 1}"
+
+
+def generate_factures_tableau_excel(
+    factures: Iterable,
+    *,
+    sheet_title: str = "Factures",
+    filtre_label: str = "",
+    logo_path: str | None = None,
+    company_name: str = "Avalon Pharma",
+    split_by_month: bool = False,
+) -> io.BytesIO:
+    factures_list = list(factures)
+    wb = openpyxl.Workbook()
+
+    if split_by_month:
+        groups = group_factures_by_month(factures_list)
+        # Supprimer la feuille par défaut ; créer une feuille par mois présent
+        default = wb.active
+        wb.remove(default)
+        if not groups:
+            ws = wb.create_sheet(title=(sheet_title or "Factures")[:31])
+            _write_sheet(
+                ws,
+                [],
+                filtre_label=filtre_label,
+                logo_path=logo_path,
+                company_name=company_name,
+            )
+        else:
+            for mois_num, facts in groups.items():
+                title = sheet_title_mois(mois_num) if mois_num else "Sans date"
+                mois_filtre = filtre_label
+                if mois_num:
+                    label_m = mois_label(mois_num)
+                    if filtre_label:
+                        mois_filtre = f"{filtre_label} · {label_m}"
+                    else:
+                        mois_filtre = label_m
+                ws = wb.create_sheet(title=title)
+                _write_sheet(
+                    ws,
+                    facts,
+                    filtre_label=mois_filtre,
+                    logo_path=logo_path,
+                    company_name=company_name,
+                )
+    else:
+        ws = wb.active
+        ws.title = (sheet_title or "Factures")[:31]
+        _write_sheet(
+            ws,
+            factures_list,
+            filtre_label=filtre_label,
+            logo_path=logo_path,
+            company_name=company_name,
+        )
 
     output = io.BytesIO()
     wb.save(output)

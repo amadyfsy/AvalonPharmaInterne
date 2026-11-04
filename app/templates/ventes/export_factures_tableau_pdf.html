@@ -5,48 +5,64 @@
   <title>Tableau des factures</title>
   <style>
     @page { size: A4 landscape; margin: 10mm; }
-    body { font-family: "Times New Roman", Times, serif; font-size: 12px; color: #000; margin: 0; }
+    body { font-family: "Times New Roman", Times, serif; font-size: 12px; color: #212529; margin: 0; }
     .banner { width: 100%; margin-bottom: 12px; border-collapse: collapse; }
-    .banner td { border: none; vertical-align: middle; padding: 0 8px 0 0; }
+    .banner td { border: none; vertical-align: middle; padding: 0; }
     .logo { max-height: 52px; max-width: 150px; }
-    .title { font-size: 14px; font-weight: bold; margin: 0 0 2px; }
-    .meta { font-size: 12px; margin: 0; color: #333; }
+    .banner-text { text-align: right; }
+    .title { font-size: 14px; font-weight: bold; margin: 0 0 2px; color: #721818; }
+    .meta { font-size: 11px; margin: 0; color: #6c757d; }
+    .month-title {
+      font-size: 13px;
+      font-weight: bold;
+      color: #721818;
+      margin: 0 0 8px;
+      padding: 6px 10px;
+      background: #eef8f9;
+      border-left: 4px solid #721818;
+    }
+    .section { page-break-after: always; }
+    .section:last-child { page-break-after: auto; }
     table.data { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 12px; }
     table.data th, table.data td {
-      border: 1px solid #000;
+      border: 1px solid #5a1218;
       padding: 4px 5px;
       vertical-align: middle;
       word-wrap: break-word;
     }
     table.data th {
-      background: #000;
+      background: #721818;
       color: #fff;
       font-weight: bold;
       text-align: center;
       font-size: 12px;
     }
+    tr.alt td { background: #eef8f9; }
     td.num { text-align: right; white-space: nowrap; }
     td.center { text-align: center; }
-    td.facture { text-align: center; font-weight: bold; }
+    td.facture { text-align: center; font-weight: bold; color: #721818; }
   </style>
 </head>
 <body>
+  {% macro banner() %}
   <table class="banner">
     <tr>
       <td style="width:160px;">
         {% if logo_data_uri %}
           <img class="logo" src="{{ logo_data_uri }}" alt="Logo">
         {% else %}
-          <strong>{{ company_name }}</strong>
+          <strong style="color:#721818;">{{ company_name }}</strong>
         {% endif %}
       </td>
-      <td>
+      <td class="banner-text">
         <p class="title">Tableau des factures — {{ company_name }}</p>
         <p class="meta">{{ filtre_label }} · Généré le {{ genere_le.strftime('%d/%m/%Y à %H:%M') }}</p>
       </td>
     </tr>
   </table>
+  {% endmacro %}
 
+  {% macro data_table(rows) %}
   <table class="data">
     <thead>
       <tr>
@@ -63,7 +79,7 @@
     </thead>
     <tbody>
       {% for row in rows %}
-        <tr>
+        <tr class="{% if row.block_even %}{% else %}alt{% endif %}">
           {% if row.rowspan %}
             <td class="facture" rowspan="{{ row.rowspan }}">{{ row.numero }}</td>
           {% endif %}
@@ -83,5 +99,25 @@
       {% endfor %}
     </tbody>
   </table>
+  {% endmacro %}
+
+  {% if sections and sections|length > 1 %}
+    {% for section in sections %}
+      <div class="section">
+        {{ banner() }}
+        <p class="month-title">{{ section.title }}</p>
+        {{ data_table(section.rows) }}
+      </div>
+    {% endfor %}
+  {% elif sections and sections|length == 1 %}
+    {{ banner() }}
+    {% if split_by_month %}
+      <p class="month-title">{{ sections[0].title }}</p>
+    {% endif %}
+    {{ data_table(sections[0].rows) }}
+  {% else %}
+    {{ banner() }}
+    {{ data_table(rows or []) }}
+  {% endif %}
 </body>
 </html>
