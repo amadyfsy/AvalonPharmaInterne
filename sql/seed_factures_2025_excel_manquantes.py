@@ -7,9 +7,11 @@ Cree aussi les BL associes.
 
 Usage — console Bash PythonAnywhere (compte DMS07) :
 
+  NE PAS faire « source .env » : bash mange le $ du nom de base (DMS07$Avalon_pharma → DMS07).
+  dotenv charge .env correctement depuis Python.
+
   cd ~/AvalonPharmaInterne
   unset DATABASE_URL MYSQL_USER MYSQL_PASSWORD MYSQL_HOST MYSQL_DATABASE
-  set -a && source .env && set +a
   ~/.virtualenvs/avalon-interne/bin/python sql/seed_factures_2025_excel_manquantes.py --dry-run
   ~/.virtualenvs/avalon-interne/bin/python sql/seed_factures_2025_excel_manquantes.py
 """
