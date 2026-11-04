@@ -1,10 +1,10 @@
-"""Export tableau des factures (présentation type feuille Excel Avalon).
+"""Export tableau des factures — présentation fidèle aux feuilles Excel Avalon.
 
-Colonnes :
-  Facture | Description | Quantité | PU | Total | Total facture | Client | Date | Reste à payer
-
-Les colonnes Facture / Total facture / Client / Date / Reste à payer sont fusionnées
-verticalement sur toutes les lignes produits d'une même facture.
+Structure comme Factures.xlsx :
+  - bandeau logo + titre au-dessus
+  - en-têtes sur 2 lignes fusionnées (noir / blanc, Times 12)
+  - colonnes : Facture | Descrption | quantite | pu | Total | Total | Client | Date | Reste à payer
+  - fusion verticale Facture / Total facture / Client / Date / Reste sur les lignes produits
 """
 
 from __future__ import annotations
@@ -16,27 +16,32 @@ from decimal import Decimal
 from typing import Iterable
 
 import openpyxl
-from openpyxl.drawing.image import Image as XLImage
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
+try:
+    from openpyxl.drawing.image import Image as XLImage
+except Exception:  # pragma: no cover
+    XLImage = None
 
+
+# Noms d'en-tête comme la feuille d'origine (+ Reste à payer)
 HEADERS = (
     "Facture",
-    "Description",
-    "Quantité",
-    "PU",
+    "Descrption",
+    "quantite",
+    "pu",
     "Total",
-    "Total facture",
+    "Total",
     "Client",
     "Date",
     "Reste à payer",
 )
 
-# Colonnes à fusionner verticalement (1-indexed) : Facture, Total facture, Client, Date, Reste
+# Colonnes fusionnées verticalement (1-index) : Facture, Total facture, Client, Date, Reste
 MERGE_COLS = (1, 6, 7, 8, 9)
 
-FONT_NAME = "Calibri"
+FONT_NAME = "Times New Roman"
 FONT_SIZE = 12
 
 
@@ -46,8 +51,16 @@ def _num(v) -> float | None:
     return float(Decimal(str(v)))
 
 
+def _numero_affiche(numero: str) -> str:
+    n = (numero or "").strip()
+    if not n:
+        return ""
+    if n.lower().startswith("no "):
+        return n
+    return f"No {n}"
+
+
 def build_facture_blocks(factures: Iterable) -> list[dict]:
-    """Un bloc = une facture + ses lignes produits (pour fusions)."""
     blocks: list[dict] = []
     for facture in factures:
         client_nom = ""
@@ -75,16 +88,11 @@ def build_facture_blocks(factures: Iterable) -> list[dict]:
             )
         if not lignes_out:
             lignes_out.append(
-                {
-                    "description": "",
-                    "quantite": None,
-                    "pu": None,
-                    "total_ligne": None,
-                }
+                {"description": "", "quantite": None, "pu": None, "total_ligne": None}
             )
         blocks.append(
             {
-                "numero": facture.numero,
+                "numero": _numero_affiche(facture.numero),
                 "client": client_nom,
                 "date": date_str,
                 "total_facture": total_facture,
@@ -96,7 +104,7 @@ def build_facture_blocks(factures: Iterable) -> list[dict]:
 
 
 def build_facture_tableau_rows(factures: Iterable) -> list[dict]:
-    """Lignes plates (PDF / compat) avec rowspan sur la 1re ligne du bloc."""
+    """Lignes plates pour PDF (rowspan sur la 1re ligne du bloc)."""
     rows: list[dict] = []
     for block_idx, block in enumerate(build_facture_blocks(factures)):
         n = len(block["lignes"])
@@ -120,11 +128,11 @@ def build_facture_tableau_rows(factures: Iterable) -> list[dict]:
     return rows
 
 
-def _base_font(*, bold: bool = False, color: str | None = None, size: int = FONT_SIZE) -> Font:
-    kwargs = {"name": FONT_NAME, "size": size, "bold": bold}
+def _font(*, bold: bool = False, color: str | None = None, size: int = FONT_SIZE) -> Font:
+    kw = {"name": FONT_NAME, "size": size, "bold": bold}
     if color:
-        kwargs["color"] = color
-    return Font(**kwargs)
+        kw["color"] = color
+    return Font(**kw)
 
 
 def generate_factures_tableau_excel(
@@ -140,80 +148,81 @@ def generate_factures_tableau_excel(
     ws = wb.active
     ws.title = (sheet_title or "Factures")[:31]
 
-    header_fill = PatternFill(start_color="721818", end_color="721818", fill_type="solid")
-    band_fill = PatternFill(start_color="F7FBFB", end_color="F7FBFB", fill_type="solid")
-    alt_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
     thin = Border(
-        left=Side(style="thin", color="BFBFBF"),
-        right=Side(style="thin", color="BFBFBF"),
-        top=Side(style="thin", color="BFBFBF"),
-        bottom=Side(style="thin", color="BFBFBF"),
+        left=Side(style="thin", color="000000"),
+        right=Side(style="thin", color="000000"),
+        top=Side(style="thin", color="000000"),
+        bottom=Side(style="thin", color="000000"),
     )
+    header_fill = PatternFill(start_color="000000", end_color="000000", fill_type="solid")
     center = Alignment(horizontal="center", vertical="center", wrap_text=True)
     left = Alignment(horizontal="left", vertical="center", wrap_text=True)
     right = Alignment(horizontal="right", vertical="center")
 
-    # ---- En-tête : logo + titre ----
-    # Lignes 1-4 réservées au bandeau
-    ws.merge_cells("C1:I2")
-    title_cell = ws["C1"]
-    title_cell.value = f"Tableau des factures — {company_name}"
-    title_cell.font = _base_font(bold=True, color="721818", size=16)
-    title_cell.alignment = Alignment(horizontal="left", vertical="center")
+    # ---- Bandeau logo + titre (au-dessus du tableau) ----
+    ws.row_dimensions[1].height = 28
+    ws.row_dimensions[2].height = 18
+    ws.row_dimensions[3].height = 10
 
-    ws.merge_cells("C3:I3")
-    meta_cell = ws["C3"]
-    meta_cell.value = filtre_label or f"Export du {date.today().strftime('%d/%m/%Y')}"
-    meta_cell.font = _base_font(color="666666", size=12)
-    meta_cell.alignment = Alignment(horizontal="left", vertical="center")
+    ws.merge_cells("C1:I1")
+    ws["C1"] = f"Tableau des factures — {company_name}"
+    ws["C1"].font = _font(bold=True, size=14)
+    ws["C1"].alignment = Alignment(horizontal="left", vertical="center")
 
-    ws.row_dimensions[1].height = 22
-    ws.row_dimensions[2].height = 22
-    ws.row_dimensions[3].height = 20
-    ws.row_dimensions[4].height = 8
+    ws.merge_cells("C2:I2")
+    ws["C2"] = filtre_label or f"Export du {date.today().strftime('%d/%m/%Y')}"
+    ws["C2"].font = _font(size=12)
+    ws["C2"].alignment = Alignment(horizontal="left", vertical="center")
 
-    if logo_path and os.path.isfile(logo_path):
+    logo_ok = False
+    if logo_path and os.path.isfile(logo_path) and XLImage is not None:
         try:
             img = XLImage(logo_path)
-            # Conserver proportions, hauteur ~55 px
-            max_h = 55
+            max_h = 50
             if img.height and img.height > max_h:
                 ratio = max_h / float(img.height)
                 img.height = max_h
-                img.width = int(img.width * ratio)
+                img.width = max(1, int(img.width * ratio))
             img.anchor = "A1"
             ws.add_image(img)
-            ws.merge_cells("A1:B3")
+            logo_ok = True
         except Exception:
-            ws.merge_cells("A1:B3")
-            ws["A1"] = company_name
-            ws["A1"].font = _base_font(bold=True, color="721818", size=14)
-    else:
-        ws.merge_cells("A1:B3")
+            logo_ok = False
+    if not logo_ok:
+        ws.merge_cells("A1:B2")
         ws["A1"] = company_name
-        ws["A1"].font = _base_font(bold=True, color="721818", size=14)
-        ws["A1"].alignment = Alignment(horizontal="center", vertical="center")
+        ws["A1"].font = _font(bold=True, size=12)
+        ws["A1"].alignment = center
+    else:
+        ws.merge_cells("A1:B2")
 
-    header_row = 5
+    # ---- En-têtes sur 2 lignes (comme la feuille d'origine) ----
+    header_r1, header_r2 = 4, 5
     for col, title in enumerate(HEADERS, 1):
-        cell = ws.cell(row=header_row, column=col, value=title)
+        cell = ws.cell(row=header_r1, column=col, value=title)
         cell.fill = header_fill
-        cell.font = _base_font(bold=True, color="FFFFFF")
+        cell.font = _font(bold=True, color="FFFFFF")
         cell.alignment = center
         cell.border = thin
-    ws.row_dimensions[header_row].height = 22
+        cell2 = ws.cell(row=header_r2, column=col, value=None)
+        cell2.fill = header_fill
+        cell2.border = thin
+        letter = get_column_letter(col)
+        ws.merge_cells(f"{letter}{header_r1}:{letter}{header_r2}")
 
-    data_start = header_row + 1
-    current_row = data_start
+    ws.row_dimensions[header_r1].height = 18
+    ws.row_dimensions[header_r2].height = 18
 
-    for block_idx, block in enumerate(blocks):
+    # ---- Données ----
+    current = header_r2 + 1
+    for block in blocks:
         n = len(block["lignes"])
-        start = current_row
-        end = current_row + n - 1
-        fill = band_fill if block_idx % 2 == 0 else alt_fill
+        start = current
+        end = current + n - 1
 
         for i, ligne in enumerate(block["lignes"]):
-            r = current_row + i
+            r = current + i
+            # Valeur uniquement sur 1re ligne pour les colonnes fusionnées
             values = [
                 block["numero"] if i == 0 else None,
                 ligne["description"],
@@ -228,8 +237,7 @@ def generate_factures_tableau_excel(
             for c_idx, value in enumerate(values, 1):
                 cell = ws.cell(row=r, column=c_idx, value=value)
                 cell.border = thin
-                cell.fill = fill
-                cell.font = _base_font(bold=(c_idx == 1 and i == 0), color="721818" if c_idx == 1 and i == 0 else None)
+                cell.font = _font()
                 if c_idx in (1, 7, 8):
                     cell.alignment = center
                 elif c_idx == 2:
@@ -238,7 +246,8 @@ def generate_factures_tableau_excel(
                     cell.alignment = right
                 if c_idx in (4, 5, 6, 9) and isinstance(value, (int, float)):
                     cell.number_format = "#,##0"
-            ws.row_dimensions[r].height = 18
+                if c_idx == 3 and isinstance(value, (int, float)):
+                    cell.number_format = "0"
 
         if n > 1:
             for col in MERGE_COLS:
@@ -246,19 +255,16 @@ def generate_factures_tableau_excel(
                 ws.merge_cells(f"{letter}{start}:{letter}{end}")
                 top = ws.cell(row=start, column=col)
                 top.alignment = center
-                if col == 1:
-                    top.font = _base_font(bold=True, color="721818")
+                top.font = _font()
 
-        current_row = end + 1
+        current = end + 1
 
-    widths = (16, 44, 11, 12, 14, 14, 30, 12, 14)
+    # Largeurs proches de la feuille d'origine
+    widths = (18.5, 37.25, 12, 13.75, 15.88, 20.63, 43.0, 13.0, 16.0)
     for i, w in enumerate(widths, 1):
         ws.column_dimensions[get_column_letter(i)].width = w
 
-    last_data = max(header_row, current_row - 1)
-    ws.auto_filter.ref = f"A{header_row}:I{last_data}"
-    ws.freeze_panes = f"A{data_start}"
-    ws.print_title_rows = f"{header_row}:{header_row}"
+    ws.freeze_panes = f"A{header_r2 + 1}"
 
     output = io.BytesIO()
     wb.save(output)
