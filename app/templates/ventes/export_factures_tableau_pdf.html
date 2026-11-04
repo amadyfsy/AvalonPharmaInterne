@@ -2,40 +2,48 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Tableau des factures</title>
+  <title>{{ titre_general or 'Tableau des factures' }}</title>
   <style>
-    @page { size: A4 landscape; margin: 10mm; }
-    body { font-family: "Times New Roman", Times, serif; font-size: 12px; color: #212529; margin: 0; }
-    .banner { width: 100%; margin-bottom: 12px; border-collapse: collapse; }
+    @page { size: A4 portrait; margin: 10mm 8mm; }
+    body { font-family: "Times New Roman", Times, serif; font-size: 9px; color: #212529; margin: 0; }
+    .banner { width: 100%; margin-bottom: 8px; border-collapse: collapse; }
     .banner td { border: none; vertical-align: middle; padding: 0; }
-    .logo { max-height: 52px; max-width: 150px; }
+    .logo { max-height: 44px; max-width: 120px; }
     .banner-text { text-align: right; }
-    .title { font-size: 14px; font-weight: bold; margin: 0 0 2px; color: #721818; }
-    .meta { font-size: 11px; margin: 0; color: #6c757d; }
-    .month-title {
+    .title-general {
       font-size: 13px;
+      font-weight: bold;
+      margin: 0 0 2px;
+      color: #721818;
+      text-align: right;
+    }
+    .meta { font-size: 9px; margin: 0; color: #6c757d; text-align: right; }
+    .month-title {
+      font-size: 11px;
       font-weight: bold;
       color: #721818;
       margin: 0 0 8px;
-      padding: 6px 10px;
-      background: #eef8f9;
-      border-left: 4px solid #721818;
+      padding: 6px 8px;
+      background: #b0dbdd;
+      border: 1px solid #721818;
+      text-align: center;
     }
     .section { page-break-after: always; }
     .section:last-child { page-break-after: auto; }
-    table.data { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 12px; }
+    table.data { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 8.5px; }
     table.data th, table.data td {
       border: 1px solid #5a1218;
-      padding: 4px 5px;
+      padding: 3px 3px;
       vertical-align: middle;
       word-wrap: break-word;
+      overflow-wrap: break-word;
     }
     table.data th {
       background: #721818;
       color: #fff;
       font-weight: bold;
       text-align: center;
-      font-size: 12px;
+      font-size: 8px;
     }
     tr.alt td { background: #eef8f9; }
     tr.totaux-label th, tr.totaux-label td {
@@ -43,23 +51,26 @@
       color: #fff;
       font-weight: bold;
       text-align: center;
+      font-size: 8px;
     }
     tr.totaux-values td {
       background: #b0dbdd;
       font-weight: bold;
       color: #721818;
+      font-size: 8.5px;
     }
     td.num { text-align: right; white-space: nowrap; }
     td.center { text-align: center; }
     td.facture { text-align: center; font-weight: bold; color: #721818; }
-    .synthese { margin-bottom: 18px; }
+    .synthese { margin-bottom: 12px; }
     .synthese h2 {
-      font-size: 13px;
+      font-size: 11px;
       color: #721818;
       margin: 0 0 8px;
-      border-left: 4px solid #721818;
-      padding: 6px 10px;
-      background: #eef8f9;
+      padding: 6px 8px;
+      background: #b0dbdd;
+      border: 1px solid #721818;
+      text-align: center;
     }
   </style>
 </head>
@@ -67,7 +78,7 @@
   {% macro banner() %}
   <table class="banner">
     <tr>
-      <td style="width:160px;">
+      <td style="width:130px;">
         {% if logo_data_uri %}
           <img class="logo" src="{{ logo_data_uri }}" alt="Logo">
         {% else %}
@@ -75,7 +86,7 @@
         {% endif %}
       </td>
       <td class="banner-text">
-        <p class="title">Tableau des factures — {{ company_name }}</p>
+        <p class="title-general">{{ titre_general }}</p>
         <p class="meta">{{ filtre_label }} · Généré le {{ genere_le.strftime('%d/%m/%Y à %H:%M') }}</p>
       </td>
     </tr>
@@ -103,13 +114,13 @@
   <table class="data">
     <thead>
       <tr>
-        <th style="width:10%;">Facture</th>
-        <th style="width:24%;">Descrption</th>
+        <th style="width:11%;">Facture</th>
+        <th style="width:22%;">Descrption</th>
         <th style="width:7%;">quantite</th>
-        <th style="width:8%;">pu</th>
+        <th style="width:9%;">pu</th>
         <th style="width:9%;">Total</th>
-        <th style="width:9%;">Total</th>
-        <th style="width:16%;">Client</th>
+        <th style="width:10%;">Total</th>
+        <th style="width:15%;">Client</th>
         <th style="width:8%;">Date</th>
         <th style="width:9%;">Reste à payer</th>
       </tr>
@@ -147,10 +158,10 @@
         <table class="data">
           <thead>
             <tr>
-              <th style="width:25%;">Mois</th>
+              <th style="width:40%;">Période</th>
               <th style="width:15%;">Nb factures</th>
-              <th style="width:30%;">Chiffre d'affaires</th>
-              <th style="width:30%;">Reste à payer</th>
+              <th style="width:22%;">Chiffre d'affaires</th>
+              <th style="width:23%;">Reste à payer</th>
             </tr>
           </thead>
           <tbody>
@@ -183,12 +194,13 @@
     {% endfor %}
   {% elif sections and sections|length == 1 %}
     {{ banner() }}
-    {% if split_by_month %}
-      <p class="month-title">{{ sections[0].title }}</p>
-    {% endif %}
+    <p class="month-title">{{ sections[0].title }}</p>
     {{ data_table(sections[0].rows, sections[0].totaux) }}
   {% else %}
     {{ banner() }}
+    {% if titre_periode %}
+      <p class="month-title">{{ titre_periode }}</p>
+    {% endif %}
     {{ data_table(rows or [], totaux) }}
   {% endif %}
 </body>

@@ -10,6 +10,7 @@ Structure :
 
 from __future__ import annotations
 
+import calendar
 import io
 import os
 from collections import OrderedDict
@@ -109,6 +110,57 @@ def sheet_title_mois(mois: int) -> str:
     if 1 <= mois <= 12:
         return MOIS_SHEET[mois - 1][:31]
     return f"Mois {mois}"[:31]
+
+
+def periode_mois(mois: int, annee: int | None = None) -> tuple[date | None, date | None]:
+    """Début / fin calendaires du mois (année optionnelle)."""
+    if not (1 <= mois <= 12):
+        return None, None
+    y = annee or date.today().year
+    debut = date(y, mois, 1)
+    fin = date(y, mois, calendar.monthrange(y, mois)[1])
+    return debut, fin
+
+
+def titre_periode_mois(mois: int, annee: int | None = None) -> str:
+    """Ex. : Janvier 2025 (01/01/2025 – 31/01/2025)."""
+    if not (1 <= mois <= 12):
+        return "Sans date"
+    label = mois_label(mois)
+    debut, fin = periode_mois(mois, annee)
+    if annee and debut and fin:
+        return f"{label} {annee} ({debut.strftime('%d/%m/%Y')} – {fin.strftime('%d/%m/%Y')})"
+    if debut and fin:
+        return f"{label} ({debut.strftime('%d/%m/%Y')} – {fin.strftime('%d/%m/%Y')})"
+    return label
+
+
+def titre_general_export(
+    *,
+    company_name: str = "Avalon Pharma",
+    annee: int | None = None,
+    mois: int | None = None,
+) -> str:
+    """Titre général du document."""
+    base = f"Tableau des factures — {company_name}"
+    if annee and mois:
+        return f"{base} · {titre_periode_mois(mois, annee)}"
+    if annee:
+        return f"{base} · Année {annee}"
+    if mois:
+        return f"{base} · {mois_label(mois)}"
+    return base
+
+
+def infer_annee_from_factures(factures: Iterable) -> int | None:
+    years = {
+        f.date_emission.year
+        for f in factures
+        if getattr(f, "date_emission", None)
+    }
+    if len(years) == 1:
+        return next(iter(years))
+    return None
 
 
 def group_factures_by_month(factures: Iterable) -> OrderedDict[int, list]:
@@ -226,12 +278,24 @@ def build_facture_tableau_rows(factures: Iterable) -> list[dict]:
     return rows
 
 
-def build_facture_sections_by_month(factures: Iterable) -> tuple[list[dict], dict]:
-    """Sections PDF : une par mois (titre + rows + totaux) et totaux globaux."""
+def build_facture_sections_by_month(
+    factures: Iterable,
+    *,
+    annee: int | None = None,
+) -> tuple[list[dict], dict]:
+    """Sections PDF : une par mois (titre période + rows + totaux) et totaux globaux."""
+    facts_list = list(factures)
+    if annee is None:
+        annee = infer_annee_from_factures(facts_list)
     sections: list[dict] = []
     grand = {"chiffre_affaires": 0.0, "reste_a_payer": 0.0, "nb_factures": 0}
-    for mois_num, facts in group_factures_by_month(factures).items():
-        title = mois_label(mois_num) if mois_num else "Sans date"
+    for mois_num, facts in group_factures_by_month(facts_list).items():
+        # Année effective : filtre, sinon année dominante des factures du mois
+        y = annee or infer_annee_from_factures(facts)
+        if mois_num:
+            title = titre_periode_mois(mois_num, y)
+        else:
+            title = "Sans date"
         tot = compute_totaux(facts)
         grand["chiffre_affaires"] += tot["chiffre_affaires"]
         grand["reste_a_payer"] += tot["reste_a_payer"]
@@ -239,6 +303,7 @@ def build_facture_sections_by_month(factures: Iterable) -> tuple[list[dict], dic
         sections.append(
             {
                 "mois": mois_num,
+                "annee": y,
                 "title": title,
                 "rows": build_facture_tableau_rows(facts),
                 "totaux": tot,
@@ -261,6 +326,8 @@ def _write_sheet(
     filtre_label: str = "",
     logo_path: str | None = None,
     company_name: str = "Avalon Pharma",
+    titre_general: str | None = None,
+    titre_mois: str | None = None,
 ) -> None:
     blocks = build_facture_blocks(factures)
 
@@ -276,6 +343,9 @@ def _write_sheet(
     alt_fill = PatternFill(
         start_color=COLOR_MINT_SOFT, end_color=COLOR_MINT_SOFT, fill_type="solid"
     )
+    month_fill = PatternFill(
+        start_color=COLOR_MINT, end_color=COLOR_MINT, fill_type="solid"
+    )
     center = Alignment(horizontal="center", vertical="center", wrap_text=True)
     left = Alignment(horizontal="left", vertical="center", wrap_text=True)
     right = Alignment(horizontal="right", vertical="center")
@@ -283,10 +353,9 @@ def _write_sheet(
 
     ws.row_dimensions[1].height = 28
     ws.row_dimensions[2].height = 18
-    ws.row_dimensions[3].height = 10
 
     ws.merge_cells("C1:I1")
-    ws["C1"] = f"Tableau des factures — {company_name}"
+    ws["C1"] = titre_general or f"Tableau des factures — {company_name}"
     ws["C1"].font = _font(bold=True, size=14, color=COLOR_BURGUNDY)
     ws["C1"].alignment = right_top
 
@@ -317,7 +386,22 @@ def _write_sheet(
     else:
         ws.merge_cells("A1:B2")
 
-    header_r1, header_r2 = 4, 5
+    # Titre de période du mois (sous le bandeau)
+    if titre_mois:
+        ws.row_dimensions[3].height = 22
+        ws.merge_cells("A3:I3")
+        ws["A3"] = titre_mois
+        ws["A3"].font = _font(bold=True, size=12, color=COLOR_BURGUNDY)
+        ws["A3"].fill = month_fill
+        ws["A3"].alignment = center
+        for c in range(1, 10):
+            ws.cell(row=3, column=c).border = thin
+            ws.cell(row=3, column=c).fill = month_fill
+        header_r1, header_r2 = 4, 5
+    else:
+        ws.row_dimensions[3].height = 10
+        header_r1, header_r2 = 4, 5
+
     for col, title in enumerate(HEADERS, 1):
         cell = ws.cell(row=header_r1, column=col, value=title)
         cell.fill = header_fill
@@ -436,6 +520,8 @@ def _write_synthese_sheet(
     *,
     filtre_label: str = "",
     company_name: str = "Avalon Pharma",
+    titre_general: str | None = None,
+    annee: int | None = None,
 ) -> None:
     """Onglet synthèse : CA et reste par mois + total."""
     thin = Border(
@@ -457,29 +543,33 @@ def _write_synthese_sheet(
     right = Alignment(horizontal="right", vertical="center")
     left = Alignment(horizontal="left", vertical="center")
 
-    ws["A1"] = f"Synthèse — {company_name}"
+    ws["A1"] = titre_general or f"Tableau des factures — {company_name}"
     ws["A1"].font = _font(bold=True, size=14, color=COLOR_BURGUNDY)
     ws.merge_cells("A1:D1")
-    ws["A2"] = filtre_label or f"Export du {date.today().strftime('%d/%m/%Y')}"
-    ws["A2"].font = _font(size=11, color=COLOR_MUTED)
+    ws["A2"] = "Synthèse par mois"
+    ws["A2"].font = _font(bold=True, size=12, color=COLOR_BURGUNDY)
     ws.merge_cells("A2:D2")
+    ws["A3"] = filtre_label or f"Export du {date.today().strftime('%d/%m/%Y')}"
+    ws["A3"].font = _font(size=11, color=COLOR_MUTED)
+    ws.merge_cells("A3:D3")
 
-    headers = ("Mois", "Nb factures", "Chiffre d'affaires", "Reste à payer")
+    headers = ("Période", "Nb factures", "Chiffre d'affaires", "Reste à payer")
     for col, title in enumerate(headers, 1):
-        cell = ws.cell(row=4, column=col, value=title)
+        cell = ws.cell(row=5, column=col, value=title)
         cell.fill = header_fill
         cell.font = _font(bold=True, color=COLOR_WHITE)
         cell.alignment = center
         cell.border = thin
 
-    row = 5
+    row = 6
     grand = {"chiffre_affaires": 0.0, "reste_a_payer": 0.0, "nb_factures": 0}
     for idx, (mois_num, facts) in enumerate(groups.items()):
         tot = compute_totaux(facts)
         grand["chiffre_affaires"] += tot["chiffre_affaires"]
         grand["reste_a_payer"] += tot["reste_a_payer"]
         grand["nb_factures"] += tot["nb_factures"]
-        label = mois_label(mois_num) if mois_num else "Sans date"
+        y = annee or infer_annee_from_factures(facts)
+        label = titre_periode_mois(mois_num, y) if mois_num else "Sans date"
         values = (label, tot["nb_factures"], tot["chiffre_affaires"], tot["reste_a_payer"])
         for c, val in enumerate(values, 1):
             cell = ws.cell(row=row, column=c, value=val)
@@ -504,7 +594,7 @@ def _write_synthese_sheet(
         if c in (3, 4):
             cell.number_format = "#,##0"
 
-    for i, w in enumerate((18, 14, 22, 18), 1):
+    for i, w in enumerate((42, 14, 22, 18), 1):
         ws.column_dimensions[get_column_letter(i)].width = w
 
 
@@ -516,8 +606,15 @@ def generate_factures_tableau_excel(
     logo_path: str | None = None,
     company_name: str = "Avalon Pharma",
     split_by_month: bool = False,
+    annee: int | None = None,
+    mois: int | None = None,
 ) -> io.BytesIO:
     factures_list = list(factures)
+    if annee is None:
+        annee = infer_annee_from_factures(factures_list)
+    titre_gen = titre_general_export(
+        company_name=company_name, annee=annee, mois=mois if not split_by_month else None
+    )
     wb = openpyxl.Workbook()
 
     if split_by_month:
@@ -532,6 +629,7 @@ def generate_factures_tableau_excel(
                 filtre_label=filtre_label,
                 logo_path=logo_path,
                 company_name=company_name,
+                titre_general=titre_gen,
             )
         else:
             if len(groups) > 1:
@@ -541,33 +639,37 @@ def generate_factures_tableau_excel(
                     groups,
                     filtre_label=filtre_label,
                     company_name=company_name,
+                    titre_general=titre_gen,
+                    annee=annee,
                 )
             for mois_num, facts in groups.items():
                 title = sheet_title_mois(mois_num) if mois_num else "Sans date"
-                mois_filtre = filtre_label
-                if mois_num:
-                    label_m = mois_label(mois_num)
-                    if filtre_label:
-                        mois_filtre = f"{filtre_label} · {label_m}"
-                    else:
-                        mois_filtre = label_m
+                y = annee or infer_annee_from_factures(facts)
+                titre_m = titre_periode_mois(mois_num, y) if mois_num else "Sans date"
                 ws = wb.create_sheet(title=title)
                 _write_sheet(
                     ws,
                     facts,
-                    filtre_label=mois_filtre,
+                    filtre_label=filtre_label,
                     logo_path=logo_path,
                     company_name=company_name,
+                    titre_general=titre_gen,
+                    titre_mois=titre_m,
                 )
     else:
         ws = wb.active
         ws.title = (sheet_title or "Factures")[:31]
+        titre_m = None
+        if mois:
+            titre_m = titre_periode_mois(mois, annee)
         _write_sheet(
             ws,
             factures_list,
             filtre_label=filtre_label,
             logo_path=logo_path,
             company_name=company_name,
+            titre_general=titre_gen,
+            titre_mois=titre_m,
         )
 
     output = io.BytesIO()

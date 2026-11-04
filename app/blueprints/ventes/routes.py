@@ -52,6 +52,8 @@ from ...utils.factures_tableau_export import (
     compute_totaux,
     export_filename as factures_export_filename,
     generate_factures_tableau_excel,
+    titre_general_export,
+    titre_periode_mois,
 )
 from flask_login import current_user, login_required
 from sqlalchemy.orm import joinedload
@@ -927,9 +929,18 @@ def export_tableau_factures():
     )
     logo_path = get_logo_filepath()
 
+    titre_general = titre_general_export(
+        company_name=company_name,
+        annee=annee,
+        mois=mois if not split_by_month else None,
+    )
+    titre_periode = titre_periode_mois(mois, annee) if mois else None
+
     if fmt == 'pdf':
         if split_by_month:
-            sections, totaux_global = build_facture_sections_by_month(factures)
+            sections, totaux_global = build_facture_sections_by_month(
+                factures, annee=annee
+            )
             rows = []
             totaux = None
         else:
@@ -944,6 +955,8 @@ def export_tableau_factures():
             totaux=totaux,
             totaux_global=totaux_global,
             split_by_month=split_by_month,
+            titre_general=titre_general,
+            titre_periode=titre_periode,
             filtre_label=filtre_label,
             format_fcfa=format_montant_espace,
             genere_le=datetime.now(),
@@ -971,6 +984,8 @@ def export_tableau_factures():
         logo_path=logo_path,
         company_name=company_name,
         split_by_month=split_by_month,
+        annee=annee,
+        mois=mois,
     )
     return send_file(
         excel_io,
