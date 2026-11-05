@@ -36,26 +36,14 @@ TAUX_XOF = {
     "INR": Decimal("7"),
 }
 
-TITRE_TO_CATEGORIE = {
-    "tranport": "Dépenses liées aux achats",
-    "transport": "Dépenses liées aux achats",
-    "approvisionnement": "Dépenses liées aux achats",
-    "appovisionnement": "Dépenses liées aux achats",
-    "approvisionnement + transport": "Dépenses liées aux achats",
-    "transit": "Douane",
-    "douane": "Douane",
-    "seni": "Douane",
-    "impo": "Impôt douane",
-    "maintenance vehicule": "Maintenance & réparations",
-    "entretient vehicule": "Maintenance & réparations",
-    "vehicule": "Maintenance & réparations",
-    "entretient du local": "Maintenance & réparations",
-    "garantie de soumission": "Frais bancaires & agios",
-    "achat cahier de charge": "Dépenses liées aux ventes",
-    "reservation": "Dépenses liées aux ventes",
-    "tranport du personnel": "Transport du personnel",
-    "transport du personnel": "Transport du personnel",
-}
+# Catégories Avalon ciblées (code_systeme ou nom exact)
+#  - appro_achats          Dépenses liées aux achats
+#  - appro_douane          Douane (formalités / transitaires)
+#  - appro_impot_douane    Impôt douane (droits / IMPO)
+#  - rh_transport_personnel Transport du personnel
+#  - vente_liee            Dépenses liées aux ventes (cahiers de charge / marchés)
+#  - nom:Frais bancaires & agios  (garanties SONAC)
+#  - nom:Maintenance & réparations (véhicules, locaux)
 
 DEPENSES = [
     {
@@ -1192,7 +1180,7 @@ def slugify(text: str) -> str:
     return text.upper()[:40] or "X"
 
 
-def norm_titre(titre: str) -> str:
+def norm_text(titre: str) -> str:
     t = unicodedata.normalize("NFKD", titre or "")
     t = "".join(c for c in t if not unicodedata.combining(c))
     return re.sub(r"\s+", " ", t).strip().casefold()
@@ -1214,27 +1202,205 @@ def build_libelle(raw: dict) -> str:
     return lib[:255]
 
 
-def find_categorie(CategorieDepense, titre: str):
-    key = norm_titre(titre)
-    nom = TITRE_TO_CATEGORIE.get(key)
-    if nom:
-        cat = CategorieDepense.query.filter(CategorieDepense.nom == nom).first()
-        if cat:
-            return cat
-    return (
-        CategorieDepense.query.filter(CategorieDepense.nom == "Dépenses liées aux achats").first()
-        or CategorieDepense.query.order_by(CategorieDepense.id.asc()).first()
+def _contains_any(text: str, *needles: str) -> bool:
+    return any(n in text for n in needles)
+
+
+def classify_categorie_target(raw: dict) -> tuple[str, str]:
+    """Retourne (kind, key) : ('code', code_systeme) ou ('nom', nom_categorie).
+
+    Règles métier alignées sur les catégories système Avalon existantes,
+    en croisant titre Excel + description + fournisseur.
+    """
+    titre = norm_text(raw.get("titre") or "")
+    desc = norm_text(raw.get("description") or "")
+    fourn = norm_text(raw.get("fournisseur") or "")
+    blob = f"{titre} {desc} {fourn}"
+
+    # 1) Transport du personnel (RH)
+    if _contains_any(titre, "personnel") or _contains_any(blob, "transport du personnel", "tranport du personnel"):
+        return "code", "rh_transport_personnel"
+
+    # 2) Impôt / droits de douane
+    if titre == "impo" or _contains_any(blob, "impot douane", "impôt douane", "droits de douane"):
+        return "code", "appro_impot_douane"
+
+    # 3) Douane / transit / transitaires / MSC / formalités portuaires
+    # Attention : ne pas matcher "port" dans "transport" / "tranport"
+    frais_port = bool(re.search(r"(?:^|[^a-z])port(?:[^a-z]|$)", blob)) and not _contains_any(
+        titre, "transport", "tranport"
     )
+    if (
+        _contains_any(titre, "transit", "douane", "seni")
+        or _contains_any(
+            blob,
+            "transitaire",
+            "co -transen",
+            "co-transen",
+            "cotransen",
+            "msc",
+            "orabank",
+            "conteneur",
+            "touba khaira",
+            "ts cargo",
+        )
+        or (frais_port and _contains_any(titre, "transit", "douane"))
+        or (titre in {"port", "douane"} or blob.strip() == "port")
+        or (raw.get("facture_no") and norm_text(str(raw.get("facture_no"))) == "port")
+    ):
+        return "code", "appro_douane"
+
+    # 4) Garanties bancaires / soumission (SONAC…)
+    if _contains_any(blob, "garantie", "soumission", "sonac"):
+        return "nom", "Frais bancaires & agios"
+
+    # 5) Cahiers de charge / marchés publics (activité commerciale)
+    if _contains_any(blob, "cahier de charge", "cahier des charges", "hogip"):
+        return "code", "vente_liee"
+
+    # 6) Maintenance véhicules / locaux / assurances véhicules
+    if _contains_any(
+        titre,
+        "maintenance",
+        "entretient",
+        "entretien",
+        "vehicule",
+        "véhicule",
+    ) or _contains_any(
+        blob,
+        "batterie",
+        "frein",
+        "pneu",
+        "moteur",
+        "mercedes",
+        "toyota",
+        "peinture",
+        "mecanicien",
+        "mécanicien",
+        "assurance mercedes",
+        "assurance camion",
+        "climatisation camion",
+        "huile boite",
+        "baol poids",
+        "elton",
+        "entretient du local",
+        "entretien du local",
+        "keur songoma",
+    ):
+        return "nom", "Maintenance & réparations"
+
+    # Carburant directeur (véhicule de direction) → maintenance
+    if _contains_any(blob, "carburant directeur"):
+        return "nom", "Maintenance & réparations"
+
+    # 7) Réservation voyage / hôtel liée à un fournisseur d'appro (C&P…) → achats
+    if _contains_any(titre, "reservation", "réservation"):
+        if _contains_any(blob, "c&p", "suite loc", "maroc"):
+            return "code", "appro_achats"
+        return "code", "appro_achats"
+
+    # 8) Approvisionnement / fournisseurs internationaux / fret marchandises
+    if _contains_any(
+        titre,
+        "approvision",
+        "appovision",
+    ) or _contains_any(
+        blob,
+        "romson",
+        "sinapi",
+        "darwin",
+        "fortune medical",
+        "hebei",
+        "modern india",
+        "clarity",
+        "sklar",
+        "dds medical",
+        "medical distribution",
+        "tsing",
+        "celecare",
+        "meditech",
+        "jiangsu",
+        "lianyungang",
+        "yangzhou",
+        "afi",
+        "inde",
+        "chine",
+        "pakistan",
+        "afrique du sud",
+    ):
+        return "code", "appro_achats"
+
+    # 9) Transport marchandises / logistique (pas personnel)
+    if _contains_any(titre, "transport", "tranport") or _contains_any(
+        blob,
+        "expert cargo",
+        "expet cargo",
+        "dhl",
+        "fret",
+        "cartons",
+        "produit chine",
+        "produits chine",
+        "dakar -->",
+        "st louis",
+        "st-louis",
+        "aibd -->",
+        "carburant camion",
+    ):
+        return "code", "appro_achats"
+
+    # Fallback métier : charges d'exploitation liées à l'appro
+    return "code", "appro_achats"
 
 
-def run(dry_run: bool = False):
+def resolve_categorie(raw: dict):
+    """Résout la catégorie ORM à partir des codes/noms système existants."""
+    from app.models.depense import CategorieDepense
+    from app.utils.categorie_depense_registry import get_categorie_by_code
+
+    kind, key = classify_categorie_target(raw)
+    cat = None
+    if kind == "code":
+        cat = get_categorie_by_code(key)
+    else:
+        cat = CategorieDepense.query.filter(CategorieDepense.nom == key).first()
+        if not cat:
+            # tolérance accents / casse
+            for c in CategorieDepense.query.all():
+                if norm_text(c.nom) == norm_text(key):
+                    cat = c
+                    break
+
+    if not cat:
+        cat = get_categorie_by_code("appro_achats") or CategorieDepense.query.order_by(
+            CategorieDepense.id.asc()
+        ).first()
+    return cat, kind, key
+
+
+def find_existing_depense(Depense, raw: dict, libelle: str, montant: Decimal):
+    d = raw.get("date")
+    if d is None:
+        return None
+    candidates = Depense.query.filter(
+        Depense.date_depense == d,
+        Depense.montant_ttc == montant,
+    ).all()
+    for existing in candidates:
+        if (existing.libelle or "")[:80] == libelle[:80]:
+            return existing
+        if raw.get("facture_no") and raw["facture_no"] in (existing.libelle or ""):
+            return existing
+    return None
+
+
+def run(dry_run: bool = False, reclassify: bool = False):
     from dotenv import load_dotenv
 
     load_dotenv(ROOT / ".env")
 
     from app import create_app
     from app.extensions import db
-    from app.models.depense import CategorieDepense, Depense
+    from app.models.depense import Depense
     from app.models.fournisseur import Fournisseur
     from app.models.user import User
     from app.utils.depense_reference import prochaine_reference_depense
@@ -1247,37 +1413,50 @@ def run(dry_run: bool = False):
         if not user:
             raise SystemExit("Aucun utilisateur — impossible de créer des dépenses.")
 
-        created = skipped = created_f = 0
+        created = skipped = created_f = reclassed = 0
+        stats: dict[str, int] = {}
+
+        print("\n— Classification (aperçu) —")
+        for raw in DEPENSES:
+            cat, kind, key = resolve_categorie(raw)
+            label = cat.nom if cat else f"? {kind}:{key}"
+            stats[label] = stats.get(label, 0) + 1
+        for nom, n in sorted(stats.items(), key=lambda x: (-x[1], x[0])):
+            print(f"  {n:3d}  {nom}")
+        print()
+
         for raw in DEPENSES:
             libelle = build_libelle(raw)
             montant = money(raw["montant_xof"])
             d = raw.get("date")
-            if d is None:
-                print(f"  skip (sans date) {libelle[:60]}")
-                skipped += 1
-                continue
-
-            dup = Depense.query.filter(
-                Depense.date_depense == d,
-                Depense.montant_ttc == montant,
-            ).all()
-            is_dup = False
-            for existing in dup:
-                if (existing.libelle or "")[:80] == libelle[:80]:
-                    is_dup = True
-                    break
-                if raw.get("facture_no") and raw["facture_no"] in (existing.libelle or ""):
-                    if existing.montant_ttc == montant:
-                        is_dup = True
-                        break
-            if is_dup:
-                print(f"  skip doublon {d} | {montant} | {libelle[:50]}")
-                skipped += 1
-                continue
-
-            cat = find_categorie(CategorieDepense, raw.get("titre") or "")
+            cat, kind, key = resolve_categorie(raw)
             if not cat:
-                raise SystemExit("Aucune catégorie de dépense disponible.")
+                raise SystemExit(f"Catégorie introuvable pour {kind}:{key} — {libelle[:60]}")
+
+            type_dep = getattr(cat.type_depense, "value", cat.type_depense) or "variable"
+
+            if d is None:
+                print(f"  skip (sans date) [{cat.nom}] {libelle[:55]}")
+                skipped += 1
+                continue
+
+            existing = find_existing_depense(Depense, raw, libelle, montant)
+            if existing:
+                if reclassify and existing.categorie_id != cat.id:
+                    old = existing.categorie.nom if existing.categorie else "?"
+                    existing.categorie_id = cat.id
+                    existing.type_depense = type_dep
+                    reclassed += 1
+                    print(f"  ~ reclass {existing.reference}: {old} → {cat.nom} | {libelle[:45]}")
+                else:
+                    print(f"  skip doublon [{cat.nom}] {d} | {montant} | {libelle[:40]}")
+                    skipped += 1
+                continue
+
+            if reclassify:
+                # mode reclass uniquement : ne crée pas de nouvelles lignes
+                skipped += 1
+                continue
 
             fourn = None
             if raw.get("fournisseur"):
@@ -1286,9 +1465,9 @@ def run(dry_run: bool = False):
                     Fournisseur.raison_sociale.ilike(nom_f)
                 ).first()
                 if not fourn:
-                    bn = norm_titre(nom_f)
+                    bn = norm_text(nom_f)
                     for f in Fournisseur.query.all():
-                        a = norm_titre(f.raison_sociale)
+                        a = norm_text(f.raison_sociale)
                         if a and bn and (a in bn or bn in a):
                             fourn = f
                             break
@@ -1310,7 +1489,6 @@ def run(dry_run: bool = False):
                     print(f"  + fournisseur {nom_f}")
 
             ref = prochaine_reference_depense(d)
-            type_dep = getattr(cat.type_depense, "value", cat.type_depense) or "variable"
             dep = Depense(
                 reference=ref,
                 categorie_id=cat.id,
@@ -1328,21 +1506,29 @@ def run(dry_run: bool = False):
             )
             db.session.add(dep)
             created += 1
-            print(f"  + {ref} | {d} | {montant:,.0f} | {libelle[:55]}")
+            print(f"  + [{cat.nom}] {ref} | {d} | {montant:,.0f} | {libelle[:45]}")
 
         if dry_run:
             db.session.rollback()
             print("\n[DRY-RUN] rollback — aucune écriture.")
         else:
             db.session.commit()
-        print(f"\nRésumé : {created} dépenses, {created_f} fournisseurs, {skipped} ignorées")
+        print(
+            f"\nRésumé : {created} créées, {reclassed} reclassées, "
+            f"{created_f} fournisseurs, {skipped} ignorées"
+        )
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--reclassify",
+        action="store_true",
+        help="Recatégorise les dépenses Excel déjà importées (sans en créer de nouvelles).",
+    )
     args = parser.parse_args()
-    run(dry_run=args.dry_run)
+    run(dry_run=args.dry_run, reclassify=args.reclassify)
 
 
 if __name__ == "__main__":
