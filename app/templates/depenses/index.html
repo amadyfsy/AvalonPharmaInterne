@@ -61,6 +61,9 @@
       </div>
     </div>
     <div class="d-flex flex-wrap gap-2">
+      <button type="button" class="btn btn-outline-light btn-sm" data-bs-toggle="modal" data-bs-target="#modalExportTableauDepenses">
+        <i class="bi bi-download me-1"></i> Exporter
+      </button>
       <a href="{{ url_for('depenses.categories_depenses_index') }}" class="btn btn-outline-light btn-sm">
         <i class="bi bi-folder2 me-1"></i> Catégories
       </a>
@@ -294,4 +297,6 @@
       {% endif %}
     </div>
   </div>
+
+  {% include 'depenses/_modal_export_tableau_depenses.html' %}
 {% endblock %}

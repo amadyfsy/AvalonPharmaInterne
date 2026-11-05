@@ -1,0 +1,68 @@
+<div class="modal fade" id="modalExportTableauDepenses" tabindex="-1" aria-labelledby="modalExportTableauDepensesLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title" id="modalExportTableauDepensesLabel">
+          <i class="bi bi-table me-2 text-primary"></i>Exporter le tableau des dépenses
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <form id="formExportTableauDepenses" method="get" action="{{ url_for('depenses.export_tableau_depenses') }}">
+        <div class="modal-body">
+          <p class="small text-muted mb-3">
+            Présentation type feuille Excel : n° facture, titre, description, total, fournisseur et date.
+            Tous les mois → un onglet / section par mois + synthèse.
+          </p>
+          <div class="row g-3">
+            <div class="col-6">
+              <label class="form-label small text-muted mb-1" for="exportDepAnnee">Année</label>
+              <select class="form-select" id="exportDepAnnee" name="annee">
+                <option value="">Toutes</option>
+                {% for y in annees_dispo %}
+                  <option value="{{ y }}" {% if annee_filtre == y %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label small text-muted mb-1" for="exportDepMois">Mois</label>
+              <select class="form-select" id="exportDepMois" name="mois">
+                <option value="">Tous</option>
+                {% for m, label in mois_dispo %}
+                  <option value="{{ m }}" {% if mois_filtre == m %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label small text-muted mb-1" for="exportDepCategorie">Catégorie</label>
+              <select class="form-select" id="exportDepCategorie" name="categorie_id">
+                <option value="">Toutes les catégories</option>
+                {% for c in categories %}
+                  <option value="{{ c.id }}">{{ c.nom }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12">
+              <span class="form-label small text-muted d-block mb-2">Format</span>
+              <div class="btn-group w-100" role="group" aria-label="Format d'export">
+                <input type="radio" class="btn-check" name="format" id="exportDepFmtXlsx" value="xlsx" checked>
+                <label class="btn btn-outline-success" for="exportDepFmtXlsx">
+                  <i class="bi bi-file-earmark-excel me-1"></i> Excel
+                </label>
+                <input type="radio" class="btn-check" name="format" id="exportDepFmtPdf" value="pdf">
+                <label class="btn btn-outline-danger" for="exportDepFmtPdf">
+                  <i class="bi bi-file-earmark-pdf me-1"></i> PDF
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-primary" id="btnExportTableauDepenses">
+            <i class="bi bi-download me-1"></i> Télécharger
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

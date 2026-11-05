@@ -11,12 +11,39 @@ from ...utils.categorie_depense_registry import build_category_groups
 from ...utils.depense_justificatif import justificatif_abs_path, upload_depense_justificatif
 from ...utils.depense_reference import prochaine_reference_depense
 from ...utils.decorators import permission_required, user_has_permission
+from ...utils.depenses_tableau_export import (
+    build_depense_rows,
+    build_depense_sections_by_month,
+    compute_totaux as compute_totaux_depenses,
+    export_filename as depenses_export_filename,
+    generate_depenses_tableau_excel,
+    titre_general_export as titre_general_depenses,
+    titre_periode_mois as titre_periode_depenses,
+)
+from ...utils.nombre_lettres import format_montant_espace
+from ...utils.parametres_pdf import get_logo_filepath, get_parametres_documents, logo_data_uri
+from ...utils.pdf_generator import generate_pdf
 from flask_login import current_user, login_required
 
-from flask import flash, redirect, render_template, request, send_file, url_for
+from flask import current_app, flash, redirect, render_template, request, send_file, url_for
 
 from . import depenses_bp
 from .forms import CategorieDepenseForm, DepenseForm
+
+_MOIS_FILTRE = (
+    (1, "Janvier"),
+    (2, "Février"),
+    (3, "Mars"),
+    (4, "Avril"),
+    (5, "Mai"),
+    (6, "Juin"),
+    (7, "Juillet"),
+    (8, "Août"),
+    (9, "Septembre"),
+    (10, "Octobre"),
+    (11, "Novembre"),
+    (12, "Décembre"),
+)
 
 
 def _type_depense_str(value) -> str:
@@ -146,6 +173,18 @@ def index():
     kpi = _depenses_kpi_mois()
     nb_en_attente = Depense.query.filter_by(statut='en_attente').count()
     peut_valider = current_user.role in ('admin', 'manager')
+    year_col = extract('year', Depense.date_depense)
+    annees_dispo = [
+        int(y)
+        for (y,) in (
+            db.session.query(year_col)
+            .filter(Depense.date_depense.isnot(None))
+            .distinct()
+            .order_by(year_col.desc())
+            .all()
+        )
+        if y
+    ]
     return render_template(
         'depenses/index.html',
         depenses=pagination.items,
@@ -158,7 +197,135 @@ def index():
         filtres_url=filtres_url,
         nb_en_attente=nb_en_attente,
         peut_valider=peut_valider,
+        annees_dispo=annees_dispo,
+        mois_dispo=_MOIS_FILTRE,
+        annee_filtre=None,
+        mois_filtre=None,
         **kpi,
+    )
+
+
+def _filtre_label_export_depenses(annee, mois, categorie) -> str:
+    parts = []
+    if annee:
+        parts.append(f"année {annee}")
+    if mois:
+        parts.append(dict(_MOIS_FILTRE).get(mois, str(mois)))
+    if categorie:
+        parts.append(categorie.nom)
+    if not parts:
+        return f"Toutes les dépenses · export du {date.today().strftime('%d/%m/%Y')}"
+    return " · ".join(parts) + f" · export du {date.today().strftime('%d/%m/%Y')}"
+
+
+@depenses_bp.route('/export-tableau')
+@login_required
+@permission_required('depenses', 'read')
+def export_tableau_depenses():
+    """Télécharge le tableau des dépenses (Excel ou PDF), style feuille DEPENSES.xlsx."""
+    annee = request.args.get('annee', type=int)
+    mois = request.args.get('mois', type=int)
+    categorie_id = request.args.get('categorie_id', type=int)
+    fmt = (request.args.get('format') or 'xlsx').strip().lower()
+    if fmt not in ('xlsx', 'pdf'):
+        fmt = 'xlsx'
+    if mois is not None and (mois < 1 or mois > 12):
+        mois = None
+
+    categorie = db.session.get(CategorieDepense, categorie_id) if categorie_id else None
+
+    query = Depense.query.options(
+        joinedload(Depense.categorie),
+        joinedload(Depense.fournisseur),
+    ).filter(Depense.statut != 'rejete')
+
+    if annee:
+        query = query.filter(extract('year', Depense.date_depense) == annee)
+    if mois:
+        query = query.filter(extract('month', Depense.date_depense) == mois)
+    if categorie:
+        query = query.filter(Depense.categorie_id == categorie.id)
+
+    depenses = query.order_by(
+        Depense.date_depense.asc(),
+        Depense.reference.asc(),
+        Depense.id.asc(),
+    ).all()
+
+    filtre_label = _filtre_label_export_depenses(annee, mois, categorie)
+    split_by_month = mois is None
+    filename = depenses_export_filename(annee, mois, ext=fmt)
+
+    doc_params = get_parametres_documents()
+    company_name = (
+        (getattr(doc_params, "raison_sociale", None) or "").strip()
+        or current_app.config.get("COMPANY_NAME")
+        or "Avalon Pharma"
+    )
+    logo_path = get_logo_filepath()
+    titre_general = titre_general_depenses(
+        company_name=company_name,
+        annee=annee,
+        mois=mois if not split_by_month else None,
+    )
+    titre_periode = titre_periode_depenses(mois, annee) if mois else None
+
+    if fmt == 'pdf':
+        if split_by_month:
+            sections, totaux_global = build_depense_sections_by_month(
+                depenses, annee=annee
+            )
+            rows = []
+            totaux = None
+        else:
+            sections = None
+            totaux_global = None
+            rows = build_depense_rows(depenses)
+            totaux = compute_totaux_depenses(depenses)
+        html = render_template(
+            'depenses/export_depenses_tableau_pdf.html',
+            rows=rows,
+            sections=sections,
+            totaux=totaux,
+            totaux_global=totaux_global,
+            split_by_month=split_by_month,
+            titre_general=titre_general,
+            titre_periode=titre_periode,
+            filtre_label=filtre_label,
+            format_fcfa=format_montant_espace,
+            genere_le=datetime.now(),
+            logo_data_uri=logo_data_uri(),
+            company_name=company_name,
+        )
+        pdf_io = generate_pdf(html)
+        return send_file(
+            pdf_io,
+            download_name=filename,
+            as_attachment=True,
+            mimetype='application/pdf',
+        )
+
+    sheet_title = "Depenses"
+    if mois:
+        sheet_title = dict(_MOIS_FILTRE).get(mois, f"Mois {mois}")
+    elif annee:
+        sheet_title = str(annee)
+
+    excel_io = generate_depenses_tableau_excel(
+        depenses,
+        sheet_title=sheet_title,
+        filtre_label=filtre_label,
+        logo_path=logo_path,
+        company_name=company_name,
+        split_by_month=split_by_month,
+        annee=annee,
+        mois=mois,
+    )
+    return send_file(
+        excel_io,
+        download_name=filename,
+        as_attachment=True,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     )
 
 @depenses_bp.route('/nouvelle', methods=['GET', 'POST'])
