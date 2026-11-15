@@ -1519,9 +1519,7 @@ def convertir_proforma(id):
             f'Proforma validée : facture et BL n° {numero_fact} créés (statut préparé).{extra}',
             'success',
         )
-        return redirect(
-            url_for('ventes.index', facture_id=facture.id, bl_id=bl.id)
-        )
+        return redirect(url_for('ventes.factures'))
     except Exception as e:
         db.session.rollback()
         flash(f'Erreur lors de la conversion : {str(e)}', 'danger')
