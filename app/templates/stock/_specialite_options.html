@@ -1,0 +1,14 @@
+<option value="">Toutes</option>
+{% if specialites_filtre_grouped %}
+  {% for grp_label, grp_liste in specialites_filtre_grouped %}
+    <optgroup label="{{ grp_label }}">
+      {% for s in grp_liste %}
+        <option value="{{ s }}" {% if specialite == s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </optgroup>
+  {% endfor %}
+{% elif specialites_filtre_flat is not none %}
+  {% for val, lib in specialites_filtre_flat %}
+    <option value="{{ val }}" {% if specialite == val %}selected{% endif %}>{{ lib }}</option>
+  {% endfor %}
+{% endif %}

@@ -210,7 +210,7 @@
           </thead>
           <tbody>
             {% for d in depenses %}
-              <tr>
+              <tr data-depense-id="{{ d.id }}" data-depense-statut="{{ d.statut }}">
                 <td><code class="small">{{ d.reference }}</code></td>
                 <td>
                   <span class="fw-medium">{{ d.libelle }}</span>
@@ -246,7 +246,7 @@
                   {% endif %}
                 </td>
                 <td class="text-end fw-semibold text-nowrap">{{ "{:,.2f}".format(d.montant_ttc|float).replace(",", "\u202f").replace(".", ",") }}</td>
-                <td>
+                <td class="js-depense-statut">
                   {% if d.statut == 'en_attente' %}
                     <span class="badge bg-warning text-dark">En attente</span>
                   {% elif d.statut == 'valide' %}
@@ -256,18 +256,14 @@
                   {% endif %}
                 </td>
                 {% if peut_valider %}
-                  <td class="text-end text-nowrap">
+                  <td class="text-end text-nowrap js-depense-actions">
                     {% if d.statut == 'en_attente' %}
-                      <form method="post" action="{{ url_for('depenses.valider_depense', id=d.id) }}" class="d-inline">
-                        <button type="submit" class="btn btn-sm btn-success" title="Valider">
-                          <i class="bi bi-check-lg"></i>
-                        </button>
-                      </form>
-                      <form method="post" action="{{ url_for('depenses.rejeter_depense', id=d.id) }}" class="d-inline" onsubmit="return confirm('Rejeter cette dépense ?');">
-                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Rejeter">
-                          <i class="bi bi-x-lg"></i>
-                        </button>
-                      </form>
+                      <button type="button" class="btn btn-sm btn-success js-depense-valider" data-url="{{ url_for('depenses.valider_depense', id=d.id) }}" title="Valider">
+                        <i class="bi bi-check-lg"></i>
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline-danger js-depense-rejeter" data-url="{{ url_for('depenses.rejeter_depense', id=d.id) }}" title="Rejeter">
+                        <i class="bi bi-x-lg"></i>
+                      </button>
                     {% else %}
                       <span class="text-muted small">—</span>
                     {% endif %}
@@ -324,4 +320,92 @@
   </div>
 
   {% include 'depenses/_modal_export_tableau_depenses.html' %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    function toast(msg, kind) {
+      var wrap = document.getElementById('depenseAjaxToasts');
+      if (!wrap) {
+        wrap = document.createElement('div');
+        wrap.id = 'depenseAjaxToasts';
+        wrap.className = 'position-fixed top-0 end-0 p-3';
+        wrap.style.zIndex = '1080';
+        document.body.appendChild(wrap);
+      }
+      var el = document.createElement('div');
+      el.className = 'alert alert-' + (kind || 'success') + ' shadow-sm py-2 px-3 mb-2';
+      el.setAttribute('role', 'alert');
+      el.textContent = msg || '';
+      wrap.appendChild(el);
+      setTimeout(function () { el.remove(); }, 4200);
+    }
+
+    function statutBadge(statut) {
+      if (statut === 'valide') return '<span class="badge bg-success">Validée</span>';
+      if (statut === 'rejete') return '<span class="badge bg-secondary">Rejetée</span>';
+      return '<span class="badge bg-warning text-dark">En attente</span>';
+    }
+
+    function applyRowStatus(row, statut) {
+      if (!row) return;
+      row.setAttribute('data-depense-statut', statut);
+      var cell = row.querySelector('.js-depense-statut');
+      if (cell) cell.innerHTML = statutBadge(statut);
+      var actions = row.querySelector('.js-depense-actions');
+      if (actions) actions.innerHTML = '<span class="text-muted small">—</span>';
+    }
+
+    function postAction(btn, confirmMsg) {
+      var url = btn.getAttribute('data-url');
+      if (!url) return;
+      if (confirmMsg && !window.confirm(confirmMsg)) return;
+      var row = btn.closest('tr[data-depense-id]');
+      btn.disabled = true;
+      if (window.hidePageLoader) window.hidePageLoader(true);
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json'
+        },
+        credentials: 'same-origin'
+      })
+        .then(function (res) {
+          return res.json().then(function (data) {
+            return { okHttp: res.ok, data: data };
+          });
+        })
+        .then(function (pack) {
+          var data = pack.data || {};
+          if (data.ok) {
+            applyRowStatus(row, data.statut);
+            toast(data.message || 'OK', data.statut === 'rejete' ? 'info' : 'success');
+          } else {
+            toast(data.message || 'Action impossible.', 'warning');
+            btn.disabled = false;
+          }
+        })
+        .catch(function () {
+          toast('Erreur réseau. Réessayez.', 'danger');
+          btn.disabled = false;
+        });
+    }
+
+    document.addEventListener('click', function (e) {
+      var valider = e.target.closest('.js-depense-valider');
+      if (valider) {
+        e.preventDefault();
+        postAction(valider);
+        return;
+      }
+      var rejeter = e.target.closest('.js-depense-rejeter');
+      if (rejeter) {
+        e.preventDefault();
+        postAction(rejeter, 'Rejeter cette dépense ?');
+      }
+    });
+  })();
+</script>
 {% endblock %}

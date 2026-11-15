@@ -26,6 +26,7 @@
     border-bottom-width: 1px;
     white-space: nowrap;
   }
+  #stockLiveRoot.is-loading { opacity: 0.55; pointer-events: none; transition: opacity .15s ease; }
 </style>
 {% endblock %}
 
@@ -40,7 +41,7 @@
       </nav>
       <h1 class="h4 mb-1 fw-semibold text-white">Catalogue produits</h1>
       <p class="mb-0 text-white small" style="opacity: .92;">
-        Les filtres et la recherche s’appliquent <strong>automatiquement</strong> (catégorie, spécialité, texte).
+        Recherche et filtres en direct, <strong>sans recharger</strong> la page.
       </p>
     </div>
     <div class="d-flex flex-wrap gap-2">
@@ -57,7 +58,7 @@
 
   <div class="card stock-filters-card shadow-sm mb-3">
     <div class="card-body py-3">
-      <form id="stockFiltersForm" method="get" action="{{ url_for('stock.index') }}" class="row g-2 g-md-3 align-items-end" role="search">
+      <form id="stockFiltersForm" method="get" action="{{ url_for('stock.index') }}" class="row g-2 g-md-3 align-items-end" role="search" data-live-search="1">
         <div class="col-12 col-lg-4">
           <label for="stockSearch" class="form-label small text-muted mb-1">Recherche</label>
           <div class="input-group input-group-sm">
@@ -75,7 +76,7 @@
         </div>
         <div class="col-6 col-md-4 col-lg-2">
           <label for="filterCategorie" class="form-label small text-muted mb-1">Catégorie</label>
-          <select id="filterCategorie" name="categorie_id" class="form-select form-select-sm" onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()">
+          <select id="filterCategorie" name="categorie_id" class="form-select form-select-sm">
             <option value="">Toutes</option>
             {% for c in categories %}
               <option value="{{ c.id }}" {% if categorie_id == c.id %}selected{% endif %}>{{ c.nom }}</option>
@@ -88,103 +89,25 @@
             id="filterSpecialite"
             name="specialite"
             class="form-select form-select-sm"
-            onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()"
             {% if specialites_filtre_flat is not none and specialites_filtre_flat|length == 0 %}
               disabled
               title="Cette catégorie n’a pas de liste spécialité sur le formulaire produit"
             {% endif %}
           >
-            <option value="">Toutes</option>
-            {% if specialites_filtre_grouped %}
-              {% for grp_label, grp_liste in specialites_filtre_grouped %}
-                <optgroup label="{{ grp_label }}">
-                  {% for s in grp_liste %}
-                    <option value="{{ s }}" {% if specialite == s %}selected{% endif %}>{{ s }}</option>
-                  {% endfor %}
-                </optgroup>
-              {% endfor %}
-            {% elif specialites_filtre_flat is not none %}
-              {% for val, lib in specialites_filtre_flat %}
-                <option value="{{ val }}" {% if specialite == val %}selected{% endif %}>{{ lib }}</option>
-              {% endfor %}
-            {% endif %}
+            {% include 'stock/_specialite_options.html' %}
           </select>
         </div>
-        <div class="col-12 col-lg-auto d-flex align-items-end">
+        <div class="col-12 col-lg-auto d-flex align-items-end" id="stockResetWrap">
           {% if has_filters %}
-            <a href="{{ url_for('stock.index') }}" class="btn btn-sm btn-outline-secondary">Tout afficher</a>
+            <a href="{{ url_for('stock.index') }}" class="btn btn-sm btn-outline-secondary" data-stock-reset="1" data-no-loader="1">Tout afficher</a>
           {% endif %}
         </div>
       </form>
-      <p class="small text-muted mb-0 mt-2 pt-2 border-top">
-        <strong>{{ produits|length }}</strong> produit(s) affiché(s)
-        {% if has_filters %}<span class="text-secondary">· critères actifs</span>{% endif %}
-      </p>
     </div>
   </div>
 
-  <div class="card shadow-sm stock-table-card border-0">
-    <div class="card-body p-0">
-      <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-          <thead class="table-light">
-            <tr>
-              <th>Référence</th>
-              <th>Désignation</th>
-              <th>Catégorie</th>
-              <th>Spécialité</th>
-              <th class="text-end">Stock</th>
-              <th class="text-end">Seuil</th>
-              <th class="text-end" style="min-width: 110px;">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for p in produits %}
-              {% set qte = p.stock.quantite_disponible if p.stock else 0 %}
-              <tr class="{% if qte <= p.seuil_alerte_stock %}table-warning{% endif %}">
-                <td><strong class="text-primary">{{ p.reference }}</strong></td>
-                <td>
-                  {{ p.designation }}
-                  {% if not p.est_actif %}
-                    <span class="badge bg-secondary ms-1">Inactif</span>
-                  {% endif %}
-                </td>
-                <td><span class="small">{{ p.categorie.nom if p.categorie else '—' }}</span></td>
-                <td><span class="small">{{ (p.donnees_metier or {}).get('specialite') or '—' }}</span></td>
-                <td class="text-end fw-medium">{{ qte }}</td>
-                <td class="text-end text-muted small">{{ p.seuil_alerte_stock }}</td>
-                <td class="text-end">
-                  <div class="d-inline-flex gap-1 justify-content-end">
-                    <a href="{{ url_for('stock.detail_produit', id=p.id) }}" class="btn btn-sm btn-outline-primary" title="Fiche produit">
-                      <i class="bi bi-eye"></i>
-                    </a>
-                    <a href="{{ url_for('stock.modifier_produit', id=p.id) }}" class="btn btn-sm btn-outline-secondary" title="Modifier">
-                      <i class="bi bi-pencil"></i>
-                    </a>
-                  </div>
-                </td>
-              </tr>
-            {% else %}
-              <tr>
-                <td colspan="7" class="text-center text-muted py-5">
-                  Aucun produit ne correspond aux critères.
-                  {% if has_filters %}
-                    <br><a href="{{ url_for('stock.index') }}">Voir tout le catalogue</a>
-                  {% endif %}
-                  {% if can_quick_add %}
-                    <div class="mt-3">
-                      <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#produitRapideModal">
-                        <i class="bi bi-lightning-charge me-1"></i> Ajouter un produit rapidement
-                      </button>
-                    </div>
-                  {% endif %}
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
+  <div id="stockLiveRoot" data-partial-root data-live-search>
+    {% include 'stock/_produits_results.html' %}
   </div>
 {% endblock %}
 
@@ -196,20 +119,157 @@
   (function () {
     var form = document.getElementById('stockFiltersForm');
     var search = document.getElementById('stockSearch');
-    if (!form || !search) return;
-    var t;
-    function scheduleSubmit() {
-      clearTimeout(t);
-      t = setTimeout(function () {
-        if (form.requestSubmit) form.requestSubmit();
-        else form.submit();
-      }, 400);
+    var root = document.getElementById('stockLiveRoot');
+    var resetWrap = document.getElementById('stockResetWrap');
+    var specialiteSelect = document.getElementById('filterSpecialite');
+    var categorieSelect = document.getElementById('filterCategorie');
+    if (!form || !root) return;
+
+    var endpoint = form.getAttribute('action') || window.location.pathname;
+    var debounceTimer = null;
+    var abortCtrl = null;
+    var requestId = 0;
+
+    function buildParams() {
+      var fd = new FormData(form);
+      var params = new URLSearchParams();
+      fd.forEach(function (value, key) {
+        if (value !== null && String(value).trim() !== '') {
+          params.set(key, String(value).trim());
+        }
+      });
+      params.set('partial', '1');
+      return params;
     }
-    search.addEventListener('input', scheduleSubmit);
-    search.addEventListener('search', function () {
-      clearTimeout(t);
-      if (form.requestSubmit) form.requestSubmit();
-      else form.submit();
+
+    function syncResetButton(params) {
+      if (!resetWrap) return;
+      var hasFilter = ['q', 'categorie_id', 'specialite'].some(function (k) {
+        return params.has(k) && params.get(k);
+      });
+      if (hasFilter) {
+        resetWrap.innerHTML = '<a href="' + endpoint + '" class="btn btn-sm btn-outline-secondary" data-stock-reset="1" data-no-loader="1">Tout afficher</a>';
+      } else {
+        resetWrap.innerHTML = '';
+      }
+    }
+
+    function updateUrl(params) {
+      var clean = new URLSearchParams(params);
+      clean.delete('partial');
+      var qs = clean.toString();
+      var url = qs ? (endpoint + '?' + qs) : endpoint;
+      if (window.history && window.history.replaceState) {
+        window.history.replaceState({}, '', url);
+      }
+    }
+
+    function loadResults(opts) {
+      opts = opts || {};
+      var params = buildParams();
+      var id = ++requestId;
+      if (abortCtrl) abortCtrl.abort();
+      abortCtrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+
+      if (window.hidePageLoader) window.hidePageLoader(true);
+      root.classList.add('is-loading');
+      syncResetButton(params);
+
+      var url = endpoint + '?' + params.toString();
+      fetch(url, {
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json'
+        },
+        credentials: 'same-origin',
+        signal: abortCtrl ? abortCtrl.signal : undefined
+      })
+        .then(function (res) {
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.json();
+        })
+        .then(function (data) {
+          if (id !== requestId) return;
+          if (data.html) root.innerHTML = data.html;
+          if (specialiteSelect && typeof data.specialite_options_html === 'string') {
+            var prev = specialiteSelect.value;
+            specialiteSelect.innerHTML = data.specialite_options_html;
+            specialiteSelect.disabled = !!data.specialite_disabled;
+            if (data.specialite_disabled) {
+              specialiteSelect.title = 'Cette catégorie n’a pas de liste spécialité sur le formulaire produit';
+            } else {
+              specialiteSelect.removeAttribute('title');
+              if (!opts.resetSpecialite && prev) {
+                var still = Array.prototype.some.call(specialiteSelect.options, function (o) {
+                  return o.value === prev;
+                });
+                if (still) specialiteSelect.value = prev;
+              }
+            }
+          }
+          updateUrl(params);
+        })
+        .catch(function (err) {
+          if (err && err.name === 'AbortError') return;
+          if (id !== requestId) return;
+          form.submit();
+        })
+        .finally(function () {
+          if (id === requestId) {
+            root.classList.remove('is-loading');
+            if (window.hidePageLoader) window.hidePageLoader(true);
+          }
+        });
+    }
+
+    function scheduleSearch() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(function () {
+        loadResults();
+      }, 280);
+    }
+
+    if (search) {
+      search.addEventListener('input', scheduleSearch);
+      search.addEventListener('search', function () {
+        clearTimeout(debounceTimer);
+        loadResults();
+      });
+    }
+
+    if (categorieSelect) {
+      categorieSelect.addEventListener('change', function () {
+        clearTimeout(debounceTimer);
+        if (specialiteSelect) specialiteSelect.value = '';
+        loadResults({ resetSpecialite: true });
+      });
+    }
+    if (specialiteSelect) {
+      specialiteSelect.addEventListener('change', function () {
+        clearTimeout(debounceTimer);
+        loadResults();
+      });
+    }
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      clearTimeout(debounceTimer);
+      loadResults();
+    });
+
+    document.addEventListener('click', function (e) {
+      var reset = e.target.closest('[data-stock-reset]');
+      if (!reset) return;
+      if (!(form.contains(reset) || root.contains(reset) || (resetWrap && resetWrap.contains(reset)))) return;
+      e.preventDefault();
+      if (search) search.value = '';
+      if (categorieSelect) categorieSelect.value = '';
+      if (specialiteSelect) {
+        specialiteSelect.value = '';
+        specialiteSelect.disabled = false;
+        specialiteSelect.removeAttribute('title');
+      }
+      loadResults({ resetSpecialite: true });
     });
   })();
 </script>

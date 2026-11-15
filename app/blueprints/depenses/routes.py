@@ -25,7 +25,7 @@ from ...utils.parametres_pdf import get_logo_filepath, get_parametres_documents,
 from ...utils.pdf_generator import generate_pdf
 from flask_login import current_user, login_required
 
-from flask import current_app, flash, redirect, render_template, request, send_file, url_for
+from flask import current_app, flash, jsonify, redirect, render_template, request, send_file, url_for
 
 from . import depenses_bp
 from .forms import CategorieDepenseForm, DepenseForm
@@ -427,25 +427,55 @@ def nouvelle_depense():
         
     return render_depense_form()
 
+def _wants_ajax():
+    return (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or 'application/json' in (request.headers.get('Accept') or '')
+    )
+
+
+def _ajax_or_redirect(payload: dict, redirect_endpoint: str = 'depenses.index', flash_cat: str | None = None):
+    if _wants_ajax():
+        status = 200 if payload.get('ok') else 400
+        return jsonify(payload), status
+    if flash_cat is None:
+        if payload.get('ok'):
+            flash_cat = 'info' if payload.get('statut') == 'rejete' else 'success'
+        elif payload.get('code') in ('not_pending', 'forbidden'):
+            flash_cat = 'warning'
+        else:
+            flash_cat = 'danger'
+    if payload.get('message'):
+        flash(payload['message'], flash_cat)
+    return redirect(url_for(redirect_endpoint))
+
+
 @depenses_bp.route('/<int:id>/valider', methods=['POST'])
 @login_required
 @permission_required('depenses', 'valider')
 def valider_depense(id):
     d = Depense.query.get_or_404(id)
     if d.statut != 'en_attente':
-        flash("Seulement les dépenses en attente peuvent être validées.", "warning")
-        return redirect(url_for('depenses.index'))
-        
+        return _ajax_or_redirect({
+            'ok': False,
+            'code': 'not_pending',
+            'message': 'Seulement les dépenses en attente peuvent être validées.',
+            'statut': d.statut,
+            'id': d.id,
+        })
+
     try:
         d.statut = 'valide'
         d.valide_par = current_user.id
-        
-        # Rapprochement avec Trésorerie automatiquement 
+
+        # Rapprochement avec Trésorerie automatiquement
         type_cpt = 'caisse' if d.mode_paiement == 'espece' else 'banque'
         ops_avant = TresorerieOperation.query.filter_by(type_compte=type_cpt).all()
-        solde_avant = sum([op.montant if op.type_operation == 'entree' else -op.montant for op in ops_avant])
+        solde_avant = sum(
+            [op.montant if op.type_operation == 'entree' else -op.montant for op in ops_avant]
+        )
         nouveau_solde = solde_avant - d.montant_ttc
-        
+
         op = TresorerieOperation(
             type_compte=type_cpt,
             type_operation='sortie',
@@ -458,12 +488,22 @@ def valider_depense(id):
         )
         db.session.add(op)
         db.session.commit()
-        flash(f'La dépense {d.reference} a été validée. La trésorerie a été mise à jour.', 'success')
+        return _ajax_or_redirect({
+            'ok': True,
+            'message': f'La dépense {d.reference} a été validée. La trésorerie a été mise à jour.',
+            'statut': 'valide',
+            'id': d.id,
+            'reference': d.reference,
+        })
     except Exception as e:
         db.session.rollback()
-        flash(f'Erreur lors de la validation: {str(e)}', 'danger')
-        
-    return redirect(url_for('depenses.index'))
+        return _ajax_or_redirect({
+            'ok': False,
+            'code': 'error',
+            'message': f'Erreur lors de la validation: {str(e)}',
+            'id': d.id,
+        })
+
 
 @depenses_bp.route('/<int:id>/rejeter', methods=['POST'])
 @login_required
@@ -471,14 +511,24 @@ def valider_depense(id):
 def rejeter_depense(id):
     d = Depense.query.get_or_404(id)
     if d.statut != 'en_attente':
-        flash("Action impossible.", "warning")
-        return redirect(url_for('depenses.index'))
-        
+        return _ajax_or_redirect({
+            'ok': False,
+            'code': 'not_pending',
+            'message': 'Action impossible.',
+            'statut': d.statut,
+            'id': d.id,
+        })
+
     d.statut = 'rejete'
     d.valide_par = current_user.id
     db.session.commit()
-    flash(f'La dépense {d.reference} a été rejetée.', 'info')
-    return redirect(url_for('depenses.index'))
+    return _ajax_or_redirect({
+        'ok': True,
+        'message': f'La dépense {d.reference} a été rejetée.',
+        'statut': 'rejete',
+        'id': d.id,
+        'reference': d.reference,
+    })
 
 
 @depenses_bp.route('/justificatif/<path:stored_name>')

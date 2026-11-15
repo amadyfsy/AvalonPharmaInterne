@@ -411,9 +411,8 @@ def index():
     produits = query.order_by(Produit.reference).all()
     categories = CategorieProduit.query.order_by(CategorieProduit.nom).all()
     has_filters = bool(q or categorie_id or specialite)
-
-    return render_template(
-        'stock/index.html',
+    can_quick_add = user_has_permission(current_user, 'stock', 'create')
+    ctx = dict(
         produits=produits,
         q=q,
         categorie_id=categorie_id or 0,
@@ -422,8 +421,26 @@ def index():
         specialites_filtre_flat=specialites_filtre_flat,
         specialites_filtre_grouped=specialites_filtre_grouped,
         has_filters=has_filters,
-        can_quick_add=user_has_permission(current_user, 'stock', 'create'),
+        can_quick_add=can_quick_add,
     )
+
+    if request.args.get('partial') == '1':
+        specialite_disabled = (
+            specialites_filtre_flat is not None and len(specialites_filtre_flat) == 0
+        )
+        return jsonify(
+            {
+                'html': render_template('stock/_produits_results.html', **ctx),
+                'specialite_options_html': render_template(
+                    'stock/_specialite_options.html', **ctx
+                ),
+                'specialite_disabled': specialite_disabled,
+                'has_filters': has_filters,
+                'count': len(produits),
+            }
+        )
+
+    return render_template('stock/index.html', **ctx)
 
 @stock_bp.route('/produit/nouveau', methods=['GET', 'POST'])
 @login_required
