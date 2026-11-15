@@ -113,47 +113,70 @@
 {% endblock %}
 
 {% block content %}
+  {% set is_edit = edit_mode|default(false) %}
   <nav aria-label="breadcrumb" class="mb-2">
     <ol class="breadcrumb mb-0 small">
-      <li class="breadcrumb-item"><a href="{{ url_for('ventes.index') }}">Ventes</a></li>
-      <li class="breadcrumb-item active" aria-current="page">{{ title }}</li>
+      {% if is_edit and facture %}
+        <li class="breadcrumb-item"><a href="{{ url_for('ventes.factures') }}">Factures</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('ventes.facture_detail', id=facture.id) }}">{{ facture.numero }}</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Modifier</li>
+      {% else %}
+        <li class="breadcrumb-item"><a href="{{ url_for('ventes.index') }}">Ventes</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ title }}</li>
+      {% endif %}
     </ol>
   </nav>
   <div class="page-header mb-4">
     <div>
       <h1 class="page-title">{{ title }}</h1>
       <p class="page-subtitle mb-0">
-        Vente directe → <strong>facture</strong> (émise) + <strong>bon de livraison</strong>. Mode proforma → devis seul, sans dépenses ; les dépenses liées sont demandées à la <strong>validation</strong> (conversion facture + BL).
+        {% if is_edit and facture %}
+          Même parcours que l’ajout — vous modifiez la facture <strong>{{ facture.numero }}</strong>
+          (statut <strong>{{ facture.statut }}</strong>). Les dépenses liées se gèrent depuis la fiche facture.
+        {% else %}
+          Vente directe → <strong>facture</strong> (émise) + <strong>bon de livraison</strong>. Mode proforma → devis seul, sans dépenses ; les dépenses liées sont demandées à la <strong>validation</strong> (conversion facture + BL).
+        {% endif %}
       </p>
     </div>
     <div class="page-actions">
-      <a href="{{ url_for('ventes.index') }}" class="btn btn-outline-secondary">
-        <i class="bi bi-arrow-left me-1"></i> Module ventes
-      </a>
+      {% if is_edit and facture %}
+        <a href="{{ url_for('ventes.facture_detail', id=facture.id) }}" class="btn btn-outline-secondary">
+          <i class="bi bi-arrow-left me-1"></i> Fiche facture
+        </a>
+      {% else %}
+        <a href="{{ url_for('ventes.index') }}" class="btn btn-outline-secondary">
+          <i class="bi bi-arrow-left me-1"></i> Module ventes
+        </a>
+      {% endif %}
     </div>
   </div>
 
-  <form method="post" id="venteForm" enctype="multipart/form-data">
+  <form method="post" id="venteForm" action="{{ form_action|default('') }}" enctype="multipart/form-data" {% if is_edit %}data-edit-mode="1"{% endif %}>
     <div class="card shadow-sm mb-3">
       <div class="card-body py-3">
         <div class="d-flex justify-content-between align-items-center mb-2">
           <div class="d-flex align-items-center gap-2">
             <strong>Progression</strong>
-            <span class="badge rounded-pill text-bg-primary" id="wizardModeBadge">Mode Facture</span>
+            <span class="badge rounded-pill {% if is_edit %}text-bg-warning{% else %}text-bg-primary{% endif %}" id="wizardModeBadge">{% if is_edit %}Modification{% else %}Mode Facture{% endif %}</span>
+            {% if is_edit and facture %}
+              <span class="badge rounded-pill text-bg-light text-dark border">{{ facture.numero }}</span>
+            {% endif %}
           </div>
-            <span class="small text-muted" id="wizardStepLabel">Étape 1 / 5</span>
+            <span class="small text-muted" id="wizardStepLabel">Étape 1 / {% if is_edit %}4{% else %}5{% endif %}</span>
         </div>
         <div class="wizard-progress-wrap">
           <div class="progress" style="height: 10px; border-radius: 999px; overflow: hidden;">
-            <div id="wizardProgress" class="progress-bar" role="progressbar" style="width: 20%;"></div>
+            <div id="wizardProgress" class="progress-bar" role="progressbar" style="width: {% if is_edit %}25%{% else %}20%{% endif %};"></div>
           </div>
         </div>
         <div class="d-flex flex-wrap gap-2 mt-3" id="wizardStepPills">
           <span class="badge rounded-pill text-bg-primary" data-step-pill="1">1. Base</span>
           <span class="badge rounded-pill text-bg-light text-dark border" data-step-pill="2">2. Lignes</span>
           <span class="badge rounded-pill text-bg-light text-dark border" data-step-pill="3">3. Paramètres</span>
+          {% if not is_edit %}
           <span class="badge rounded-pill text-bg-light text-dark border" data-step-pill="4">4. Dépenses</span>
-          <span class="badge rounded-pill text-bg-light text-dark border" data-step-pill="5" id="pillRecap">5. Récapitulatif</span>
+          {% endif %}
+          <span class="badge rounded-pill text-bg-light text-dark border" data-step-pill="5" id="pillRecap">{% if is_edit %}4. Récapitulatif{% else %}5. Récapitulatif{% endif %}</span>
         </div>
       </div>
     </div>
@@ -162,10 +185,11 @@
     <div class="wizard-step-head">
       <div>
         <h2>Étape 1 — Informations de base</h2>
-        <p>Choisissez le mode de vente, le client et les dates principales.</p>
+        <p>{% if is_edit %}Client et dates de la facture.{% else %}Choisissez le mode de vente, le client et les dates principales.{% endif %}</p>
       </div>
       <span class="wizard-step-icon"><i class="bi bi-info-circle"></i></span>
     </div>
+    {% if not is_edit %}
     <div class="card border-primary border-opacity-25 shadow-sm mb-3">
       <div class="card-body py-3">
         <div class="form-check form-switch">
@@ -178,6 +202,12 @@
         </p>
       </div>
     </div>
+    {% else %}
+    <div class="alert alert-warning border-0 shadow-sm mb-3">
+      <i class="bi bi-pencil-square me-1"></i>
+      Modification de <strong>{{ facture.numero }}</strong> — le panier, les dates et le BL liés seront mis à jour.
+    </div>
+    {% endif %}
 
     <div class="row g-3 mb-3">
       <div class="col-12 col-md-6">
@@ -312,7 +342,15 @@
           <div class="row g-3">
             <div class="col-12 col-md-4">
               <label class="form-label">Remise globale (%)</label>
-              <input class="form-control" type="number" step="0.01" name="remise_globale" value="0">
+              <input class="form-control" type="number" step="0.01" name="remise_globale" value="{{ prefill_remise|default(0) }}">
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label">N° BC <span class="text-muted fw-normal">(optionnel)</span></label>
+              <input class="form-control" type="text" name="bc" maxlength="80" placeholder="Ex. 0000517" value="{{ prefill_bc|default('') }}">
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label">Date BC <span class="text-muted fw-normal">(optionnel)</span></label>
+              <input class="form-control" type="date" name="date_bc" value="{{ prefill_date_bc|default('') }}">
             </div>
             <div class="col-12 col-md-8 d-none" id="blockNotesProforma">
               <label class="form-label">Notes (proforma)</label>
@@ -320,15 +358,42 @@
             </div>
             <div class="col-12">
               <label class="form-label">Conditions commerciales</label>
-              <textarea class="form-control" name="conditions_commerciales" rows="3" placeholder="Imprimées uniquement sur ce proforma ou cette facture."></textarea>
+              <textarea class="form-control" name="conditions_commerciales" rows="3" placeholder="Imprimées uniquement sur ce proforma ou cette facture.">{{ prefill_conditions|default('') }}</textarea>
             </div>
+            {% if is_edit and edit_requires_confirm %}
+            <div class="col-12">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="1" name="confirm_edit_facture_emise" id="confirmEditFactureEmise" required>
+                <label class="form-check-label" for="confirmEditFactureEmise">
+                  Je confirme la modification de cette facture déjà émise (impact possible sur BL / soldes).
+                </label>
+              </div>
+            </div>
+            {% endif %}
           </div>
         </div>
       </div>
 
+      {% if is_edit %}
+      <div class="card shadow-sm mb-3" id="blockLivraisonEdit">
+        <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+          <span><i class="bi bi-truck me-1"></i> Livraison (BL)</span>
+          <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#livraisonModal">
+            Renseigner / modifier
+          </button>
+        </div>
+        <div class="card-body small">
+          <div><span class="text-muted">Date :</span> <strong id="livraisonSummaryDateEdit">{{ prefill_livraison.date if prefill_livraison is defined and prefill_livraison.date else '—' }}</strong></div>
+          <div><span class="text-muted">Livreur :</span> <strong id="livraisonSummaryLivreurEdit">{{ prefill_livraison.livreur if prefill_livraison is defined and prefill_livraison.livreur else '—' }}</strong></div>
+          <div><span class="text-muted">Adresse :</span> <span id="livraisonSummaryAdresseEdit">{{ prefill_livraison.adresse if prefill_livraison is defined and prefill_livraison.adresse else '—' }}</span></div>
+          <div><span class="text-muted">Notes :</span> <span id="livraisonSummaryNotesEdit">{{ prefill_livraison.notes if prefill_livraison is defined and prefill_livraison.notes else '—' }}</span></div>
+        </div>
+      </div>
+      {% endif %}
+
     </div>
 
-    <div class="wizard-step wizard-step-shell d-none" data-step="4" id="blockStepDepenses">
+    <div class="wizard-step wizard-step-shell d-none" data-step="4" id="blockStepDepenses" {% if is_edit %}data-skip-edit="1"{% endif %}>
       <div class="wizard-step-head">
         <div>
           <h2>Étape 4 — Dépenses liées</h2>
@@ -336,6 +401,16 @@
         </div>
         <span class="wizard-step-icon"><i class="bi bi-cash-coin"></i></span>
       </div>
+      {% if is_edit %}
+      <div class="card shadow-sm mb-3">
+        <div class="card-body">
+          <p class="small text-muted mb-0">
+            En modification, les dépenses liées se gèrent depuis la
+            <a href="{{ url_for('ventes.facture_detail', id=facture.id) }}">fiche de la facture</a>.
+          </p>
+        </div>
+      </div>
+      {% endif %}
       <div class="card shadow-sm mb-3 d-none" id="blockVenteDirecte">
         <div class="card-header fw-semibold">Livraison & dépenses liées</div>
         <div class="card-body">
@@ -441,20 +516,20 @@
             <div class="row g-3">
               <div class="col-md-4">
                 <label class="form-label">Date livraison (BL)</label>
-                <input class="form-control" type="date" name="date_livraison" id="dateLivraison" value="{{ today }}">
+                <input class="form-control" type="date" name="date_livraison" id="dateLivraison" value="{{ (prefill_livraison.date if prefill_livraison is defined and prefill_livraison.date else today) }}">
                 <div class="form-text">Par défaut = date d’émission.</div>
               </div>
               <div class="col-md-8">
                 <label class="form-label">Transporteur / Livreur (optionnel)</label>
-                <input class="form-control" type="text" name="livreur" id="livreurInput" placeholder="Nom du transporteur/livreur">
+                <input class="form-control" type="text" name="livreur" id="livreurInput" placeholder="Nom du transporteur/livreur" value="{{ prefill_livraison.livreur if prefill_livraison is defined else '' }}">
               </div>
               <div class="col-12">
                 <label class="form-label">Adresse de livraison</label>
-                <textarea class="form-control" name="adresse_livraison" id="adresseLivraison" rows="2" placeholder="Saisie ou remplie depuis la fiche client"></textarea>
+                <textarea class="form-control" name="adresse_livraison" id="adresseLivraison" rows="2" placeholder="Saisie ou remplie depuis la fiche client">{{ prefill_livraison.adresse if prefill_livraison is defined else '' }}</textarea>
               </div>
               <div class="col-12">
                 <label class="form-label">Notes (BL)</label>
-                <textarea class="form-control" name="notes_bl" id="notesBlInput" rows="2" placeholder="Optionnel"></textarea>
+                <textarea class="form-control" name="notes_bl" id="notesBlInput" rows="2" placeholder="Optionnel">{{ prefill_livraison.notes if prefill_livraison is defined else '' }}</textarea>
               </div>
             </div>
           </div>
@@ -503,8 +578,9 @@
       </button>
     </div>
 
-    <button type="submit" class="btn btn-primary btn-lg" id="btnSubmit">
-      <i class="bi bi-check2-circle me-1"></i> <span id="btnSubmitLabel">Enregistrer la vente (facture + BL)</span>
+    <button type="submit" class="btn {% if is_edit %}btn-warning{% else %}btn-primary{% endif %} btn-lg" id="btnSubmit">
+      <i class="bi bi-check2-circle me-1"></i>
+      <span id="btnSubmitLabel">{% if is_edit %}Enregistrer les modifications{% else %}Enregistrer la vente (facture + BL){% endif %}</span>
     </button>
   </form>
 {% endblock %}
@@ -512,6 +588,8 @@
 {% block scripts %}
   <script>
     (function () {
+      const isEditMode = {{ 'true' if is_edit else 'false' }};
+      const prefillLignes = {{ (prefill_lignes if prefill_lignes is defined else [])|tojson }};
       const apiBase = "/ventes/api/produits/";
       const linesBody = document.getElementById("linesBody");
       const cartEmptyMsg = document.getElementById("cartEmptyMsg");
@@ -555,11 +633,12 @@
       let currentStep = 1;
 
       function isProformaMode() {
+        if (isEditMode) return false;
         return !!(chk && chk.checked);
       }
 
       function stepEnabled(n) {
-        if (n === 4 && isProformaMode()) return false;
+        if (n === 4 && (isProformaMode() || isEditMode)) return false;
         return n >= 1 && n <= 5;
       }
 
@@ -613,7 +692,7 @@
         if (pro && currentStep === 4) currentStep = 5;
         if (helpOn) helpOn.classList.toggle("d-none", !pro);
         if (helpOff) helpOff.classList.toggle("d-none", pro);
-        if (btnLabel) {
+        if (btnLabel && !isEditMode) {
           btnLabel.textContent = pro
             ? "Enregistrer la proforma uniquement"
             : "Enregistrer la vente (facture + BL)";
@@ -626,17 +705,17 @@
       }
 
       function visibleStepLabel(n) {
-        if (isProformaMode() && n === 5) return 4;
+        if ((isProformaMode() || isEditMode) && n === 5) return 4;
         return n;
       }
 
       function visibleStepTotal() {
-        return isProformaMode() ? 4 : 5;
+        return (isProformaMode() || isEditMode) ? 4 : 5;
       }
 
       function updateWizardUi() {
         const max = maxStep();
-        const modeTxt = isProformaMode() ? "Proforma" : "Facture";
+        const modeTxt = isEditMode ? "Modification" : (isProformaMode() ? "Proforma" : "Facture");
         if (!stepEnabled(currentStep)) currentStep = nextStepFrom(currentStep - 1);
         if (currentStep > max) currentStep = max;
         wizardSteps.forEach((stepEl) => {
@@ -652,7 +731,8 @@
           }
           pill.classList.remove("d-none");
           const active = stepN === currentStep;
-          pill.classList.toggle("text-bg-primary", active);
+          pill.classList.toggle("text-bg-primary", active && !isEditMode);
+          pill.classList.toggle("text-bg-warning", active && isEditMode);
           pill.classList.toggle("text-bg-light", !active);
           pill.classList.toggle("text-dark", !active);
           pill.classList.toggle("border", !active);
@@ -662,7 +742,7 @@
         const pct = Math.round((vis / tot) * 100);
         if (wizardProgress) wizardProgress.style.width = `${pct}%`;
         if (wizardStepLabel) wizardStepLabel.textContent = `Étape ${vis} / ${tot} — ${modeTxt}`;
-        if (wizardModeBadge) {
+        if (wizardModeBadge && !isEditMode) {
           wizardModeBadge.textContent = `Mode ${modeTxt}`;
           wizardModeBadge.classList.toggle("text-bg-primary", modeTxt === "Facture");
           wizardModeBadge.classList.toggle("text-bg-success", modeTxt === "Proforma");
@@ -671,7 +751,7 @@
         const isLast = nextStepFrom(currentStep) > 5;
         if (btnNextStep) btnNextStep.classList.toggle("d-none", isLast);
         if (btnSubmit) btnSubmit.classList.toggle("d-none", !isLast);
-        if (btnSubmit) {
+        if (btnSubmit && !isEditMode) {
           btnSubmit.classList.toggle("btn-primary", modeTxt === "Facture");
           btnSubmit.classList.toggle("btn-success", modeTxt === "Proforma");
         }
@@ -694,12 +774,13 @@
 
       function renderRecap() {
         if (!recapContainer) return;
-        const pro = chk && chk.checked;
+        const pro = !isEditMode && chk && chk.checked;
         const clientTxt = (clientSelect && clientSelect.selectedOptions[0] && clientSelect.selectedOptions[0].textContent) || "—";
         const dateEm = dateEmission ? (dateEmission.value || "—") : "—";
         const dateEch = (document.querySelector("input[name='date_echeance']") || {}).value || "—";
         const dateVal = (document.querySelector("input[name='date_validite']") || {}).value || "—";
         const remise = (document.querySelector("input[name='remise_globale']") || {}).value || "0";
+        const modeLabel = isEditMode ? "Modification facture" : (pro ? "Proforma" : "Facture + BL");
 
         let lignesMiniHtml = "";
         let totalHt = 0;
@@ -715,28 +796,46 @@
         });
         if (!lignesMiniHtml) lignesMiniHtml = `<tr><td colspan="3" class="text-muted text-center">Aucune ligne produit</td></tr>`;
 
-        let depensesHtml = "";
         let depensesMiniHtml = "";
         let depTotal = 0;
-        if (!pro) {
+        if (!pro && !isEditMode) {
           document.querySelectorAll(".depense-row").forEach((row) => {
             const cat = row.querySelector("select[name='depense_categorie_id[]']");
             const catTxt = cat && cat.selectedOptions[0] ? cat.selectedOptions[0].textContent.trim() : "";
             const desc = (row.querySelector("input[name='depense_description[]']") || {}).value || "";
             const mt = Number((row.querySelector("input[name='depense_montant[]']") || {}).value || 0);
-            const mode = row.querySelector("select[name='depense_mode[]']");
-            const modeTxt = mode && mode.selectedOptions[0] ? mode.selectedOptions[0].textContent.trim() : "";
             if (mt <= 0) return;
             const descFinal = desc.trim() || catTxt || "Dépense";
             depTotal += mt;
-            depensesHtml += `<tr><td>${esc(catTxt || "—")}</td><td>${esc(descFinal)}</td><td class="text-end">${money(mt)}</td><td>${esc(modeTxt || "—")}</td></tr>`;
             depensesMiniHtml += `<tr><td>${esc(catTxt || "—")}</td><td>${esc(descFinal)}</td><td class="text-end">${money(mt)}</td></tr>`;
           });
-          if (!depensesHtml) depensesHtml = `<tr><td colspan="4" class="text-muted text-center">Aucune dépense saisie</td></tr>`;
           if (!depensesMiniHtml) depensesMiniHtml = `<tr><td colspan="3" class="text-muted text-center">Aucune dépense saisie</td></tr>`;
         }
 
         const totalRem = totalHt * (1 - (Number(remise || 0) / 100));
+        const sideNote = isEditMode
+          ? `<p class="small text-muted mb-0 mt-3">Les dépenses liées se gèrent depuis la fiche facture (non modifiées ici).</p>`
+          : (pro
+            ? `<p class="small text-muted mb-0 mt-3">Les dépenses liées seront demandées à la validation de la proforma.</p>`
+            : `
+                  <hr class="my-3">
+                  <h3 class="h6 mb-2">Dépenses saisies</h3>
+                  <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                      <thead>
+                        <tr>
+                          <th>Type</th>
+                          <th>Description</th>
+                          <th class="text-end">Montant</th>
+                        </tr>
+                      </thead>
+                      <tbody>${depensesMiniHtml}</tbody>
+                    </table>
+                  </div>
+                `);
+        if (recapIntroFacture) recapIntroFacture.classList.toggle("d-none", !!pro);
+        if (recapIntroProforma) recapIntroProforma.classList.toggle("d-none", !pro);
+
         recapContainer.innerHTML = `
           <div class="row g-3">
             <div class="col-12 col-lg-5">
@@ -744,7 +843,7 @@
                 <h3 class="h6 mb-3">Informations de la vente</h3>
                 <dl class="row small mb-0">
                   <dt class="col-6 text-muted">Mode</dt>
-                  <dd class="col-6 text-end fw-semibold">${pro ? "Proforma" : "Facture + BL"}</dd>
+                  <dd class="col-6 text-end fw-semibold">${esc(modeLabel)}</dd>
                   <dt class="col-6 text-muted">Client</dt>
                   <dd class="col-6 text-end fw-semibold">${esc(clientTxt)}</dd>
                   <dt class="col-6 text-muted">Date émission</dt>
@@ -757,7 +856,7 @@
                   <dd class="col-6 text-end fw-semibold">${money(totalHt)}</dd>
                   <dt class="col-6 text-muted">Total après remise</dt>
                   <dd class="col-6 text-end fw-semibold">${money(totalRem)}</dd>
-                  ${pro ? "" : `<dt class="col-6 text-muted">Dépenses liées</dt><dd class="col-6 text-end">${money(depTotal)}</dd>`}
+                  ${(!pro && !isEditMode) ? `<dt class="col-6 text-muted">Dépenses liées</dt><dd class="col-6 text-end">${money(depTotal)}</dd>` : ""}
                 </dl>
               </div>
             </div>
@@ -779,22 +878,7 @@
                     <tbody>${lignesMiniHtml}</tbody>
                   </table>
                 </div>
-                ${pro ? `<p class="small text-muted mb-0 mt-3">Les dépenses liées seront demandées à la validation de la proforma.</p>` : `
-                  <hr class="my-3">
-                  <h3 class="h6 mb-2">Dépenses saisies</h3>
-                  <div class="table-responsive">
-                    <table class="table table-sm align-middle mb-0">
-                      <thead>
-                        <tr>
-                          <th>Type</th>
-                          <th>Description</th>
-                          <th class="text-end">Montant</th>
-                        </tr>
-                      </thead>
-                      <tbody>${depensesMiniHtml}</tbody>
-                    </table>
-                  </div>
-                `}
+                ${sideNote}
               </div>
             </div>
           </div>
@@ -814,26 +898,27 @@
       }
 
       function updateLivraisonSummary() {
-        if (livraisonSummaryDate && dateLivraison) {
-          livraisonSummaryDate.textContent = dateLivraison.value || "—";
-        }
-        if (livraisonSummaryLivreur) {
-          const txt = (livreurInput && livreurInput.value || "").trim();
-          livraisonSummaryLivreur.textContent = txt || "—";
-        }
-        if (livraisonSummaryAdresse) {
-          const txt = (adresseTa && adresseTa.value || "").trim();
-          livraisonSummaryAdresse.textContent = txt || "—";
-        }
-        if (livraisonSummaryNotes) {
-          const txt = (notesBlInput && notesBlInput.value || "").trim();
-          livraisonSummaryNotes.textContent = txt || "—";
-        }
+        const dateTxt = dateLivraison ? (dateLivraison.value || "—") : "—";
+        const livreurTxt = ((livreurInput && livreurInput.value) || "").trim() || "—";
+        const adresseTxt = ((adresseTa && adresseTa.value) || "").trim() || "—";
+        const notesTxt = ((notesBlInput && notesBlInput.value) || "").trim() || "—";
+        if (livraisonSummaryDate) livraisonSummaryDate.textContent = dateTxt;
+        if (livraisonSummaryLivreur) livraisonSummaryLivreur.textContent = livreurTxt;
+        if (livraisonSummaryAdresse) livraisonSummaryAdresse.textContent = adresseTxt;
+        if (livraisonSummaryNotes) livraisonSummaryNotes.textContent = notesTxt;
+        const dEdit = document.getElementById("livraisonSummaryDateEdit");
+        const lEdit = document.getElementById("livraisonSummaryLivreurEdit");
+        const aEdit = document.getElementById("livraisonSummaryAdresseEdit");
+        const nEdit = document.getElementById("livraisonSummaryNotesEdit");
+        if (dEdit) dEdit.textContent = dateTxt;
+        if (lEdit) lEdit.textContent = livreurTxt;
+        if (aEdit) aEdit.textContent = adresseTxt;
+        if (nEdit) nEdit.textContent = notesTxt;
       }
 
       if (clientSelect) {
         clientSelect.addEventListener("change", function () {
-          adresseTa.value = "";
+          if (!isEditMode && adresseTa) adresseTa.value = "";
           fillAdresseFromClient();
           updateLivraisonSummary();
         });
@@ -842,6 +927,7 @@
       }
 
       if (dateEmission && dateLivraison) {
+        if (isEditMode) dateLivraison.dataset.touched = "1";
         dateEmission.addEventListener("change", function () {
           if (!dateLivraison.dataset.touched) dateLivraison.value = dateEmission.value;
           updateLivraisonSummary();
@@ -916,12 +1002,14 @@
         }
       }
 
-      function addProductToCart(produit) {
+      function addProductToCart(produit, opts) {
         if (!linesBody || !produit || !produit.id) return;
+        opts = opts || {};
+        const qtyAdd = Number(opts.qty || 1);
         const existing = findCartRow(produit.id);
-        if (existing) {
+        if (existing && !opts.replace) {
           const qtyInput = existing.querySelector("input[name='quantite[]']");
-          if (qtyInput) qtyInput.value = String(Number(qtyInput.value || 0) + 1);
+          if (qtyInput) qtyInput.value = String(Number(qtyInput.value || 0) + qtyAdd);
           updateCartTotals();
           return;
         }
@@ -929,18 +1017,20 @@
         const row = document.createElement("tr");
         row.className = "line-row";
         row.setAttribute("data-produit-id", produit.id);
+        const qtyVal = Math.max(1, qtyAdd || 1);
+        const priceVal = produit.price;
         row.innerHTML = `
           <td>
             <span class="cart-prod-label fw-medium">${esc(produit.ref)} — ${esc(produit.name)}</span>
             <input type="hidden" name="produit_id[]" value="${esc(produit.id)}">
           </td>
           <td>
-            <input class="form-control form-control-sm" type="number" min="1" name="quantite[]" value="1" required>
+            <input class="form-control form-control-sm" type="number" min="1" name="quantite[]" value="${esc(qtyVal)}" required>
           </td>
           <td>
-            <input class="form-control form-control-sm" type="number" step="0.01" min="0" name="prix_unitaire_ht[]" value="${esc(produit.price)}" required>
+            <input class="form-control form-control-sm" type="number" step="0.01" min="0" name="prix_unitaire_ht[]" value="${esc(priceVal)}" required>
           </td>
-          <td class="text-end line-total-cell small fw-semibold text-nowrap">${formatFcfa(produit.price)}</td>
+          <td class="text-end line-total-cell small fw-semibold text-nowrap">${formatFcfa(Number(priceVal) * qtyVal)}</td>
           <td class="text-end">
             <button type="button" class="btn btn-sm btn-outline-danger removeLine" title="Retirer">
               <i class="bi bi-x"></i>
@@ -950,6 +1040,15 @@
         linesBody.appendChild(row);
         bindCartRow(row);
         updateCartTotals();
+      }
+
+      if (Array.isArray(prefillLignes) && prefillLignes.length) {
+        prefillLignes.forEach(function (l) {
+          addProductToCart(
+            { id: l.id, ref: l.ref || "", name: l.name || "", price: l.price || 0 },
+            { qty: l.qty || 1, replace: true }
+          );
+        });
       }
 
       if (venteProductList) {
@@ -1054,14 +1153,13 @@
       });
 
       document.getElementById("venteForm").addEventListener("submit", function (e) {
+        if (isEditMode) return;
         const pro = chk && chk.checked;
         if (pro) return;
         let err = "";
         document.querySelectorAll(".depense-row").forEach((row, idx) => {
           const mt = Number((row.querySelector("input[name='depense_montant[]']") || {}).value || 0);
           const desc = ((row.querySelector("input[name='depense_description[]']") || {}).value || "").trim();
-          const justif = row.querySelector("input[name='depense_justificatif[]']");
-          const hasJustif = justif && justif.files && justif.files.length > 0;
           if (mt > 0 || desc) {
             if (mt <= 0) err = "Chaque dépense doit avoir un montant HT supérieur à 0.";
           }
@@ -1071,6 +1169,8 @@
           alert(err);
         }
       });
+
+      if (isEditMode && dateLivraison) dateLivraison.dataset.touched = "1";
 
       window.onProduitRapideCreated = function (p) {
         if (!p || !p.id) return;

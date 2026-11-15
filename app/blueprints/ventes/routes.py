@@ -1912,12 +1912,75 @@ def facture_modifier_depense(id, depense_id):
     return redirect(url_for("ventes.facture_detail", id=id))
 
 
+def _ctx_form_vente_edit_facture(facture):
+    """Contexte wizard (même UI que nouvelle vente) pour modifier une facture."""
+    today = dt.date.today()
+    produits = Produit.query.filter_by(est_actif=True).order_by(Produit.designation).all()
+    depense_categories = CategorieDepense.query.order_by(CategorieDepense.nom).all()
+    default_depense_cat = get_categorie_by_code(CODE_VENTE_LIEE) or (
+        depense_categories[0] if depense_categories else None
+    )
+    clients = [facture.client] if facture.client else []
+    bl_lie = BonLivraison.query.filter_by(facture_id=facture.id).first()
+    prefill_lignes = []
+    for ligne in sorted(facture.lignes or [], key=lambda x: x.id or 0):
+        prod = ligne.produit
+        if not prod:
+            continue
+        prefill_lignes.append(
+            {
+                "id": prod.id,
+                "ref": prod.reference or "",
+                "name": prod.designation or "",
+                "price": float(ligne.prix_unitaire_ht or 0),
+                "qty": int(ligne.quantite or 1),
+            }
+        )
+    return {
+        "clients": clients,
+        "produits": produits,
+        "produits_data": _produits_catalogue_vente(),
+        "depense_categories": depense_categories,
+        "default_depense_cat_id": default_depense_cat.id if default_depense_cat else None,
+        "facture": facture,
+        "edit_mode": True,
+        "edit_requires_confirm": facture.statut != "brouillon",
+        "title": f"Modifier la facture {facture.numero}",
+        "form_action": url_for("ventes.modifier_facture", id=facture.id),
+        "today": (facture.date_emission or today).isoformat(),
+        "default_echeance": (
+            facture.date_echeance or (today + dt.timedelta(days=30))
+        ).isoformat(),
+        "default_validite": (today + dt.timedelta(days=30)).isoformat(),
+        "prefill_proforma": False,
+        "prefill_lignes": prefill_lignes,
+        "prefill_remise": float(facture.remise_globale or 0),
+        "prefill_conditions": facture.conditions_commerciales or "",
+        "prefill_bc": facture.bc or "",
+        "prefill_date_bc": facture.date_bc.isoformat() if facture.date_bc else "",
+        "prefill_livraison": {
+            "date": (
+                bl_lie.date_livraison.isoformat()
+                if bl_lie and bl_lie.date_livraison
+                else (facture.date_emission or today).isoformat()
+            ),
+            "livreur": (bl_lie.livreur if bl_lie else "") or "",
+            "adresse": (bl_lie.adresse_livraison if bl_lie else "") or "",
+            "notes": (bl_lie.notes if bl_lie else "") or "",
+        },
+        "client_initial_id": facture.client_id,
+    }
+
+
 @ventes_bp.route("/factures/<int:id>/modifier", methods=["GET", "POST"])
 @login_required
 @permission_required("ventes", "create")
 def modifier_facture(id):
     facture = (
-        Facture.query.options(joinedload(Facture.lignes))
+        Facture.query.options(
+            joinedload(Facture.lignes).joinedload(LigneFacture.produit),
+            joinedload(Facture.client),
+        )
         .filter_by(id=id)
         .first_or_404()
     )
@@ -1928,9 +1991,6 @@ def modifier_facture(id):
         )
         return redirect(url_for("ventes.facture_detail", id=id))
 
-    clients = []
-    produits = Produit.query.filter_by(est_actif=True).order_by(Produit.designation).all()
-
     if request.method == "POST":
         try:
             if facture.statut != "brouillon":
@@ -1940,13 +2000,8 @@ def modifier_facture(id):
                         "warning",
                     )
                     return render_template(
-                        "ventes/form_facture.html",
-                        clients=clients,
-                        produits=produits,
-                        facture=facture,
-                        title=f"Modifier la facture {facture.numero}",
-                        form_action=url_for("ventes.modifier_facture", id=facture.id),
-                        edit_requires_confirm=True,
+                        "ventes/form_vente.html",
+                        **_ctx_form_vente_edit_facture(facture),
                     )
             data = _parse_facture_post()
             old_em = facture.date_emission
@@ -1965,13 +2020,26 @@ def modifier_facture(id):
                 bl_lie = assurer_bl_pour_facture(facture, statut="prepare")
                 flash("Un bon de livraison a été créé pour cette facture.", "info")
             elif bl_lie.numero != facture.numero:
-                # Facture et BL portent toujours le même numéro
                 conflit = BonLivraison.query.filter(
                     BonLivraison.numero == facture.numero,
                     BonLivraison.id != bl_lie.id,
                 ).first()
                 if not conflit:
                     bl_lie.numero = facture.numero
+            # Mettre à jour infos livraison si fournies (même UI que l'ajout)
+            dl_raw = (request.form.get("date_livraison") or "").strip()
+            if dl_raw and bl_lie:
+                try:
+                    bl_lie.date_livraison = datetime.strptime(dl_raw, "%Y-%m-%d").date()
+                except ValueError:
+                    pass
+                livreur = (request.form.get("livreur") or "").strip() or None
+                adresse = (request.form.get("adresse_livraison") or "").strip()
+                notes = (request.form.get("notes_bl") or "").strip() or None
+                if adresse:
+                    bl_lie.adresse_livraison = adresse
+                bl_lie.livreur = livreur
+                bl_lie.notes = notes
             if _sync_bl_depuis_facture(facture, bl_lie):
                 flash("Le bon de livraison lié a été aligné sur les lignes de la facture.", "info")
             if facture.statut != "brouillon":
@@ -1994,13 +2062,8 @@ def modifier_facture(id):
             flash(f"Erreur lors de l'enregistrement : {e}", "danger")
 
     return render_template(
-        "ventes/form_facture.html",
-        clients=clients,
-        produits=produits,
-        facture=facture,
-        title=f"Modifier la facture {facture.numero}",
-        form_action=url_for("ventes.modifier_facture", id=facture.id),
-        edit_requires_confirm=(facture.statut != "brouillon"),
+        "ventes/form_vente.html",
+        **_ctx_form_vente_edit_facture(facture),
     )
 
 
