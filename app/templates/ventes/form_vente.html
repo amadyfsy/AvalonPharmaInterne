@@ -138,8 +138,11 @@
         {% endif %}
       </p>
     </div>
-    <div class="page-actions">
+    <div class="page-actions d-flex flex-wrap gap-2">
       {% if is_edit and facture %}
+        <a href="{{ url_for('ventes.facture_detail', id=facture.id) }}" class="btn btn-outline-danger" id="btnAnnulerModifTop">
+          <i class="bi bi-x-lg me-1"></i> Annuler les modifications
+        </a>
         <a href="{{ url_for('ventes.facture_detail', id=facture.id) }}" class="btn btn-outline-secondary">
           <i class="bi bi-arrow-left me-1"></i> Fiche facture
         </a>
@@ -360,16 +363,6 @@
               <label class="form-label">Conditions commerciales</label>
               <textarea class="form-control" name="conditions_commerciales" rows="3" placeholder="Imprimées uniquement sur ce proforma ou cette facture.">{{ prefill_conditions|default('') }}</textarea>
             </div>
-            {% if is_edit and edit_requires_confirm %}
-            <div class="col-12">
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" value="1" name="confirm_edit_facture_emise" id="confirmEditFactureEmise" required>
-                <label class="form-check-label" for="confirmEditFactureEmise">
-                  Je confirme la modification de cette facture déjà émise (impact possible sur BL / soldes).
-                </label>
-              </div>
-            </div>
-            {% endif %}
           </div>
         </div>
       </div>
@@ -567,21 +560,47 @@
           <p class="text-muted small mb-0">Le récapitulatif se mettra à jour automatiquement.</p>
         </div>
       </div>
+      {% if is_edit and edit_requires_confirm %}
+      <div class="card border-warning shadow-sm mb-3" id="blockConfirmEdit">
+        <div class="card-body">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" value="1" name="confirm_edit_facture_emise" id="confirmEditFactureEmise" required>
+            <label class="form-check-label" for="confirmEditFactureEmise">
+              Je confirme la modification de cette facture déjà émise (impact possible sur BL / soldes).
+            </label>
+          </div>
+        </div>
+      </div>
+      {% endif %}
     </div>
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <button type="button" class="btn btn-outline-secondary d-none" id="btnPrevStep">
-        <i class="bi bi-arrow-left me-1"></i> Précédent
-      </button>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+      <div class="d-flex flex-wrap gap-2">
+        <button type="button" class="btn btn-outline-secondary d-none" id="btnPrevStep">
+          <i class="bi bi-arrow-left me-1"></i> Précédent
+        </button>
+        {% if is_edit and facture %}
+        <a href="{{ url_for('ventes.facture_detail', id=facture.id) }}" class="btn btn-outline-danger" id="btnAnnulerModifNav">
+          <i class="bi bi-x-lg me-1"></i> Annuler
+        </a>
+        {% endif %}
+      </div>
       <button type="button" class="btn btn-primary ms-auto" id="btnNextStep">
         Suivant <i class="bi bi-arrow-right ms-1"></i>
       </button>
     </div>
 
-    <button type="submit" class="btn {% if is_edit %}btn-warning{% else %}btn-primary{% endif %} btn-lg" id="btnSubmit">
-      <i class="bi bi-check2-circle me-1"></i>
-      <span id="btnSubmitLabel">{% if is_edit %}Enregistrer les modifications{% else %}Enregistrer la vente (facture + BL){% endif %}</span>
-    </button>
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-2 d-none" id="submitRow">
+      {% if is_edit and facture %}
+      <a href="{{ url_for('ventes.facture_detail', id=facture.id) }}" class="btn btn-outline-danger btn-lg" id="btnAnnulerModifSubmit">
+        <i class="bi bi-x-lg me-1"></i> Annuler les modifications
+      </a>
+      {% endif %}
+      <button type="submit" class="btn {% if is_edit %}btn-warning{% else %}btn-primary{% endif %} btn-lg" id="btnSubmit">
+        <i class="bi bi-check2-circle me-1"></i>
+        <span id="btnSubmitLabel">{% if is_edit %}Enregistrer les modifications{% else %}Enregistrer la vente (facture + BL){% endif %}</span>
+      </button>
+    </div>
   </form>
 {% endblock %}
 
@@ -751,6 +770,8 @@
         const isLast = nextStepFrom(currentStep) > 5;
         if (btnNextStep) btnNextStep.classList.toggle("d-none", isLast);
         if (btnSubmit) btnSubmit.classList.toggle("d-none", !isLast);
+        const submitRow = document.getElementById("submitRow");
+        if (submitRow) submitRow.classList.toggle("d-none", !isLast);
         if (btnSubmit && !isEditMode) {
           btnSubmit.classList.toggle("btn-primary", modeTxt === "Facture");
           btnSubmit.classList.toggle("btn-success", modeTxt === "Proforma");
