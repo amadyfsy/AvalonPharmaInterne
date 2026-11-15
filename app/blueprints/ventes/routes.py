@@ -507,9 +507,7 @@ def nouvelle_vente():
                     f'Proforma {numero} enregistrée. Les dépenses liées seront demandées à la validation (conversion facture + BL).',
                     'success',
                 )
-                return redirect(
-                    url_for('ventes.index', proforma_id=proforma.id)
-                )
+                return redirect(url_for('ventes.proformas'))
 
             # Vente directe : facture émise + BL lié
             date_echeance = datetime.strptime(
@@ -572,13 +570,10 @@ def nouvelle_vente():
 
             db.session.commit()
             flash(
-                f'Vente enregistrée : facture et BL n° {numero_fact} créés. '
-                'PDF disponibles ci-dessous ou depuis les listes.',
+                f'Vente enregistrée : facture et BL n° {numero_fact} créés.',
                 'success',
             )
-            return redirect(
-                url_for('ventes.index', facture_id=facture.id, bl_id=bl.id)
-            )
+            return redirect(url_for('ventes.factures'))
 
         except Exception as e:
             db.session.rollback()
@@ -2094,7 +2089,7 @@ def nouveau_facture():
 
             db.session.commit()
             flash(f'Facture {numero} créée avec son bon de livraison.', 'success')
-            return redirect(url_for('ventes.facture_detail', id=facture.id))
+            return redirect(url_for('ventes.factures'))
 
         except ValueError as e:
             db.session.rollback()
