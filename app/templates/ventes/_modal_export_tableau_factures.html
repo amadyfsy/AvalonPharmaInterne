@@ -7,7 +7,7 @@
         </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
       </div>
-      <form id="formExportTableauFactures" method="get" action="{{ url_for('ventes.export_tableau_factures') }}">
+      <form id="formExportTableauFactures" method="get" action="{{ url_for('ventes.export_tableau_factures') }}" data-no-loader="1" data-download="1">
         <div class="modal-body">
           <p class="small text-muted mb-3">
             Même présentation que vos feuilles Excel : facture, produits, quantités, totaux, client, date et reste à payer.

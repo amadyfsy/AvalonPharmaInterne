@@ -74,14 +74,38 @@
       if (url.pathname === window.location.pathname && url.search === window.location.search && url.hash) {
         return false;
       }
-      // PDF / impression : le fichier se télécharge sans quitter la page — ne pas bloquer l’UI.
-      if (/\/pdf(\/|$)/.test(url.pathname) || /\/imprimer(\/|$)/.test(url.pathname)) {
+      // PDF / impression / export : fichier téléchargé sans quitter la page — ne pas bloquer l’UI.
+      if (
+        /\/pdf(\/|$)/.test(url.pathname) ||
+        /\/imprimer(\/|$)/.test(url.pathname) ||
+        /\/export(-tableau)?(\/|$)/.test(url.pathname) ||
+        /[?&]format=(xlsx|pdf|csv)(?:&|$)/i.test(url.search)
+      ) {
         return false;
       }
     } catch (e) {
       return false;
     }
     return true;
+  }
+
+  function isDownloadForm(form) {
+    if (!form) return false;
+    if (form.dataset.noLoader === '1' || form.dataset.download === '1') return true;
+    if (form.target && form.target !== '_self') return true;
+    var action = form.getAttribute('action') || '';
+    try {
+      var url = new URL(action || window.location.href, window.location.href);
+      if (/\/export(-tableau)?(\/|$)/.test(url.pathname)) return true;
+      if (/\/pdf(\/|$)/.test(url.pathname) || /\/imprimer(\/|$)/.test(url.pathname)) return true;
+    } catch (e) { /* ignore */ }
+    // Format fichier dans le formulaire (Excel / PDF / CSV)
+    var fmt = form.querySelector('input[name="format"]:checked, select[name="format"]');
+    if (fmt) {
+      var v = (fmt.value || '').toLowerCase();
+      if (v === 'xlsx' || v === 'pdf' || v === 'csv' || v === 'xls') return true;
+    }
+    return false;
   }
 
   document.addEventListener('click', function (event) {
@@ -96,7 +120,14 @@
     if (event.defaultPrevented) return;
     var form = event.target;
     if (!form || form.tagName !== 'FORM') return;
-    if (form.dataset.noLoader === '1' || form.dataset.liveSearch === '1') return;
+    if (form.dataset.liveSearch === '1') return;
+    if (isDownloadForm(form)) {
+      // Téléchargement fichier : pas de navigation → cacher le loader s'il était déjà visible
+      if (typeof window.hidePageLoader === 'function') {
+        window.hidePageLoader(true);
+      }
+      return;
+    }
     if (form.target && form.target !== '_self') return;
     showLoader();
   }, false);
