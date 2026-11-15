@@ -108,7 +108,25 @@
   <div class="card shadow-sm border-0 mb-3">
     <div class="card-body py-3">
       <form method="get" class="row g-2 align-items-end">
-        <div class="col-md-3">
+        <div class="col-6 col-md-2">
+          <label class="form-label small mb-1" for="depAnnee">Année</label>
+          <select name="annee" id="depAnnee" class="form-select form-select-sm">
+            <option value="" {% if not annee_filtre %}selected{% endif %}>Toutes</option>
+            {% for y in annees_dispo %}
+              <option value="{{ y }}" {% if annee_filtre == y %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-md-2">
+          <label class="form-label small mb-1" for="depMois">Mois</label>
+          <select name="mois" id="depMois" class="form-select form-select-sm">
+            <option value="" {% if not mois_filtre %}selected{% endif %}>Tous</option>
+            {% for m, label in mois_dispo %}
+              <option value="{{ m }}" {% if mois_filtre == m %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
           <label class="form-label small mb-1">Recherche</label>
           <input type="search" name="q" class="form-control form-control-sm" value="{{ q }}" placeholder="Réf., libellé…">
         </div>
@@ -130,7 +148,7 @@
             {% endfor %}
           </select>
         </div>
-        <div class="col-md-2">
+        <div class="col-md-1">
           <label class="form-label small mb-1">Type</label>
           <select name="type" class="form-select form-select-sm">
             <option value="">Tous</option>
@@ -140,13 +158,20 @@
         </div>
         <div class="col-md-1 d-flex gap-2">
           <button type="submit" class="btn btn-primary btn-sm w-100" title="Filtrer"><i class="bi bi-funnel"></i></button>
-          <a href="{{ url_for('depenses.index') }}" class="btn btn-outline-secondary btn-sm" title="Réinitialiser"><i class="bi bi-x-lg"></i></a>
+          <a href="{{ url_for('depenses.index') }}" class="btn btn-outline-secondary btn-sm" title="Mois en cours"><i class="bi bi-arrow-counterclockwise"></i></a>
         </div>
       </form>
       <p class="small text-muted mb-0 mt-2">
         {% if pagination.total %}
           <strong>{{ pagination.total }}</strong> dépense(s)
-          {% if q %} pour « {{ q }} »{% endif %}
+          {% if annee_filtre and mois_filtre %}
+            · {{ mois_dispo[mois_filtre - 1][1] }} {{ annee_filtre }}
+          {% elif annee_filtre %}
+            · année {{ annee_filtre }}
+          {% elif mois_filtre %}
+            · {{ mois_dispo[mois_filtre - 1][1] }}
+          {% endif %}
+          {% if q %} · « {{ q }} »{% endif %}
           {% if pagination.pages > 1 %} · page {{ pagination.page }}/{{ pagination.pages }}{% endif %}
         {% else %}
           Aucune dépense ne correspond aux critères.

@@ -128,6 +128,19 @@ def index():
     if page < 1:
         page = 1
 
+    today = date.today()
+    # Défaut : année + mois en cours (sauf si l'utilisateur choisit « Toutes/Tous »)
+    if 'annee' not in request.args:
+        annee = today.year
+    else:
+        annee = request.args.get('annee', type=int)
+    if 'mois' not in request.args:
+        mois = today.month
+    else:
+        mois = request.args.get('mois', type=int)
+    if mois is not None and (mois < 1 or mois > 12):
+        mois = today.month
+
     statut = (request.args.get('statut') or '').strip()
     categorie_id = request.args.get('categorie_id', type=int)
     type_filtre = (request.args.get('type') or '').strip()
@@ -138,6 +151,10 @@ def index():
         joinedload(Depense.fournisseur),
     )
 
+    if annee:
+        query = query.filter(extract('year', Depense.date_depense) == annee)
+    if mois:
+        query = query.filter(extract('month', Depense.date_depense) == mois)
     if statut in ('en_attente', 'valide', 'rejete'):
         query = query.filter(Depense.statut == statut)
     if categorie_id:
@@ -160,6 +177,10 @@ def index():
     )
 
     filtres_url = {}
+    if annee:
+        filtres_url['annee'] = annee
+    if mois:
+        filtres_url['mois'] = mois
     if statut:
         filtres_url['statut'] = statut
     if categorie_id:
@@ -168,6 +189,11 @@ def index():
         filtres_url['type'] = type_filtre
     if q:
         filtres_url['q'] = q
+    # Conserver « Toutes/Tous » explicites dans la pagination
+    if 'annee' in request.args and not annee:
+        filtres_url['annee'] = ''
+    if 'mois' in request.args and not mois:
+        filtres_url['mois'] = ''
 
     categories = CategorieDepense.query.order_by(CategorieDepense.nom).all()
     kpi = _depenses_kpi_mois()
@@ -185,6 +211,12 @@ def index():
         )
         if y
     ]
+    if today.year not in annees_dispo:
+        annees_dispo.insert(0, today.year)
+    if annee and annee not in annees_dispo:
+        annees_dispo.append(annee)
+        annees_dispo.sort(reverse=True)
+
     return render_template(
         'depenses/index.html',
         depenses=pagination.items,
@@ -199,8 +231,8 @@ def index():
         peut_valider=peut_valider,
         annees_dispo=annees_dispo,
         mois_dispo=_MOIS_FILTRE,
-        annee_filtre=None,
-        mois_filtre=None,
+        annee_filtre=annee,
+        mois_filtre=mois,
         **kpi,
     )
 
