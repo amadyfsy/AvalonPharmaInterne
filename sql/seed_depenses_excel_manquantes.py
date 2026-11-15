@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
 """Ajoute les dépenses manquantes depuis DEPENSES.xlsx (2025).
 
+Inclut aussi les charges mensuelles fixes Télécoms :
+  - crédit téléphone directeur 15 000
+  - crédit téléphone personnel 10 000
+  - abonnement internet 15 000
+(pour chaque mois de 2025).
+
 Anti-doublons : même date + montant TTC + libellé (ou n° facture Excel
 dans le libellé). Convertit USD/MAD/INR → XOF (taux indicatifs).
-Réutilise catégories / fournisseurs existants.
+Catégorisation intelligente sur les catégories Avalon existantes.
+Liste ordonnée par date puis famille de catégorie.
 
 Usage — console Bash PythonAnywhere (compte DMS07) :
 
@@ -14,6 +21,7 @@ Usage — console Bash PythonAnywhere (compte DMS07) :
   unset DATABASE_URL MYSQL_USER MYSQL_PASSWORD MYSQL_HOST MYSQL_DATABASE
   ~/.virtualenvs/avalon-interne/bin/python sql/seed_depenses_excel_manquantes.py --dry-run
   ~/.virtualenvs/avalon-interne/bin/python sql/seed_depenses_excel_manquantes.py
+  ~/.virtualenvs/avalon-interne/bin/python sql/seed_depenses_excel_manquantes.py --reclassify
 """
 from __future__ import annotations
 
@@ -44,8 +52,45 @@ TAUX_XOF = {
 #  - vente_liee            Dépenses liées aux ventes (cahiers de charge / marchés)
 #  - nom:Frais bancaires & agios  (garanties SONAC)
 #  - nom:Maintenance & réparations (véhicules, locaux)
+#  - nom:Télécoms & informatique (crédits téléphone, internet)
 
-DEPENSES = [
+ANNEE_RECURRENTES = 2025
+
+# Charges fixes mensuelles → catégorie Télécoms & informatique
+RECURRENTES_TELECOMS = (
+    {
+        "code": "TEL-DIR",
+        "titre": "Crédit téléphonique",
+        "description": "Crédit téléphonique directeur",
+        "montant_xof": 15000.0,
+    },
+    {
+        "code": "TEL-PERS",
+        "titre": "Crédit téléphonique",
+        "description": "Crédit téléphonique personnel",
+        "montant_xof": 10000.0,
+    },
+    {
+        "code": "NET",
+        "titre": "Abonnement internet",
+        "description": "Abonnement internet mensuel",
+        "montant_xof": 15000.0,
+    },
+)
+
+# Ordre d'affichage / import par famille
+ORDRE_CATEGORIE = {
+    ("nom", "Télécoms & informatique"): 10,
+    ("code", "rh_transport_personnel"): 20,
+    ("nom", "Frais bancaires & agios"): 30,
+    ("nom", "Maintenance & réparations"): 40,
+    ("code", "appro_impot_douane"): 50,
+    ("code", "appro_douane"): 60,
+    ("code", "vente_liee"): 70,
+    ("code", "appro_achats"): 80,
+}
+
+DEPENSES_EXCEL = [
     {
         'facture_no': 'FA49009',
         'titre': 'Tranport',
@@ -1169,6 +1214,27 @@ DEPENSES = [
 ]
 
 
+def build_recurrentes_telecoms(annee: int = ANNEE_RECURRENTES) -> list[dict]:
+    """3 charges Télécoms × 12 mois (date = 1er du mois)."""
+    rows: list[dict] = []
+    for mois in range(1, 13):
+        d = date(annee, mois, 1)
+        for item in RECURRENTES_TELECOMS:
+            rows.append(
+                {
+                    "facture_no": f"{item['code']}-{annee}-{mois:02d}",
+                    "titre": item["titre"],
+                    "description": f"{item['description']} — {mois:02d}/{annee}",
+                    "montant_xof": item["montant_xof"],
+                    "montant_brut": item["montant_xof"],
+                    "devise": "XOF",
+                    "fournisseur": "",
+                    "date": d,
+                }
+            )
+    return rows
+
+
 def money(v) -> Decimal:
     return Decimal(str(v)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
@@ -1215,10 +1281,31 @@ def classify_categorie_target(raw: dict) -> tuple[str, str]:
     titre = norm_text(raw.get("titre") or "")
     desc = norm_text(raw.get("description") or "")
     fourn = norm_text(raw.get("fournisseur") or "")
-    blob = f"{titre} {desc} {fourn}"
+    facture = norm_text(str(raw.get("facture_no") or ""))
+    blob = f"{titre} {desc} {fourn} {facture}"
 
-    # 1) Transport du personnel (RH)
-    if _contains_any(titre, "personnel") or _contains_any(blob, "transport du personnel", "tranport du personnel"):
+    # 0) Télécoms & informatique (crédits, internet) — avant la règle « personnel »
+    if (
+        _contains_any(
+            blob,
+            "credit telephonique",
+            "créditetéléphonique",
+            "abonnement internet",
+            "telecom",
+            "télécom",
+            "telephonique",
+            "téléphonique",
+        )
+        or facture.startswith("tel-")
+        or facture.startswith("net-")
+    ):
+        return "nom", "Télécoms & informatique"
+
+    # 1) Transport du personnel (RH) — pas le crédit téléphone personnel
+    if _contains_any(blob, "transport du personnel", "tranport du personnel") or (
+        _contains_any(titre, "personnel")
+        and _contains_any(titre, "transport", "tranport")
+    ):
         return "code", "rh_transport_personnel"
 
     # 2) Impôt / droits de douane
@@ -1352,6 +1439,28 @@ def classify_categorie_target(raw: dict) -> tuple[str, str]:
     return "code", "appro_achats"
 
 
+def sort_key_depense(raw: dict) -> tuple:
+    """Ordre : date → famille catégorie → titre → description."""
+    d = raw.get("date")
+    date_key = d.toordinal() if d else 10**9
+    cat_key = ORDRE_CATEGORIE.get(classify_categorie_target(raw), 99)
+    return (
+        date_key,
+        cat_key,
+        norm_text(raw.get("titre") or ""),
+        norm_text(raw.get("description") or ""),
+        norm_text(str(raw.get("facture_no") or "")),
+    )
+
+
+def build_depenses_ordonnees() -> list[dict]:
+    """Excel 2025 + récurrentes Télécoms, tri intelligent."""
+    return sorted(list(DEPENSES_EXCEL) + build_recurrentes_telecoms(), key=sort_key_depense)
+
+
+DEPENSES = build_depenses_ordonnees()
+
+
 def resolve_categorie(raw: dict):
     """Résout la catégorie ORM à partir des codes/noms système existants."""
     from app.models.depense import CategorieDepense
@@ -1415,9 +1524,11 @@ def run(dry_run: bool = False, reclassify: bool = False):
 
         created = skipped = created_f = reclassed = 0
         stats: dict[str, int] = {}
+        depenses = build_depenses_ordonnees()
 
-        print("\n— Classification (aperçu) —")
-        for raw in DEPENSES:
+        print(f"\n— {len(depenses)} dépenses ordonnées (Excel + Télécoms mensuels {ANNEE_RECURRENTES}) —")
+        print("— Classification (aperçu) —")
+        for raw in depenses:
             cat, kind, key = resolve_categorie(raw)
             label = cat.nom if cat else f"? {kind}:{key}"
             stats[label] = stats.get(label, 0) + 1
@@ -1425,7 +1536,7 @@ def run(dry_run: bool = False, reclassify: bool = False):
             print(f"  {n:3d}  {nom}")
         print()
 
-        for raw in DEPENSES:
+        for raw in depenses:
             libelle = build_libelle(raw)
             montant = money(raw["montant_xof"])
             d = raw.get("date")
