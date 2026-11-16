@@ -26,7 +26,9 @@ from ...utils.document_numero import (
 from ...utils.bl_from_facture import (
     _ecrire_lignes_bl,
     adresse_livraison_depuis_client,
+    aligner_bl_sur_facture,
     assurer_bl_pour_facture,
+    bl_est_desaligne,
 )
 from ...utils.nombre_lettres import format_montant_espace
 from ...utils.parametres_pdf import (
@@ -1696,92 +1698,20 @@ def _try_assurer_bl(facture: Facture, *, statut: str = "prepare") -> BonLivraiso
         return None
 
 
-def _sync_bl_depuis_facture(facture: Facture, bl: BonLivraison | None) -> bool:
-    """Aligne le BL sur la facture (lignes nettes d’avoirs), comme après un avoir.
-
-    - BL absent → création.
-    - BL « préparé » → réécriture complète des lignes.
-    - BL déjà livré / partiel → ajuste les quantités commandées (et plafonne le livré),
-      et ajoute les produits nouvellement facturés.
-    """
-    if bl is None:
-        assurer_bl_pour_facture(facture, statut="prepare")
-        return True
-
-    bl.client_id = facture.client_id
-    if bl.numero != facture.numero:
-        conflit = BonLivraison.query.filter(
-            BonLivraison.numero == facture.numero,
-            BonLivraison.id != bl.id,
-        ).first()
-        if not conflit:
-            bl.numero = facture.numero
-
-    if bl.statut == "prepare":
-        _ecrire_lignes_bl(facture, bl, livre=False)
-        return True
-
-    # Même logique que repercuter_avoirs_sur_bl, enrichie pour les ajouts de lignes
-    from ...utils.avoir_service import quantite_nette_livraison, quantites_avoir_par_produit
-
-    avoirs = quantites_avoir_par_produit(facture.id)
-    lignes_facture = {
-        int(lf.produit_id): int(lf.quantite or 0) for lf in (facture.lignes or [])
-    }
-    # Si la relation en mémoire est encore vide après replace, relire en base
-    if not lignes_facture:
-        for lf in LigneFacture.query.filter_by(facture_id=facture.id).all():
-            lignes_facture[int(lf.produit_id)] = int(lf.quantite or 0)
-
-    bl_par_produit = {int(lb.produit_id): lb for lb in list(bl.lignes or [])}
-    for produit_id, qte_facture in lignes_facture.items():
-        net = quantite_nette_livraison(qte_facture, produit_id, avoirs)
-        ligne = bl_par_produit.get(produit_id)
-        if ligne is None:
-            if net <= 0:
-                continue
-            db.session.add(
-                LigneBL(
-                    bl_id=bl.id,
-                    produit_id=produit_id,
-                    quantite_commandee=net,
-                    quantite_livree=0,
-                )
-            )
-            continue
-        ligne.quantite_commandee = net
-        if int(ligne.quantite_livree or 0) > net:
-            ligne.quantite_livree = net
-
-    for produit_id, ligne in bl_par_produit.items():
-        if produit_id in lignes_facture:
-            continue
-        # Produit retiré de la facture → quantité nette 0 (avoirs éventuels déjà inclus)
-        net = quantite_nette_livraison(0, produit_id, avoirs)
-        ligne.quantite_commandee = net
-        if int(ligne.quantite_livree or 0) > net:
-            ligne.quantite_livree = net
-
+def _sync_bl_depuis_facture(
+    facture: Facture,
+    bl: BonLivraison | None,
+    *,
+    adresse_override: str | None = None,
+) -> bool:
+    """Aligne le BL sur la facture (client inclus — délègue à ``aligner_bl_sur_facture``)."""
+    aligner_bl_sur_facture(facture, bl, adresse_override=adresse_override)
     return True
 
 
 def _bl_desaligne_depuis_facture(facture: Facture, bl: BonLivraison | None) -> bool:
-    if bl is None or bl.statut != "prepare":
-        return False
-    from ...utils.avoir_service import quantite_nette_livraison, quantites_avoir_par_produit
-
-    avoirs = quantites_avoir_par_produit(facture.id)
-    f_map = {}
-    for lf in facture.lignes or []:
-        net = quantite_nette_livraison(int(lf.quantite or 0), int(lf.produit_id), avoirs)
-        if net > 0:
-            f_map[lf.produit_id] = net
-    b_map = {
-        lb.produit_id: int(lb.quantite_commandee or 0)
-        for lb in (bl.lignes or [])
-        if int(lb.quantite_commandee or 0) > 0
-    }
-    return f_map != b_map
+    desaligne, _reasons = bl_est_desaligne(facture, bl)
+    return desaligne
 
 
 @ventes_bp.route("/factures/<int:id>")
@@ -2062,6 +1992,7 @@ def modifier_facture(id):
                         **_ctx_form_vente_edit_facture(facture),
                     )
             data = _parse_facture_post()
+            old_client_id = facture.client_id
             old_em = facture.date_emission
             if facture.statut == "brouillon" and (
                 data["date_emission"].year != old_em.year
@@ -2073,16 +2004,21 @@ def modifier_facture(id):
             _replace_lignes_facture(facture.id, data["lignes"])
             _apply_totals_to_facture(facture, data)
             db.session.flush()
-            # Expire la collection pour que le sync BL lise les nouvelles lignes
-            db.session.expire(facture, ["lignes"])
+            # Expire pour relire lignes + client (si changé) lors du sync BL
+            db.session.expire(facture, ["lignes", "client"])
 
             bl_lie = BonLivraison.query.filter_by(facture_id=facture.id).first()
             created_bl = False
+            adresse_form = (request.form.get("adresse_livraison") or "").strip() or None
             if bl_lie is None:
-                bl_lie = assurer_bl_pour_facture(facture, statut="prepare")
+                bl_lie = assurer_bl_pour_facture(
+                    facture,
+                    statut="prepare",
+                    adresse_override=adresse_form,
+                )
                 created_bl = True
 
-            # Infos livraison (même UI que l'ajout) — toujours appliquées si présentes
+            # Infos livraison (même UI que l'ajout)
             if bl_lie is not None:
                 dl_raw = (request.form.get("date_livraison") or "").strip()
                 if dl_raw:
@@ -2092,20 +2028,29 @@ def modifier_facture(id):
                         pass
                 if "livreur" in request.form:
                     bl_lie.livreur = (request.form.get("livreur") or "").strip() or None
-                adresse = (request.form.get("adresse_livraison") or "").strip()
-                if adresse:
-                    bl_lie.adresse_livraison = adresse
                 if "notes_bl" in request.form:
                     bl_lie.notes = (request.form.get("notes_bl") or "").strip() or None
 
-            synced = _sync_bl_depuis_facture(facture, bl_lie)
+            # Aligne lignes + client (+ adresse si client changé ou adresse saisie)
+            synced = _sync_bl_depuis_facture(
+                facture,
+                bl_lie,
+                adresse_override=adresse_form,
+            )
             if created_bl:
                 flash("Un bon de livraison a été créé pour cette facture.", "info")
             elif synced:
-                flash(
-                    "Le bon de livraison lié a été aligné sur la facture (comme après un avoir).",
-                    "info",
-                )
+                if old_client_id != facture.client_id:
+                    flash(
+                        "Le bon de livraison a été aligné sur la facture "
+                        "(client et lignes mis à jour).",
+                        "info",
+                    )
+                else:
+                    flash(
+                        "Le bon de livraison lié a été aligné sur la facture (comme après un avoir).",
+                        "info",
+                    )
             if facture.statut != "brouillon":
                 mp = float(facture.montant_paye or 0)
                 tt = float(facture.total_ttc)
