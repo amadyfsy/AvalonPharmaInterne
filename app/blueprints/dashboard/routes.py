@@ -139,6 +139,59 @@ def index():
     elif benefice_net > 0:
         benefice_variation = 100.0
 
+    # Totaux annuels (année civile en cours) — hors factures annulées / brouillons
+    ca_annuel = float(
+        db.session.query(func.sum(Facture.total_ttc)).filter(
+            _FACTURE_CA,
+            extract('year', Facture.date_emission) == today.year,
+        ).scalar()
+        or 0.0
+    )
+    ca_annuel_prev = float(
+        db.session.query(func.sum(Facture.total_ttc)).filter(
+            _FACTURE_CA,
+            extract('year', Facture.date_emission) == today.year - 1,
+        ).scalar()
+        or 0.0
+    )
+    ca_annuel_variation = 0.0
+    if ca_annuel_prev > 0:
+        ca_annuel_variation = ((ca_annuel - ca_annuel_prev) / ca_annuel_prev) * 100
+    elif ca_annuel > 0:
+        ca_annuel_variation = 100.0
+
+    depenses_annuelles = float(
+        db.session.query(func.sum(Depense.montant_ttc)).filter(
+            extract('year', Depense.date_depense) == today.year,
+            Depense.statut == 'valide',
+        ).scalar()
+        or 0.0
+    )
+    depenses_annuelles_prev = float(
+        db.session.query(func.sum(Depense.montant_ttc)).filter(
+            extract('year', Depense.date_depense) == today.year - 1,
+            Depense.statut == 'valide',
+        ).scalar()
+        or 0.0
+    )
+    depenses_annuelles_variation = 0.0
+    if depenses_annuelles_prev > 0:
+        depenses_annuelles_variation = (
+            (depenses_annuelles - depenses_annuelles_prev) / depenses_annuelles_prev
+        ) * 100
+    elif depenses_annuelles > 0:
+        depenses_annuelles_variation = 100.0
+
+    benefice_annuel = ca_annuel - depenses_annuelles
+    benefice_annuel_prev = ca_annuel_prev - depenses_annuelles_prev
+    benefice_annuel_variation = 0.0
+    if benefice_annuel_prev != 0:
+        benefice_annuel_variation = (
+            (benefice_annuel - benefice_annuel_prev) / abs(benefice_annuel_prev)
+        ) * 100
+    elif benefice_annuel > 0:
+        benefice_annuel_variation = 100.0
+
     # Evolution CA (12 derniers mois)
     _mois_fr = (
         "janv.", "févr.", "mars", "avr.", "mai", "juin",
@@ -256,6 +309,12 @@ def index():
         today=today,
         ca_current=float(ca_current),
         ca_variation=float(ca_variation),
+        ca_annuel=float(ca_annuel),
+        ca_annuel_variation=float(ca_annuel_variation),
+        depenses_annuelles=float(depenses_annuelles),
+        depenses_annuelles_variation=float(depenses_annuelles_variation),
+        benefice_annuel=float(benefice_annuel),
+        benefice_annuel_variation=float(benefice_annuel_variation),
         impayes_count=impayes_count,
         impayes_montant=float(impayes_montant),
         alertes_stock=alertes_stock,

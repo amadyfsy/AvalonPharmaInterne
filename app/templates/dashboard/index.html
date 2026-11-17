@@ -28,6 +28,76 @@
 
 {% block extra_css %}
 <style>
+  .dash-hero {
+    background: linear-gradient(135deg, #721818 0%, #5a1218 55%, #3d0c10 100%);
+    border-radius: 0.85rem;
+    color: #fff;
+    padding: 1.15rem 1.35rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 0.45rem 1.1rem rgba(114, 24, 24, 0.22);
+  }
+  .dash-hero .page-title { color: #fff; margin-bottom: 0.15rem; }
+  .dash-hero .page-subtitle { color: rgba(255,255,255,.82); margin-bottom: 0; }
+  .dash-hero .btn-light { font-weight: 600; }
+  .dash-year-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+  }
+  @media (max-width: 767.98px) {
+    .dash-year-strip { grid-template-columns: 1fr; }
+  }
+  .dash-year-card {
+    background: #fff;
+    border: 1px solid rgba(114, 24, 24, 0.12);
+    border-radius: 0.75rem;
+    padding: 0.95rem 1.1rem;
+    box-shadow: 0 0.2rem 0.65rem rgba(33, 37, 41, 0.05);
+    min-height: 100%;
+  }
+  .dash-year-card .dy-label {
+    display: block;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6c757d;
+    margin-bottom: 0.25rem;
+  }
+  .dash-year-card .dy-value {
+    display: block;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #212529;
+    line-height: 1.2;
+  }
+  .dash-year-card .dy-value .fcfa-unit {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6c757d;
+    margin-left: 0.2rem;
+  }
+  .dash-year-card .dy-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.35rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+  .dash-year-card .dy-meta.up { color: #198754; }
+  .dash-year-card .dy-meta.down { color: #dc3545; }
+  .dash-year-card.is-ca { border-top: 3px solid #721818; }
+  .dash-year-card.is-dep { border-top: 3px solid #b02a37; }
+  .dash-year-card.is-ben { border-top: 3px solid #198754; }
+  .dash-section-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #6c757d;
+    margin: 0 0 0.65rem;
+  }
   .dash-top-produits .card-header {
     padding: 0.55rem 0.75rem;
   }
@@ -67,23 +137,56 @@
 {% endblock %}
 
 {% block content %}
-  <div class="page-header">
+  <div class="dash-hero d-flex flex-wrap justify-content-between align-items-start gap-3">
     <div>
-      <h1 class="page-title">Tableau de bord</h1>
-      <p class="page-subtitle">Bienvenue, voici un aperçu de votre activité</p>
+      <h1 class="page-title h3">Tableau de bord</h1>
+      <p class="page-subtitle">Aperçu {{ today.year }} · mois en cours inclus</p>
     </div>
-    <div class="page-actions">
-      <a href="{{ url_for('dashboard.export_mensuel') }}" class="btn btn-outline-secondary">
-        <i class="bi bi-download me-2"></i>Exporter
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{{ url_for('dashboard.export_mensuel') }}" class="btn btn-outline-light btn-sm">
+        <i class="bi bi-download me-1"></i>Exporter
       </a>
-      <a href="{{ url_for('ventes.nouveau_facture') }}" class="btn btn-primary">
-        <i class="bi bi-plus-lg me-2"></i>Nouvelle facture
+      <a href="{{ url_for('ventes.nouveau_facture') }}" class="btn btn-light btn-sm">
+        <i class="bi bi-plus-lg me-1"></i>Nouvelle facture
       </a>
     </div>
   </div>
 
-  {# KPI — même grille que public/index.html #}
-  <div class="row g-4 mb-4">
+  {# Synthèse annuelle #}
+  <p class="dash-section-label">Synthèse annuelle {{ today.year }}</p>
+  <div class="dash-year-strip">
+    <div class="dash-year-card is-ca">
+      <span class="dy-label"><i class="bi bi-cash-stack me-1"></i>Chiffre d’affaires annuel</span>
+      <span class="dy-value">{{ format_fcfa(ca_annuel) }}<span class="fcfa-unit">FCFA</span></span>
+      {% if ca_annuel_variation >= 0 %}
+        <span class="dy-meta up"><i class="bi bi-arrow-up-short"></i>{{ "%.1f"|format(ca_annuel_variation) }} % vs {{ today.year - 1 }}</span>
+      {% else %}
+        <span class="dy-meta down"><i class="bi bi-arrow-down-short"></i>{{ "%.1f"|format(ca_annuel_variation|abs) }} % vs {{ today.year - 1 }}</span>
+      {% endif %}
+    </div>
+    <div class="dash-year-card is-dep">
+      <span class="dy-label"><i class="bi bi-wallet2 me-1"></i>Dépenses annuelles</span>
+      <span class="dy-value">{{ format_fcfa(depenses_annuelles) }}<span class="fcfa-unit">FCFA</span></span>
+      {% if depenses_annuelles_variation <= 0 %}
+        <span class="dy-meta up"><i class="bi bi-arrow-down-short"></i>{{ "%.1f"|format(depenses_annuelles_variation|abs) }} % vs {{ today.year - 1 }}</span>
+      {% else %}
+        <span class="dy-meta down"><i class="bi bi-arrow-up-short"></i>{{ "%.1f"|format(depenses_annuelles_variation) }} % vs {{ today.year - 1 }}</span>
+      {% endif %}
+    </div>
+    <div class="dash-year-card is-ben">
+      <span class="dy-label"><i class="bi bi-graph-up-arrow me-1"></i>Résultat annuel estimé</span>
+      <span class="dy-value">{{ format_fcfa(benefice_annuel) }}<span class="fcfa-unit">FCFA</span></span>
+      {% if benefice_annuel_variation >= 0 %}
+        <span class="dy-meta up"><i class="bi bi-arrow-up-short"></i>{{ "%.1f"|format(benefice_annuel_variation) }} % vs {{ today.year - 1 }}</span>
+      {% else %}
+        <span class="dy-meta down"><i class="bi bi-arrow-down-short"></i>{{ "%.1f"|format(benefice_annuel_variation|abs) }} % vs {{ today.year - 1 }}</span>
+      {% endif %}
+    </div>
+  </div>
+
+  {# KPI mensuels #}
+  <p class="dash-section-label">Indicateurs du mois</p>
+  <div class="row g-3 mb-4">
     <div class="col-12 col-sm-6 col-xl-3">
       <div class="kpi-card kpi-primary">
         <div class="kpi-icon">
@@ -130,7 +233,7 @@
           <i class="bi bi-graph-up-arrow"></i>
         </div>
         <div class="kpi-content">
-          <span class="kpi-label">Bénéfice estimé</span>
+          <span class="kpi-label">Bénéfice (mois)</span>
           <span class="kpi-value" data-kpi-mini-fcfa="true">{{ montant_fcfa(benefice_net, card=true) }}</span>
           {% if benefice_variation >= 0 %}
             <span class="kpi-change positive">
