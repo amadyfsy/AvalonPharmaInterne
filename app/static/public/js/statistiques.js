@@ -116,24 +116,55 @@
     elCa.parentElement.innerHTML = '<p class="text-muted small text-center mb-0">Pas de ventes par type client sur ' + periodeLabel + '.</p>';
   }
 
-  /* Top produits */
+  /* Top produits — score CA 60 % + fréquence 40 % (hors factures annulées) */
   const topP = data.top_produits || {};
   const elTop = document.getElementById('chartTopProduits');
   if (elTop && topP.labels && topP.labels.length) {
+    const scoreData = (topP.scores && topP.scores.length) ? topP.scores : (topP.qty || []);
     new Chart(elTop, {
       type: 'bar',
       data: {
         labels: topP.labels,
         datasets: [{
-          label: 'Quantité vendue',
-          data: topP.qty || [],
-          backgroundColor: 'rgba(13,110,253,0.7)',
+          label: 'Score (CA 60 % + fréquence 40 %)',
+          data: scoreData,
+          backgroundColor: 'rgba(114, 24, 24, 0.75)',
         }],
       },
       options: {
         indexAxis: 'y',
         ...commonOpts,
-        scales: { x: { beginAtZero: true } },
+        scales: {
+          x: {
+            beginAtZero: true,
+            max: 100,
+            title: { display: true, text: 'Score / 100' },
+          },
+        },
+        plugins: {
+          ...commonOpts.plugins,
+          tooltip: {
+            callbacks: {
+              afterLabel: function (ctx) {
+                const i = ctx.dataIndex;
+                const lines = [];
+                if (topP.notes_ca && topP.notes_ca[i] != null) {
+                  lines.push('Note CA : ' + Number(topP.notes_ca[i]).toFixed(1) + ' / 100');
+                }
+                if (topP.notes_frequence && topP.notes_frequence[i] != null) {
+                  lines.push('Note fréquence : ' + Number(topP.notes_frequence[i]).toFixed(1) + ' / 100');
+                }
+                if (topP.nb_achats && topP.nb_achats[i] != null) {
+                  lines.push('Achats : ' + topP.nb_achats[i]);
+                }
+                if (topP.montants && topP.montants[i] != null) {
+                  lines.push('CA : ' + Number(topP.montants[i]).toLocaleString('fr-FR') + ' FCFA');
+                }
+                return lines;
+              },
+            },
+          },
+        },
       },
     });
   } else if (elTop) {

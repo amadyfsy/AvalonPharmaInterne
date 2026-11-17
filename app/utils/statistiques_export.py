@@ -88,9 +88,25 @@ def generate_statistiques_excel(bundle: dict) -> io.BytesIO:
         rows_p.append([
             lbl,
             (top_p.get('qty') or [0])[i] if i < len(top_p.get('qty') or []) else 0,
+            (top_p.get('nb_achats') or [0])[i] if i < len(top_p.get('nb_achats') or []) else 0,
             (top_p.get('montants') or [0])[i] if i < len(top_p.get('montants') or []) else 0,
+            (top_p.get('notes_ca') or [0])[i] if i < len(top_p.get('notes_ca') or []) else 0,
+            (top_p.get('notes_frequence') or [0])[i] if i < len(top_p.get('notes_frequence') or []) else 0,
+            (top_p.get('scores') or [0])[i] if i < len(top_p.get('scores') or []) else 0,
         ])
-    _write_sheet(ws4, ['Produit', 'Quantité', 'Montant HT'], rows_p)
+    _write_sheet(
+        ws4,
+        [
+            'Produit',
+            'Quantité',
+            'Nb achats',
+            'CA (qté×PU)',
+            'Note CA /100',
+            'Note fréquence /100',
+            'Score (60% CA + 40% fréq.)',
+        ],
+        rows_p,
+    )
 
     dep = charts.get('depenses_categorie') or {}
     ws5 = wb.create_sheet('Dépenses')

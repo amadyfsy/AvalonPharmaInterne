@@ -16,7 +16,7 @@ from flask import render_template
 
 from ...utils.nombre_lettres import format_montant_espace
 from ...utils.parametres_pdf import has_cachet
-from ...utils.statistiques_queries import _FACTURE_CA
+from ...utils.statistiques_queries import _FACTURE_CA, classement_produits
 
 from . import dashboard_bp
 
@@ -221,34 +221,12 @@ def index():
         for bl_row in BonLivraison.query.filter(BonLivraison.facture_id.in_(fids)).all():
             bl_par_facture[bl_row.facture_id] = bl_row
 
-    # Top 5 produits (quantités vendues sur l'année en cours, factures validées)
-    top_rows = (
-        db.session.query(
-            Produit.reference,
-            Produit.designation,
-            func.coalesce(func.sum(LigneFacture.quantite), 0).label('qty'),
-            func.coalesce(func.sum(LigneFacture.montant_ht), 0).label('montant_ht'),
-        )
-        .join(LigneFacture, LigneFacture.produit_id == Produit.id)
-        .join(Facture, Facture.id == LigneFacture.facture_id)
-        .filter(
-            _FACTURE_CA,
-            extract('year', Facture.date_emission) == today.year,
-        )
-        .group_by(Produit.id, Produit.reference, Produit.designation)
-        .order_by(func.sum(LigneFacture.quantite).desc())
-        .limit(5)
-        .all()
+    # Top 5 produits : score CA (60 %) + fréquence d'achat (40 %), hors factures annulées
+    top_produits = classement_produits(
+        date(today.year, 1, 1),
+        date(today.year, 12, 31),
+        limit=5,
     )
-    top_produits = [
-        {
-            'reference': r[0],
-            'designation': r[1],
-            'qty': int(r[2] or 0),
-            'montant_ht': float(r[3] or 0),
-        }
-        for r in top_rows
-    ]
 
     # Commandes fournisseur pas encore reçues (hors annulées), les plus récentes d’abord
     _cmdes_attente = (

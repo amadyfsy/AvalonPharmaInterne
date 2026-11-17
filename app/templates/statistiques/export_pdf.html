@@ -67,15 +67,33 @@
     </tbody>
   </table>
 
-  <h2>Top produits</h2>
+  <h2>Top produits (score CA 60 % + fréquence 40 %, hors factures annulées)</h2>
   <table>
-    <thead><tr><th>Produit</th><th class="num">Quantité</th><th class="num">Montant HT</th></tr></thead>
+    <thead>
+      <tr>
+        <th>Produit</th>
+        <th class="num">Qté</th>
+        <th class="num">Achats</th>
+        <th class="num">CA</th>
+        <th class="num">Note CA</th>
+        <th class="num">Note fréq.</th>
+        <th class="num">Score</th>
+      </tr>
+    </thead>
     <tbody>
       {% set tp = chart_data.top_produits %}
       {% for lbl in tp.labels %}
-        <tr><td>{{ lbl }}</td><td class="num">{{ tp.qty[loop.index0] }}</td><td class="num">{{ format_fcfa(tp.montants[loop.index0]) }}</td></tr>
+        <tr>
+          <td>{{ lbl }}</td>
+          <td class="num">{{ tp.qty[loop.index0] }}</td>
+          <td class="num">{{ (tp.nb_achats or [0])[loop.index0] }}</td>
+          <td class="num">{{ format_fcfa(tp.montants[loop.index0]) }}</td>
+          <td class="num">{{ '%.1f'|format((tp.notes_ca or [0])[loop.index0]) }}</td>
+          <td class="num">{{ '%.1f'|format((tp.notes_frequence or [0])[loop.index0]) }}</td>
+          <td class="num"><strong>{{ '%.1f'|format((tp.scores or [0])[loop.index0]) }}</strong></td>
+        </tr>
       {% else %}
-        <tr><td colspan="3">Aucun produit vendu.</td></tr>
+        <tr><td colspan="7">Aucun produit vendu.</td></tr>
       {% endfor %}
     </tbody>
   </table>

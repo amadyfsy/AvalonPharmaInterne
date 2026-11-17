@@ -356,30 +356,104 @@ def ca_par_type_client(periode: PeriodeStats) -> dict:
     return {'labels': labels, 'data': data}
 
 
-def top_produits(periode: PeriodeStats, limit: int = 10) -> dict:
-    debut, fin = _bounds(periode)
-    rows = (
+def _agg_ventes_produits(debut: date, fin: date):
+    """Agrégats ventes par produit — hors factures annulées / brouillons.
+
+    CA produit = Σ (quantité × prix unitaire HT) ≈ Σ montant_ht des lignes.
+    Fréquence = nombre de factures distinctes contenant le produit.
+    """
+    return (
         db.session.query(
+            Produit.id,
+            Produit.reference,
             Produit.designation,
             func.coalesce(func.sum(LigneFacture.quantite), 0).label('qty'),
-            func.coalesce(func.sum(LigneFacture.montant_ht), 0).label('montant'),
+            func.coalesce(
+                func.sum(LigneFacture.quantite * LigneFacture.prix_unitaire_ht),
+                0,
+            ).label('ca'),
+            func.count(func.distinct(Facture.id)).label('nb_achats'),
         )
         .join(LigneFacture, LigneFacture.produit_id == Produit.id)
         .join(Facture, Facture.id == LigneFacture.facture_id)
-        .filter(_FACTURE_CA, Facture.date_emission >= debut, Facture.date_emission <= fin)
-        .group_by(Produit.id, Produit.designation)
-        .order_by(func.sum(LigneFacture.quantite).desc())
-        .limit(limit)
+        .filter(
+            _FACTURE_CA,  # emise / partiellement_payee / payee — exclut annulee & brouillon
+            Facture.statut != 'annulee',
+            Facture.date_emission >= debut,
+            Facture.date_emission <= fin,
+        )
+        .group_by(Produit.id, Produit.reference, Produit.designation)
         .all()
     )
-    labels = []
-    qty = []
-    montants = []
-    for desig, q, m in rows:
-        labels.append((desig or 'Produit')[:40])
-        qty.append(int(q or 0))
-        montants.append(float(m or 0))
-    return {'labels': labels, 'qty': qty, 'montants': montants}
+
+
+def classement_produits(
+    debut: date,
+    fin: date,
+    *,
+    limit: int | None = 10,
+) -> list[dict]:
+    """Classement produits : Note CA (60 %) + Note Fréquence (40 %).
+
+    Note CA = (CA produit / CA max catalogue) × 100
+    Note Fréquence = (nb achats produit / nb achats max catalogue) × 100
+    Score = 0,6 × Note CA + 0,4 × Note Fréquence
+
+    Les factures annulées (et brouillons) sont exclues.
+    """
+    rows = _agg_ventes_produits(debut, fin)
+    if not rows:
+        return []
+
+    max_ca = max(float(r.ca or 0) for r in rows) or 0.0
+    max_freq = max(int(r.nb_achats or 0) for r in rows) or 0
+
+    scored: list[dict] = []
+    for r in rows:
+        ca = float(r.ca or 0)
+        qty = int(r.qty or 0)
+        nb_achats = int(r.nb_achats or 0)
+        note_ca = (ca / max_ca * 100.0) if max_ca > 0 else 0.0
+        note_freq = (nb_achats / max_freq * 100.0) if max_freq > 0 else 0.0
+        score = 0.6 * note_ca + 0.4 * note_freq
+        scored.append(
+            {
+                'id': r.id,
+                'reference': r.reference or '',
+                'designation': r.designation or 'Produit',
+                'qty': qty,
+                'ca': ca,
+                'montant_ht': ca,
+                'nb_achats': nb_achats,
+                'note_ca': round(note_ca, 2),
+                'note_frequence': round(note_freq, 2),
+                'score': round(score, 2),
+                'max_ca': max_ca,
+                'max_frequence': max_freq,
+            }
+        )
+
+    scored.sort(key=lambda x: (-x['score'], -x['ca'], -x['nb_achats']))
+    if limit is not None:
+        return scored[:limit]
+    return scored
+
+
+def top_produits(periode: PeriodeStats, limit: int = 10) -> dict:
+    """Top produits classés par score (CA 60 % + fréquence 40 %)."""
+    ranked = classement_produits(periode.debut, periode.fin, limit=limit)
+    return {
+        'labels': [(p['designation'] or 'Produit')[:40] for p in ranked],
+        'qty': [p['qty'] for p in ranked],
+        'montants': [p['ca'] for p in ranked],
+        'nb_achats': [p['nb_achats'] for p in ranked],
+        'notes_ca': [p['note_ca'] for p in ranked],
+        'notes_frequence': [p['note_frequence'] for p in ranked],
+        'scores': [p['score'] for p in ranked],
+        'items': ranked,
+        'methode': 'score_ca_60_frequence_40',
+        'exclut_factures_annulees': True,
+    }
 
 
 def depenses_par_categorie(periode: PeriodeStats, limit: int = 8) -> dict:

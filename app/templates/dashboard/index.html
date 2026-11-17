@@ -273,7 +273,8 @@
     <div class="col-12 col-xl-4">
       <div class="card h-100">
         <div class="card-header">
-          <h5 class="card-title">Top 5 produits vendus ({{ today.year }})</h5>
+          <h5 class="card-title">Top 5 produits ({{ today.year }})</h5>
+          <p class="small text-muted mb-0">Score = CA 60 % + fréquence 40 % · hors factures annulées</p>
         </div>
         <div class="card-body">
           <div class="product-list">
@@ -282,9 +283,12 @@
                 <div class="product-rank">{{ loop.index }}</div>
                 <div class="product-info">
                   <span class="product-name">{{ p.designation }}</span>
-                  <span class="product-sales">{{ p.qty|int }} unités · {{ p.reference }}</span>
+                  <span class="product-sales">
+                    {{ p.qty|int }} u. · {{ p.nb_achats }} achat{{ 's' if p.nb_achats != 1 else '' }}
+                    · CA {{ '%.0f'|format(p.note_ca) }} / Freq {{ '%.0f'|format(p.note_frequence) }}
+                  </span>
                 </div>
-                <div class="product-amount">{{ montant_fcfa(p.montant_ht) }}</div>
+                <div class="product-amount" title="Score composite / 100">{{ '%.1f'|format(p.score) }}<span class="small text-muted">/100</span></div>
               </div>
             {% else %}
               <p class="text-muted small mb-0">Pas encore de ventes enregistrées cette année.</p>
