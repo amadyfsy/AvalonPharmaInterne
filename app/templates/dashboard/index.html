@@ -16,17 +16,10 @@
   {% endif %}
 {%- endmacro %}
 
-{% macro montant_fcfa(n, card=false) -%}
-  {%- if card -%}
-    <span class="kpi-amount">{{ format_fcfa(n) }}</span><span class="fcfa-unit">FCFA</span>
-  {%- else -%}
-    {{ format_fcfa(n) }} <span class="fcfa-unit">FCFA</span>
-  {%- endif -%}
-{%- endmacro %}
-
 {% block title %}Tableau de bord - Avalon Pharma{% endblock %}
 
 {% block extra_css %}
+<link href="{{ url_for('static', filename='public/css/statistiques.css') }}" rel="stylesheet">
 <style>
   .dash-hero {
     background: linear-gradient(135deg, #721818 0%, #5a1218 55%, #3d0c10 100%);
@@ -43,7 +36,7 @@
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.75rem;
-    margin-bottom: 1.25rem;
+    margin-bottom: 1.35rem;
   }
   @media (max-width: 767.98px) {
     .dash-year-strip { grid-template-columns: 1fr; }
@@ -98,41 +91,17 @@
     color: #6c757d;
     margin: 0 0 0.65rem;
   }
-  .dash-top-produits .card-header {
-    padding: 0.55rem 0.75rem;
-  }
-  .dash-top-produits .card-header .card-title {
-    font-size: 0.95rem;
-    margin-bottom: 0;
-  }
-  .dash-top-produits .card-body {
-    padding: 0.4rem 0.5rem 0.55rem;
-  }
-  .dash-top-produits .product-list {
-    gap: 4px;
-  }
-  .dash-top-produits .product-item {
-    gap: 8px;
-    padding: 4px 8px;
-    border-radius: 6px;
-  }
-  .dash-top-produits .product-rank {
-    width: 22px;
-    height: 22px;
-    font-size: 0.7rem;
-  }
+  .dash-top-produits .card-header { padding: 0.55rem 0.75rem; }
+  .dash-top-produits .card-header .card-title { font-size: 0.95rem; margin-bottom: 0; }
+  .dash-top-produits .card-body { padding: 0.4rem 0.5rem 0.55rem; }
+  .dash-top-produits .product-list { gap: 4px; }
+  .dash-top-produits .product-item { gap: 8px; padding: 4px 8px; border-radius: 6px; }
+  .dash-top-produits .product-rank { width: 22px; height: 22px; font-size: 0.7rem; }
   .dash-top-produits .product-name {
-    font-size: 0.78rem;
-    font-weight: 600;
-    margin-bottom: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-size: 0.78rem; font-weight: 600; margin-bottom: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .dash-top-produits .product-amount {
-    font-size: 0.78rem;
-    white-space: nowrap;
-  }
+  .dash-top-produits .product-amount { font-size: 0.78rem; white-space: nowrap; }
 </style>
 {% endblock %}
 
@@ -140,11 +109,11 @@
   <div class="dash-hero d-flex flex-wrap justify-content-between align-items-start gap-3">
     <div>
       <h1 class="page-title h3">Tableau de bord</h1>
-      <p class="page-subtitle">Aperçu {{ today.year }} · mois en cours inclus</p>
+      <p class="page-subtitle">Synthèse annuelle + statistiques complètes · {{ today.strftime('%d/%m/%Y') }}</p>
     </div>
     <div class="d-flex flex-wrap gap-2">
       <a href="{{ url_for('dashboard.export_mensuel') }}" class="btn btn-outline-light btn-sm">
-        <i class="bi bi-download me-1"></i>Exporter
+        <i class="bi bi-download me-1"></i>Exporter mois
       </a>
       <a href="{{ url_for('ventes.nouveau_facture') }}" class="btn btn-light btn-sm">
         <i class="bi bi-plus-lg me-1"></i>Nouvelle facture
@@ -184,182 +153,18 @@
     </div>
   </div>
 
-  {# KPI mensuels #}
-  <p class="dash-section-label">Indicateurs du mois</p>
-  <div class="row g-3 mb-4">
-    <div class="col-12 col-sm-6 col-xl-3">
-      <div class="kpi-card kpi-primary">
-        <div class="kpi-icon">
-          <i class="bi bi-currency-dollar"></i>
-        </div>
-        <div class="kpi-content">
-          <span class="kpi-label">CA mensuel</span>
-          <span class="kpi-value" data-kpi-mini-fcfa="true">{{ montant_fcfa(ca_current, card=true) }}</span>
-          {% if ca_variation >= 0 %}
-            <span class="kpi-change positive">
-              <i class="bi bi-arrow-up"></i> {{ "%.1f"|format(ca_variation) }} %
-            </span>
-          {% else %}
-            <span class="kpi-change negative">
-              <i class="bi bi-arrow-down"></i> {{ "%.1f"|format(ca_variation|abs) }} %
-            </span>
-          {% endif %}
-        </div>
-      </div>
-    </div>
-    <div class="col-12 col-sm-6 col-xl-3">
-      <div class="kpi-card kpi-danger">
-        <div class="kpi-icon">
-          <i class="bi bi-graph-down"></i>
-        </div>
-        <div class="kpi-content">
-          <span class="kpi-label">Dépenses (mois)</span>
-          <span class="kpi-value" data-kpi-mini-fcfa="true">{{ montant_fcfa(depenses_total, card=true) }}</span>
-          {% if depenses_variation <= 0 %}
-            <span class="kpi-change positive">
-              <i class="bi bi-arrow-down"></i> {{ "%.1f"|format(depenses_variation|abs) }} %
-            </span>
-          {% else %}
-            <span class="kpi-change negative">
-              <i class="bi bi-arrow-up"></i> {{ "%.1f"|format(depenses_variation) }} %
-            </span>
-          {% endif %}
-        </div>
-      </div>
-    </div>
-    <div class="col-12 col-sm-6 col-xl-3">
-      <div class="kpi-card kpi-success">
-        <div class="kpi-icon">
-          <i class="bi bi-graph-up-arrow"></i>
-        </div>
-        <div class="kpi-content">
-          <span class="kpi-label">Bénéfice (mois)</span>
-          <span class="kpi-value" data-kpi-mini-fcfa="true">{{ montant_fcfa(benefice_net, card=true) }}</span>
-          {% if benefice_variation >= 0 %}
-            <span class="kpi-change positive">
-              <i class="bi bi-arrow-up"></i> {{ "%.1f"|format(benefice_variation) }} %
-            </span>
-          {% else %}
-            <span class="kpi-change negative">
-              <i class="bi bi-arrow-down"></i> {{ "%.1f"|format(benefice_variation|abs) }} %
-            </span>
-          {% endif %}
-        </div>
-      </div>
-    </div>
-    <div class="col-12 col-sm-6 col-xl-3">
-      <div class="kpi-card kpi-warning">
-        <div class="kpi-icon">
-          <i class="bi bi-exclamation-triangle"></i>
-        </div>
-        <div class="kpi-content">
-          <span class="kpi-label">Factures impayées</span>
-          <span class="kpi-value" data-kpi-mini-fcfa="true">{{ montant_fcfa(impayes_montant, card=true) }}</span>
-          <span class="kpi-badge">{{ impayes_count }} facture{% if impayes_count > 1 %}s{% endif %}</span>
-        </div>
-      </div>
-    </div>
-  </div>
+  {# === Tout le contenu de la page Statistiques === #}
+  {% with stats_form_action=url_for('dashboard.index'), show_filters=true %}
+    {% include 'statistiques/_contenu.html' %}
+  {% endwith %}
 
-  {# Graphique barres + alertes — structure identique à la maquette #}
-  <div class="row g-4 mb-4">
-    <div class="col-12 col-lg-8">
-      <div class="card ca-chart-card">
-        <div class="card-header align-items-start">
-          <div>
-            <h5 class="card-title mb-1">Évolution du chiffre d'affaires</h5>
-            <p class="ca-chart-subtitle mb-0">12 derniers mois · total {{ montant_fcfa(ca_evolution_total) }}</p>
-          </div>
-          <div class="card-actions d-flex flex-column align-items-end gap-1">
-            {% if ca_evolution_mom > 0 %}
-              <span class="badge ca-mom ca-mom--up"><i class="bi bi-arrow-up-short"></i> {{ "%.1f"|format(ca_evolution_mom) }} % vs mois préc.</span>
-            {% elif ca_evolution_mom < 0 %}
-              <span class="badge ca-mom ca-mom--down"><i class="bi bi-arrow-down-short"></i> {{ "%.1f"|format(ca_evolution_mom|abs) }} % vs mois préc.</span>
-            {% else %}
-              <span class="badge ca-mom ca-mom--flat">Stable vs mois préc.</span>
-            {% endif %}
-          </div>
-        </div>
-        <div class="card-body">
-          <div class="chart-container ca-chart">
-            <div class="chart-grid" aria-hidden="true">
-              <span></span><span></span><span></span><span></span>
-            </div>
-            <div class="chart-bars">
-              {% for row in ca_evolution %}
-                <div class="chart-bar-wrapper{% if row.is_current %} is-current{% endif %}{% if row.is_peak %} is-peak{% endif %}"
-                     title="{{ row.label }} {{ row.year }} — {{ row.value_full }} FCFA">
-                  <span class="chart-value{% if row.value <= 0 %} is-zero{% endif %}">{{ row.value_label if row.value > 0 else '—' }}</span>
-                  <div class="chart-bar{% if row.is_current %} active{% elif row.is_peak %} peak{% endif %}"
-                       style="--height: {{ row.pct if row.pct > 0 else 2 }}%"></div>
-                  <span class="chart-label">
-                    <span class="chart-label__m">{{ row.label }}</span>
-                    <span class="chart-label__y">’{{ row.year_short }}</span>
-                  </span>
-                </div>
-              {% endfor %}
-            </div>
-          </div>
-          <div class="ca-chart-legend">
-            <span><i class="ca-dot ca-dot--current"></i> Mois en cours</span>
-            <span><i class="ca-dot ca-dot--peak"></i> Pic de la période</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-12 col-lg-4">
-      <div class="card h-100">
-        <div class="card-header">
-          <h5 class="card-title">Alertes &amp; indicateurs</h5>
-          {% if alerts_count > 0 %}
-            <span class="badge bg-danger">{{ alerts_count }}</span>
-          {% else %}
-            <span class="badge bg-success">OK</span>
-          {% endif %}
-        </div>
-        <div class="card-body p-0">
-          <div class="alert-list">
-            <div class="alert-item alert-danger">
-              <div class="alert-icon"><i class="bi bi-exclamation-circle"></i></div>
-              <div class="alert-content">
-                <span class="alert-title">Stock critique / alerte</span>
-                <span class="alert-text">{{ alertes_stock }} produit{% if alertes_stock > 1 %}s{% endif %} sous le seuil d'alerte</span>
-              </div>
-            </div>
-            <div class="alert-item alert-warning">
-              <div class="alert-icon"><i class="bi bi-clock"></i></div>
-              <div class="alert-content">
-                <span class="alert-title">Péremption proche</span>
-                <span class="alert-text">{{ alertes_peremption }} lot{% if alertes_peremption > 1 %}s{% endif %} à péremption dans les 90 jours</span>
-              </div>
-            </div>
-            <div class="alert-item alert-info">
-              <div class="alert-icon"><i class="bi bi-receipt"></i></div>
-              <div class="alert-content">
-                <span class="alert-title">Créances clients</span>
-                <span class="alert-text">{{ impayes_count }} facture{% if impayes_count > 1 %}s{% endif %} — {{ montant_fcfa(impayes_montant) }} restants</span>
-              </div>
-            </div>
-            <div class="alert-item alert-success">
-              <div class="alert-icon"><i class="bi bi-pie-chart"></i></div>
-              <div class="alert-content">
-                <span class="alert-title">Dépenses du mois</span>
-                <span class="alert-text">Fixes {{ "%.0f"|format(depenses_fixes) }} F — Variables {{ "%.0f"|format(depenses_variables) }} F</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  {# Factures récentes + Top produits #}
+  {# Opérationnel #}
+  <p class="dash-section-label">Activité récente</p>
   <div class="row g-4 mb-4">
     <div class="col-12 col-xl-9">
       <div class="card">
-        <div class="card-header">
-          <h5 class="card-title">Factures récentes</h5>
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="card-title mb-0">Factures récentes</h5>
           <a href="{{ url_for('ventes.factures') }}" class="btn btn-sm btn-outline-primary">Voir tout</a>
         </div>
         <div class="card-body p-0">
@@ -381,7 +186,7 @@
                     <td><strong>{{ f.numero }}</strong></td>
                     <td>{{ f.client.raison_sociale if f.client else '—' }}</td>
                     <td>{{ f.date_emission.strftime('%d/%m/%Y') if f.date_emission else '' }}</td>
-                    <td>{{ montant_fcfa(f.total_ttc) }}</td>
+                    <td>{{ format_fcfa(f.total_ttc) }} <span class="fcfa-unit">FCFA</span></td>
                     <td>{{ statut_facture_badge(f.statut) }}</td>
                     <td>
                       <a href="{{ url_for('ventes.facture_detail', id=f.id) }}" class="btn btn-sm btn-icon" title="Voir"><i class="bi bi-eye"></i></a>
@@ -437,7 +242,6 @@
     </div>
   </div>
 
-  {# Actions rapides + répartition dépenses + commande fournisseur en attente #}
   <div class="row g-4">
     <div class="col-12 col-md-6 col-xl-4">
       <div class="card">
@@ -471,31 +275,27 @@
 
     <div class="col-12 col-md-6 col-xl-4">
       <div class="card h-100">
-        <div class="card-header">
-          <h5 class="card-title">Répartition dépenses (mois)</h5>
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="card-title mb-0">Alertes</h5>
+          {% if alerts_count > 0 %}
+            <span class="badge bg-danger">{{ alerts_count }}</span>
+          {% else %}
+            <span class="badge bg-success">OK</span>
+          {% endif %}
         </div>
         <div class="card-body">
-          <div class="donut-chart">
-            <div class="donut-ring"></div>
-            <div class="donut-center">
-              {% if depenses_total >= 1000000 %}
-                <span class="donut-value">{{ "%.1f"|format(depenses_total / 1000000) }}M</span>
-              {% elif depenses_total >= 1000 %}
-                <span class="donut-value">{{ "%.0f"|format(depenses_total / 1000) }}K</span>
-              {% else %}
-                <span class="donut-value">{{ "%.0f"|format(depenses_total) }}</span>
-              {% endif %}
-              <span class="donut-label fcfa-unit">FCFA</span>
+          <div class="d-flex flex-column gap-2 small">
+            <div class="d-flex justify-content-between">
+              <span><i class="bi bi-box-seam text-warning me-1"></i>Stock sous seuil</span>
+              <strong>{{ alertes.sous_seuil }}</strong>
             </div>
-          </div>
-          <div class="chart-legend">
-            <div class="legend-item">
-              <span class="legend-color" style="background: #0d6efd;"></span>
-              <span class="legend-text">Dépenses fixes ({{ "%.0f"|format(pct_depenses_fixe) }}%)</span>
+            <div class="d-flex justify-content-between">
+              <span><i class="bi bi-calendar-x text-danger me-1"></i>Péremption &lt; 90 j</span>
+              <strong>{{ alertes.peremption_90 }}</strong>
             </div>
-            <div class="legend-item">
-              <span class="legend-color" style="background: #198754;"></span>
-              <span class="legend-text">Dépenses variables ({{ "%.0f"|format(pct_depenses_variable) }}%)</span>
+            <div class="d-flex justify-content-between">
+              <span><i class="bi bi-hourglass-split text-primary me-1"></i>Créances clients</span>
+              <strong>{{ format_fcfa(impayes_montant) }} FCFA</strong>
             </div>
           </div>
         </div>
@@ -506,45 +306,21 @@
       <div class="card h-100">
         <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
           <h5 class="card-title mb-0">Commandes fournisseur en attente</h5>
-          <a href="{{ url_for('achats.index') }}" class="btn btn-sm btn-outline-primary">Toutes les commandes</a>
+          <a href="{{ url_for('achats.index') }}" class="btn btn-sm btn-outline-primary">Toutes</a>
         </div>
         <div class="card-body">
           {% if commandes_fournisseur_attente %}
-            <div class="dashboard-commandes-attente d-flex flex-column gap-2" style="max-height: 28rem; overflow-y: auto;">
-              {% for item in commandes_fournisseur_attente %}
+            <div class="dashboard-commandes-attente d-flex flex-column gap-2" style="max-height: 22rem; overflow-y: auto;">
+              {% for item in commandes_fournisseur_attente[:6] %}
                 {% set c = item.commande %}
-                <div class="border rounded-3 p-3 bg-body-secondary bg-opacity-25 shadow-sm">
-                  <div class="hr-stat-item align-items-start mb-0">
-                    <div class="hr-stat-icon bg-primary flex-shrink-0">
-                      <i class="bi bi-cart-check"></i>
-                    </div>
-                    <div class="hr-stat-info min-w-0">
-                      <span class="hr-stat-value text-start text-break" style="font-size: 1.02rem;">{{ c.numero }}</span>
-                      <span class="hr-stat-label text-start text-break">{{ c.fournisseur.raison_sociale if c.fournisseur else '—' }}</span>
-                    </div>
-                  </div>
-                  <div class="small mt-2 pt-2 border-top border-light-subtle">
-                    <span class="text-muted">Livraison prévue :</span>
-                    {% if c.date_livraison_prevue %}
-                      <strong class="ms-1">{{ c.date_livraison_prevue.strftime('%d/%m/%Y') }}</strong>
-                    {% else %}
-                      <span class="text-muted ms-1">Non renseignée</span>
-                    {% endif %}
-                  </div>
-                  {% if item.lignes %}
-                    <ul class="list-unstyled small mb-0 mt-2 lh-lg ps-1">
-                      {% for ligne in item.lignes %}
-                        <li><span class="fw-medium">{{ ligne.quantite }}</span> {{ ligne.nom }}(s)</li>
-                      {% endfor %}
-                    </ul>
-                  {% else %}
-                    <p class="text-muted small mb-0 mt-2">Aucune ligne produit.</p>
-                  {% endif %}
+                <div class="border rounded-3 p-2 bg-body-secondary bg-opacity-25">
+                  <div class="fw-semibold small">{{ c.numero }}</div>
+                  <div class="text-muted small text-truncate">{{ c.fournisseur.raison_sociale if c.fournisseur else '—' }}</div>
                 </div>
               {% endfor %}
             </div>
           {% else %}
-            <p class="text-muted small mb-2">Aucune commande fournisseur en attente de réception.</p>
+            <p class="text-muted small mb-2">Aucune commande en attente.</p>
             <a href="{{ url_for('achats.approvisionnement') }}" class="btn btn-primary btn-sm">
               <i class="bi bi-cart-plus me-1"></i> Nouvelle commande
             </a>
@@ -558,7 +334,26 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='public/js/facture-print.js') }}"></script>
+  <script src="{{ url_for('static', filename='public/js/facture-print.js') }}"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    window.STATISTIQUES_DATA = {{ chart_data | tojson }};
+    window.STATISTIQUES_PERIODE = {{ periode.label | tojson }};
+  </script>
+  <script src="{{ url_for('static', filename='public/js/statistiques.js') }}"></script>
+  <script>
+    (function () {
+      const g = document.getElementById('filtreGranularite');
+      const wrapT = document.getElementById('wrapTrimestre');
+      const wrapM = document.getElementById('wrapMois');
+      if (!g) return;
+      function sync() {
+        const v = g.value;
+        if (wrapT) wrapT.classList.toggle('d-none', v !== 'trimestre');
+        if (wrapM) wrapM.classList.toggle('d-none', v !== 'mois');
+      }
+      g.addEventListener('change', sync);
+      sync();
+    })();
+  </script>
 {% endblock %}
-
-{# Pas de Chart.js : le graphique utilise les barres CSS comme public/index.html + main.js #}
