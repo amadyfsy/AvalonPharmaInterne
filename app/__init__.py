@@ -167,7 +167,6 @@ def app(config_name='default'):
     from .blueprints.rapports import rapports_bp
     from .blueprints.rappels import rappels_bp
     from .blueprints.rh import rh_bp
-    from .blueprints.statistiques import statistiques_bp
     from .blueprints.parametres import parametres_bp
     from .blueprints.public import public_bp
     from .blueprints.recherche import recherche_bp
@@ -188,8 +187,14 @@ def app(config_name='default'):
     app.register_blueprint(tresorerie_bp, url_prefix='/tresorerie')
     app.register_blueprint(rh_bp, url_prefix='/rh')
     app.register_blueprint(rapports_bp, url_prefix='/rapports')
-    app.register_blueprint(statistiques_bp, url_prefix='/statistiques')
     app.register_blueprint(securite_bp, url_prefix='/securite')
+
+    # Ancienne URL /statistiques → dashboard (contenu fusionné)
+    @app.route('/statistiques/')
+    @app.route('/statistiques')
+    def _redirect_statistiques_to_dashboard():
+        from flask import redirect, request, url_for
+        return redirect(url_for('dashboard.index', **request.args))
     app.register_blueprint(parametres_bp, url_prefix='/parametres')
     app.register_blueprint(public_bp, url_prefix='/api/public/v1')
     app.register_blueprint(recherche_bp)

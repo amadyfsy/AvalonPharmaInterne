@@ -19,13 +19,9 @@
   <nav class="sidebar-nav">
     <div class="nav-section">
       <span class="nav-section-title">Principal</span>
-      <a href="{{ url_for('dashboard.index') }}" class="nav-link{% if request.endpoint == 'dashboard.index' %} active{% endif %}">
+      <a href="{{ url_for('dashboard.index') }}" class="nav-link{% if request.endpoint and request.endpoint.startswith('dashboard.') %} active{% endif %}">
         <i class="bi bi-grid-1x2"></i>
         <span>Tableau de bord</span>
-      </a>
-      <a href="{{ url_for('statistiques.index') }}" class="nav-link{% if request.endpoint and request.endpoint.startswith('statistiques.') %} active{% endif %}">
-        <i class="bi bi-bar-chart-line"></i>
-        <span>Statistiques</span>
       </a>
     </div>
 

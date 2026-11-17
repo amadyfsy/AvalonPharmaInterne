@@ -1,8 +1,8 @@
-{# Contenu analytique partagé (page Statistiques + Dashboard)
+{# Contenu analytique du dashboard
    Attend : periode, annees, annee, filtres_query, kpi, alertes, top_clients, chart_data, format_fcfa
-   Optionnel : stats_form_action (défaut statistiques.index), show_filters (défaut true)
+   Optionnel : stats_form_action (défaut dashboard.index), show_filters (défaut true)
 #}
-{% set stats_form_action = stats_form_action|default(url_for('statistiques.index')) %}
+{% set stats_form_action = stats_form_action|default(url_for('dashboard.index')) %}
 {% set show_filters = show_filters|default(true) %}
 
 {% if show_filters %}
@@ -52,10 +52,10 @@
       <button type="submit" class="btn btn-sm btn-primary">Appliquer</button>
     </form>
     <div class="btn-group">
-      <a href="{{ url_for('statistiques.export_excel', **filtres_query) }}" class="btn btn-sm btn-outline-success" title="Export Excel" data-no-loader="1">
+      <a href="{{ url_for('dashboard.export_excel', **filtres_query) }}" class="btn btn-sm btn-outline-success" title="Export Excel" data-no-loader="1">
         <i class="bi bi-file-earmark-excel me-1"></i> Excel
       </a>
-      <a href="{{ url_for('statistiques.export_pdf', **filtres_query) }}" class="btn btn-sm btn-outline-danger" title="Export PDF" data-no-loader="1">
+      <a href="{{ url_for('dashboard.export_pdf', **filtres_query) }}" class="btn btn-sm btn-outline-danger" title="Export PDF" data-no-loader="1">
         <i class="bi bi-file-earmark-pdf me-1"></i> PDF
       </a>
     </div>

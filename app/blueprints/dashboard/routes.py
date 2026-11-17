@@ -1,10 +1,11 @@
-from datetime import date
+from datetime import date, datetime
 
 from ...extensions import db
 from ...models.bon_livraison import BonLivraison
 from ...models.commande import CommandeFournisseur, LigneCommandeFournisseur
 from ...models.depense import Depense
 from ...models.facture import Facture
+from dateutil.relativedelta import relativedelta
 from flask_login import login_required
 from sqlalchemy import extract, func
 from sqlalchemy.orm import joinedload
@@ -13,6 +14,8 @@ from flask import render_template, request, send_file
 
 from ...utils.nombre_lettres import format_montant_espace
 from ...utils.parametres_pdf import has_cachet
+from ...utils.pdf_generator import generate_pdf
+from ...utils.statistiques_export import export_filename, generate_statistiques_excel
 from ...utils.statistiques_queries import (
     _FACTURE_CA,
     build_statistiques_bundle,
@@ -166,10 +169,66 @@ def index():
     )
     impayes_montant = float(kpi.get('creances_total') or 0)
 
+    # Courbe CA — 12 derniers mois (graphique barres d’origine)
+    _mois_fr = (
+        'janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin',
+        'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.',
+    )
+
+    def _ca_compact(v: float) -> str:
+        x = float(v or 0)
+        if x >= 1_000_000:
+            n = x / 1_000_000
+            s = f'{n:.1f}'.replace('.', ',').rstrip('0').rstrip(',')
+            return f'{s} M'
+        if x >= 1_000:
+            n = x / 1_000
+            s = f'{n:.0f}' if n >= 10 else f'{n:.1f}'.replace('.', ',').rstrip('0').rstrip(',')
+            return f'{s} k'
+        return format_montant_espace(int(round(x))) or '0'
+
+    ca_evolution = []
+    for i in range(11, -1, -1):
+        m = today - relativedelta(months=i)
+        m_ca = float(
+            db.session.query(func.sum(Facture.total_ttc)).filter(
+                _FACTURE_CA,
+                extract('month', Facture.date_emission) == m.month,
+                extract('year', Facture.date_emission) == m.year,
+            ).scalar()
+            or 0.0
+        )
+        ca_evolution.append(
+            {
+                'month': m.month,
+                'year': m.year,
+                'label': _mois_fr[m.month - 1],
+                'year_short': str(m.year)[2:],
+                'value': m_ca,
+                'value_label': _ca_compact(m_ca),
+                'value_full': format_montant_espace(m_ca),
+                'is_current': m.month == today.month and m.year == today.year,
+            }
+        )
+    max_ca = max((row['value'] for row in ca_evolution), default=0.0)
+    max_ca = max(max_ca, 1.0)
+    peak_val = max((r['value'] for r in ca_evolution), default=0.0)
+    for row in ca_evolution:
+        row['pct'] = round((row['value'] / max_ca) * 100, 2)
+        row['is_peak'] = row['value'] == peak_val and row['value'] > 0
+    ca_evolution_total = sum(row['value'] for row in ca_evolution)
+    ca_evolution_mom = 0.0
+    if len(ca_evolution) >= 2:
+        prev_v = ca_evolution[-2]['value']
+        cur_v = ca_evolution[-1]['value']
+        if prev_v > 0:
+            ca_evolution_mom = ((cur_v - prev_v) / prev_v) * 100.0
+        elif cur_v > 0:
+            ca_evolution_mom = 100.0
+
     return render_template(
         'dashboard/index.html',
         today=today,
-        # Stats (même contenu que /statistiques)
         annee=periode.annee,
         annees=annees,
         periode=periode,
@@ -178,14 +237,15 @@ def index():
         alertes=alertes,
         top_clients=top_clients,
         chart_data=chart_data,
-        # Synthèse annuelle
         ca_annuel=float(ca_annuel),
         ca_annuel_variation=float(ca_annuel_variation),
         depenses_annuelles=float(depenses_annuelles),
         depenses_annuelles_variation=float(depenses_annuelles_variation),
         benefice_annuel=float(benefice_annuel),
         benefice_annuel_variation=float(benefice_annuel_variation),
-        # Opérationnel
+        ca_evolution=ca_evolution,
+        ca_evolution_total=ca_evolution_total,
+        ca_evolution_mom=float(ca_evolution_mom),
         factures_recentes=factures_recentes,
         bl_par_facture=bl_par_facture,
         top_produits=top_produits,
@@ -229,4 +289,42 @@ def export_mensuel():
         download_name=filename,
         as_attachment=True,
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+
+
+@dashboard_bp.route('/export/excel')
+@login_required
+def export_excel():
+    periode, _ = parse_periode_from_request(request.args)
+    bundle = build_statistiques_bundle(periode)
+    excel_io = generate_statistiques_excel(bundle)
+    return send_file(
+        excel_io,
+        download_name=export_filename(periode, 'xlsx'),
+        as_attachment=True,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+
+
+@dashboard_bp.route('/export/pdf')
+@login_required
+def export_pdf():
+    periode, _ = parse_periode_from_request(request.args)
+    bundle = build_statistiques_bundle(periode)
+    html = render_template(
+        'statistiques/export_pdf.html',
+        periode=periode,
+        kpi=bundle['kpi'],
+        alertes=bundle['alertes'],
+        top_clients=bundle['top_clients'],
+        chart_data=bundle['chart_data'],
+        format_fcfa=format_montant_espace,
+        genere_le=datetime.now(),
+    )
+    pdf_io = generate_pdf(html)
+    return send_file(
+        pdf_io,
+        download_name=export_filename(periode, 'pdf'),
+        as_attachment=True,
+        mimetype='application/pdf',
     )
