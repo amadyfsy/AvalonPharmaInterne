@@ -21,98 +21,208 @@
 {% block extra_css %}
 <link href="{{ url_for('static', filename='public/css/statistiques.css') }}" rel="stylesheet">
 <style>
+  .dash-page { --dash-burgundy: #721818; --dash-ink: #1f2328; --dash-muted: #6c757d; --dash-line: rgba(114, 24, 24, 0.1); }
+
   .dash-hero {
     background: linear-gradient(135deg, #721818 0%, #5a1218 55%, #3d0c10 100%);
-    border-radius: 0.85rem;
+    border-radius: 1rem;
     color: #fff;
-    padding: 1.15rem 1.35rem;
-    margin-bottom: 1.25rem;
+    padding: 1.2rem 1.4rem;
+    margin-bottom: 1.5rem;
     box-shadow: 0 0.45rem 1.1rem rgba(114, 24, 24, 0.22);
   }
-  .dash-hero .page-title { color: #fff; margin-bottom: 0.15rem; }
-  .dash-hero .page-subtitle { color: rgba(255,255,255,.82); margin-bottom: 0; }
+  .dash-hero .page-title { color: #fff; margin-bottom: 0.2rem; font-weight: 700; }
+  .dash-hero .page-subtitle { color: rgba(255,255,255,.84); margin-bottom: 0; font-size: 0.9rem; }
   .dash-hero .btn-light { font-weight: 600; }
+  .dash-hero .btn-outline-light { border-color: rgba(255,255,255,.45); }
+
+  .dash-section {
+    margin-bottom: 1.75rem;
+  }
+  .dash-section-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.35rem 1rem;
+    margin-bottom: 0.75rem;
+  }
+  .dash-section-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--dash-muted);
+    margin: 0;
+  }
+  .dash-section-hint {
+    font-size: 0.8rem;
+    color: var(--dash-muted);
+    margin: 0;
+  }
+
   .dash-year-strip {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.75rem;
-    margin-bottom: 1.35rem;
+    gap: 0.85rem;
   }
   @media (max-width: 767.98px) {
     .dash-year-strip { grid-template-columns: 1fr; }
   }
   .dash-year-card {
+    position: relative;
     background: #fff;
-    border: 1px solid rgba(114, 24, 24, 0.12);
-    border-radius: 0.75rem;
-    padding: 0.95rem 1.1rem;
-    box-shadow: 0 0.2rem 0.65rem rgba(33, 37, 41, 0.05);
-    min-height: 100%;
+    border: 1px solid var(--dash-line);
+    border-radius: 0.9rem;
+    padding: 1rem 1.15rem 1.05rem;
+    box-shadow: 0 0.18rem 0.55rem rgba(33, 37, 41, 0.04);
+    overflow: hidden;
+  }
+  .dash-year-card::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+  }
+  .dash-year-card.is-ca::before { background: #721818; }
+  .dash-year-card.is-dep::before { background: #b02a37; }
+  .dash-year-card.is-ben::before { background: #198754; }
+  .dash-year-card .dy-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.45rem;
   }
   .dash-year-card .dy-label {
-    display: block;
     font-size: 0.78rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: #6c757d;
-    margin-bottom: 0.25rem;
+    font-weight: 600;
+    color: var(--dash-muted);
+    margin: 0;
   }
+  .dash-year-card .dy-ico {
+    width: 2rem; height: 2rem;
+    border-radius: 0.55rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    flex-shrink: 0;
+  }
+  .dash-year-card.is-ca .dy-ico { background: rgba(114,24,24,.1); color: #721818; }
+  .dash-year-card.is-dep .dy-ico { background: rgba(176,42,55,.1); color: #b02a37; }
+  .dash-year-card.is-ben .dy-ico { background: rgba(25,135,84,.12); color: #198754; }
   .dash-year-card .dy-value {
     display: block;
-    font-size: 1.25rem;
+    font-size: 1.35rem;
     font-weight: 700;
-    color: #212529;
-    line-height: 1.2;
+    color: var(--dash-ink);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
   }
   .dash-year-card .dy-value .fcfa-unit {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-weight: 600;
-    color: #6c757d;
-    margin-left: 0.2rem;
+    color: var(--dash-muted);
+    margin-left: 0.25rem;
   }
   .dash-year-card .dy-meta {
     display: inline-flex;
     align-items: center;
-    gap: 0.25rem;
-    margin-top: 0.35rem;
-    font-size: 0.78rem;
+    gap: 0.2rem;
+    margin-top: 0.45rem;
+    padding: 0.15rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
     font-weight: 600;
   }
-  .dash-year-card .dy-meta.up { color: #198754; }
-  .dash-year-card .dy-meta.down { color: #dc3545; }
-  .dash-year-card.is-ca { border-top: 3px solid #721818; }
-  .dash-year-card.is-dep { border-top: 3px solid #b02a37; }
-  .dash-year-card.is-ben { border-top: 3px solid #198754; }
-  .dash-section-label {
-    font-size: 0.8rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #6c757d;
-    margin: 0 0 0.65rem;
+  .dash-year-card .dy-meta.up { background: rgba(25,135,84,.1); color: #157347; }
+  .dash-year-card .dy-meta.down { background: rgba(220,53,69,.1); color: #b02a37; }
+
+  .dash-alert-list { display: flex; flex-direction: column; gap: 0.65rem; }
+  .dash-alert-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.7rem 0.8rem;
+    border-radius: 0.7rem;
+    border: 1px solid rgba(15, 23, 42, 0.06);
+    background: #f8f9fa;
+    text-decoration: none;
+    color: inherit;
+    transition: background .15s ease, border-color .15s ease;
   }
-  .dash-top-produits .card-header { padding: 0.55rem 0.75rem; }
+  .dash-alert-item:hover {
+    background: #fff;
+    border-color: rgba(114, 24, 24, 0.18);
+    color: inherit;
+  }
+  .dash-alert-ico {
+    width: 2.25rem; height: 2.25rem;
+    border-radius: 0.6rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1rem;
+  }
+  .dash-alert-ico.is-warn { background: rgba(255,193,7,.18); color: #b58100; }
+  .dash-alert-ico.is-danger { background: rgba(220,53,69,.12); color: #b02a37; }
+  .dash-alert-ico.is-info { background: rgba(13,110,253,.1); color: #0d6efd; }
+  .dash-alert-text { flex: 1; min-width: 0; }
+  .dash-alert-text .label { display: block; font-size: 0.82rem; font-weight: 600; color: var(--dash-ink); }
+  .dash-alert-text .hint { display: block; font-size: 0.72rem; color: var(--dash-muted); }
+  .dash-alert-val { font-size: 0.95rem; font-weight: 700; color: var(--dash-ink); white-space: nowrap; }
+
+  .dash-analytics {
+    background: linear-gradient(180deg, rgba(114,24,24,.035) 0%, rgba(114,24,24,.015) 100%);
+    border: 1px solid var(--dash-line);
+    border-radius: 1rem;
+    padding: 1.1rem 1.15rem 0.35rem;
+    margin-bottom: 1.75rem;
+  }
+
+  .dash-top-produits .card-header { padding: 0.65rem 0.85rem; }
   .dash-top-produits .card-header .card-title { font-size: 0.95rem; margin-bottom: 0; }
-  .dash-top-produits .card-body { padding: 0.4rem 0.5rem 0.55rem; }
+  .dash-top-produits .card-body { padding: 0.45rem 0.55rem 0.65rem; }
   .dash-top-produits .product-list { gap: 4px; }
-  .dash-top-produits .product-item { gap: 8px; padding: 4px 8px; border-radius: 6px; }
+  .dash-top-produits .product-item { gap: 8px; padding: 5px 8px; border-radius: 6px; }
   .dash-top-produits .product-rank { width: 22px; height: 22px; font-size: 0.7rem; }
   .dash-top-produits .product-name {
     font-size: 0.78rem; font-weight: 600; margin-bottom: 0;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .dash-top-produits .product-amount { font-size: 0.78rem; white-space: nowrap; }
+  .dash-top-produits .product-amount {
+    font-size: 0.75rem; white-space: nowrap; color: #721818; font-weight: 700;
+  }
+  .dash-top-produits .product-amount small {
+    font-weight: 600; color: var(--dash-muted); margin-left: 0.15rem;
+  }
+
+  .dash-cmd-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.7rem 0.85rem;
+    border: 1px solid rgba(15,23,42,.07);
+    border-radius: 0.7rem;
+    background: #fff;
+  }
+  .dash-cmd-item .cmd-num { font-weight: 700; font-size: 0.85rem; color: var(--dash-ink); }
+  .dash-cmd-item .cmd-four { font-size: 0.78rem; color: var(--dash-muted); }
 </style>
 {% endblock %}
 
 {% block content %}
-  <div class="dash-hero d-flex flex-wrap justify-content-between align-items-start gap-3">
+<div class="dash-page">
+  <div class="dash-hero d-flex flex-wrap justify-content-between align-items-center gap-3">
     <div>
       <h1 class="page-title h3">Tableau de bord</h1>
-      <p class="page-subtitle">Synthèse annuelle + statistiques complètes · {{ today.strftime('%d/%m/%Y') }}</p>
+      <p class="page-subtitle">Vue d’ensemble · {{ today.strftime('%d/%m/%Y') }}</p>
     </div>
     <div class="d-flex flex-wrap gap-2">
-      <a href="{{ url_for('dashboard.export_mensuel') }}" class="btn btn-outline-light btn-sm">
+      <a href="{{ url_for('dashboard.export_mensuel') }}" class="btn btn-outline-light btn-sm" data-no-loader="1">
         <i class="bi bi-download me-1"></i>Exporter mois
       </a>
       <a href="{{ url_for('ventes.nouveau_facture') }}" class="btn btn-light btn-sm">
@@ -122,260 +232,299 @@
   </div>
 
   {# Synthèse annuelle #}
-  <p class="dash-section-label">Synthèse annuelle {{ today.year }}</p>
-  <div class="dash-year-strip">
-    <div class="dash-year-card is-ca">
-      <span class="dy-label"><i class="bi bi-cash-stack me-1"></i>Chiffre d’affaires annuel</span>
-      <span class="dy-value">{{ format_fcfa(ca_annuel) }}<span class="fcfa-unit">FCFA</span></span>
-      {% if ca_annuel_variation >= 0 %}
-        <span class="dy-meta up"><i class="bi bi-arrow-up-short"></i>{{ "%.1f"|format(ca_annuel_variation) }} % vs {{ today.year - 1 }}</span>
-      {% else %}
-        <span class="dy-meta down"><i class="bi bi-arrow-down-short"></i>{{ "%.1f"|format(ca_annuel_variation|abs) }} % vs {{ today.year - 1 }}</span>
-      {% endif %}
+  <section class="dash-section">
+    <div class="dash-section-head">
+      <p class="dash-section-label">Synthèse {{ today.year }}</p>
+      <p class="dash-section-hint">Comparaison vs {{ today.year - 1 }}</p>
     </div>
-    <div class="dash-year-card is-dep">
-      <span class="dy-label"><i class="bi bi-wallet2 me-1"></i>Dépenses annuelles</span>
-      <span class="dy-value">{{ format_fcfa(depenses_annuelles) }}<span class="fcfa-unit">FCFA</span></span>
-      {% if depenses_annuelles_variation <= 0 %}
-        <span class="dy-meta up"><i class="bi bi-arrow-down-short"></i>{{ "%.1f"|format(depenses_annuelles_variation|abs) }} % vs {{ today.year - 1 }}</span>
-      {% else %}
-        <span class="dy-meta down"><i class="bi bi-arrow-up-short"></i>{{ "%.1f"|format(depenses_annuelles_variation) }} % vs {{ today.year - 1 }}</span>
-      {% endif %}
+    <div class="dash-year-strip">
+      <div class="dash-year-card is-ca">
+        <div class="dy-top">
+          <p class="dy-label">Chiffre d’affaires</p>
+          <span class="dy-ico" aria-hidden="true"><i class="bi bi-cash-stack"></i></span>
+        </div>
+        <span class="dy-value">{{ format_fcfa(ca_annuel) }}<span class="fcfa-unit">FCFA</span></span>
+        {% if ca_annuel_variation >= 0 %}
+          <span class="dy-meta up"><i class="bi bi-arrow-up-short"></i>{{ "%.1f"|format(ca_annuel_variation) }} %</span>
+        {% else %}
+          <span class="dy-meta down"><i class="bi bi-arrow-down-short"></i>{{ "%.1f"|format(ca_annuel_variation|abs) }} %</span>
+        {% endif %}
+      </div>
+      <div class="dash-year-card is-dep">
+        <div class="dy-top">
+          <p class="dy-label">Dépenses</p>
+          <span class="dy-ico" aria-hidden="true"><i class="bi bi-wallet2"></i></span>
+        </div>
+        <span class="dy-value">{{ format_fcfa(depenses_annuelles) }}<span class="fcfa-unit">FCFA</span></span>
+        {% if depenses_annuelles_variation <= 0 %}
+          <span class="dy-meta up"><i class="bi bi-arrow-down-short"></i>{{ "%.1f"|format(depenses_annuelles_variation|abs) }} %</span>
+        {% else %}
+          <span class="dy-meta down"><i class="bi bi-arrow-up-short"></i>{{ "%.1f"|format(depenses_annuelles_variation) }} %</span>
+        {% endif %}
+      </div>
+      <div class="dash-year-card is-ben">
+        <div class="dy-top">
+          <p class="dy-label">Résultat estimé</p>
+          <span class="dy-ico" aria-hidden="true"><i class="bi bi-graph-up-arrow"></i></span>
+        </div>
+        <span class="dy-value">{{ format_fcfa(benefice_annuel) }}<span class="fcfa-unit">FCFA</span></span>
+        {% if benefice_annuel_variation >= 0 %}
+          <span class="dy-meta up"><i class="bi bi-arrow-up-short"></i>{{ "%.1f"|format(benefice_annuel_variation) }} %</span>
+        {% else %}
+          <span class="dy-meta down"><i class="bi bi-arrow-down-short"></i>{{ "%.1f"|format(benefice_annuel_variation|abs) }} %</span>
+        {% endif %}
+      </div>
     </div>
-    <div class="dash-year-card is-ben">
-      <span class="dy-label"><i class="bi bi-graph-up-arrow me-1"></i>Résultat annuel estimé</span>
-      <span class="dy-value">{{ format_fcfa(benefice_annuel) }}<span class="fcfa-unit">FCFA</span></span>
-      {% if benefice_annuel_variation >= 0 %}
-        <span class="dy-meta up"><i class="bi bi-arrow-up-short"></i>{{ "%.1f"|format(benefice_annuel_variation) }} % vs {{ today.year - 1 }}</span>
-      {% else %}
-        <span class="dy-meta down"><i class="bi bi-arrow-down-short"></i>{{ "%.1f"|format(benefice_annuel_variation|abs) }} % vs {{ today.year - 1 }}</span>
-      {% endif %}
-    </div>
-  </div>
+  </section>
 
-  {# Courbe CA d’origine (12 derniers mois) #}
-  <div class="row g-4 mb-4">
-    <div class="col-12 col-lg-8">
-      <div class="card ca-chart-card">
-        <div class="card-header align-items-start">
-          <div>
-            <h5 class="card-title mb-1">Évolution du chiffre d'affaires</h5>
-            <p class="ca-chart-subtitle mb-0">12 derniers mois · total {{ format_fcfa(ca_evolution_total) }} FCFA</p>
+  {# Courbe CA + alertes #}
+  <section class="dash-section">
+    <div class="row g-3">
+      <div class="col-12 col-lg-8">
+        <div class="card ca-chart-card h-100">
+          <div class="card-header align-items-start">
+            <div>
+              <h5 class="card-title mb-1">Évolution du chiffre d'affaires</h5>
+              <p class="ca-chart-subtitle mb-0">12 derniers mois · total {{ format_fcfa(ca_evolution_total) }} FCFA</p>
+            </div>
+            <div class="card-actions">
+              {% if ca_evolution_mom > 0 %}
+                <span class="badge ca-mom ca-mom--up"><i class="bi bi-arrow-up-short"></i> {{ "%.1f"|format(ca_evolution_mom) }} % vs mois préc.</span>
+              {% elif ca_evolution_mom < 0 %}
+                <span class="badge ca-mom ca-mom--down"><i class="bi bi-arrow-down-short"></i> {{ "%.1f"|format(ca_evolution_mom|abs) }} % vs mois préc.</span>
+              {% else %}
+                <span class="badge ca-mom ca-mom--flat">Stable vs mois préc.</span>
+              {% endif %}
+            </div>
           </div>
-          <div class="card-actions d-flex flex-column align-items-end gap-1">
-            {% if ca_evolution_mom > 0 %}
-              <span class="badge ca-mom ca-mom--up"><i class="bi bi-arrow-up-short"></i> {{ "%.1f"|format(ca_evolution_mom) }} % vs mois préc.</span>
-            {% elif ca_evolution_mom < 0 %}
-              <span class="badge ca-mom ca-mom--down"><i class="bi bi-arrow-down-short"></i> {{ "%.1f"|format(ca_evolution_mom|abs) }} % vs mois préc.</span>
+          <div class="card-body">
+            <div class="chart-container ca-chart">
+              <div class="chart-grid" aria-hidden="true">
+                <span></span><span></span><span></span><span></span>
+              </div>
+              <div class="chart-bars">
+                {% for row in ca_evolution %}
+                  <div class="chart-bar-wrapper{% if row.is_current %} is-current{% endif %}{% if row.is_peak %} is-peak{% endif %}"
+                       title="{{ row.label }} {{ row.year }} — {{ row.value_full }} FCFA">
+                    <span class="chart-value{% if row.value <= 0 %} is-zero{% endif %}">{{ row.value_label if row.value > 0 else '—' }}</span>
+                    <div class="chart-bar{% if row.is_current %} active{% elif row.is_peak %} peak{% endif %}"
+                         style="--height: {{ row.pct if row.pct > 0 else 2 }}%"></div>
+                    <span class="chart-label">
+                      <span class="chart-label__m">{{ row.label }}</span>
+                      <span class="chart-label__y">’{{ row.year_short }}</span>
+                    </span>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+            <div class="ca-chart-legend">
+              <span><i class="ca-dot ca-dot--current"></i> Mois en cours</span>
+              <span><i class="ca-dot ca-dot--peak"></i> Pic de la période</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-lg-4">
+        <div class="card h-100">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">Points d’attention</h5>
+            {% if alerts_count > 0 %}
+              <span class="badge bg-danger">{{ alerts_count }}</span>
             {% else %}
-              <span class="badge ca-mom ca-mom--flat">Stable vs mois préc.</span>
+              <span class="badge bg-success">OK</span>
+            {% endif %}
+          </div>
+          <div class="card-body">
+            <div class="dash-alert-list">
+              <a href="{{ url_for('stock.index') }}" class="dash-alert-item">
+                <span class="dash-alert-ico is-warn"><i class="bi bi-box-seam"></i></span>
+                <span class="dash-alert-text">
+                  <span class="label">Stock sous seuil</span>
+                  <span class="hint">Réapprovisionner</span>
+                </span>
+                <span class="dash-alert-val">{{ alertes.sous_seuil }}</span>
+              </a>
+              <a href="{{ url_for('stock.index') }}" class="dash-alert-item">
+                <span class="dash-alert-ico is-danger"><i class="bi bi-calendar-x"></i></span>
+                <span class="dash-alert-text">
+                  <span class="label">Péremption &lt; 90 j</span>
+                  <span class="hint">{{ alertes.peremption_30 }} lot(s) &lt; 30 j</span>
+                </span>
+                <span class="dash-alert-val">{{ alertes.peremption_90 }}</span>
+              </a>
+              <a href="{{ url_for('clients.tous_les_paiements') }}" class="dash-alert-item">
+                <span class="dash-alert-ico is-info"><i class="bi bi-hourglass-split"></i></span>
+                <span class="dash-alert-text">
+                  <span class="label">Créances clients</span>
+                  <span class="hint">Impayés à relancer</span>
+                </span>
+                <span class="dash-alert-val">{{ format_fcfa(impayes_montant) }}</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {# Analyse période #}
+  <section class="dash-analytics">
+    {% with stats_form_action=url_for('dashboard.index'), show_filters=true %}
+      {% include 'statistiques/_contenu.html' %}
+    {% endwith %}
+  </section>
+
+  {# Opérationnel #}
+  <section class="dash-section">
+    <div class="dash-section-head">
+      <p class="dash-section-label">Activité récente</p>
+    </div>
+    <div class="row g-3 mb-3">
+      <div class="col-12 col-xl-9">
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">Factures récentes</h5>
+            <a href="{{ url_for('ventes.factures') }}" class="btn btn-sm btn-outline-primary">Voir tout</a>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover mb-0">
+                <thead>
+                  <tr>
+                    <th>N° facture</th>
+                    <th>Client</th>
+                    <th>Date</th>
+                    <th>Montant</th>
+                    <th>Statut</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for f in factures_recentes %}
+                    <tr>
+                      <td><strong>{{ f.numero }}</strong></td>
+                      <td>{{ f.client.raison_sociale if f.client else '—' }}</td>
+                      <td>{{ f.date_emission.strftime('%d/%m/%Y') if f.date_emission else '' }}</td>
+                      <td>{{ format_fcfa(f.total_ttc) }} <span class="fcfa-unit">FCFA</span></td>
+                      <td>{{ statut_facture_badge(f.statut) }}</td>
+                      <td>
+                        <a href="{{ url_for('ventes.facture_detail', id=f.id) }}" class="btn btn-sm btn-icon" title="Voir"><i class="bi bi-eye"></i></a>
+                        <a href="{{ url_for('ventes.facture_pdf', id=f.id) }}"
+                           class="btn btn-sm btn-icon btn-primary js-facture-download"
+                           data-pdf-url="{{ url_for('ventes.facture_pdf', id=f.id) }}"
+                           data-has-bl="{{ '1' if bl_par_facture.get(f.id) else '0' }}"
+                           data-has-cachet="{{ '1' if has_cachet else '0' }}"
+                           {% if bl_par_facture.get(f.id) %}data-bl-num="{{ bl_par_facture[f.id].numero }}"{% endif %}
+                           title="Télécharger PDF"><i class="bi bi-download"></i></a>
+                        <a href="{{ url_for('ventes.facture_imprimer', id=f.id) }}"
+                           class="btn btn-sm btn-icon js-facture-print"
+                           data-print-url="{{ url_for('ventes.facture_imprimer', id=f.id) }}"
+                           data-has-bl="{{ '1' if bl_par_facture.get(f.id) else '0' }}"
+                           data-has-cachet="{{ '1' if has_cachet else '0' }}"
+                           {% if bl_par_facture.get(f.id) %}data-bl-num="{{ bl_par_facture[f.id].numero }}"{% endif %}
+                           title="Aperçu"><i class="bi bi-printer"></i></a>
+                      </td>
+                    </tr>
+                  {% else %}
+                    <tr>
+                      <td colspan="6" class="text-center text-muted py-4">Aucune facture pour le moment</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-xl-3">
+        <div class="card h-100 dash-top-produits">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0">Top produits</h5>
+            <span class="badge bg-light text-muted border" title="Score CA 60 % + fréquence 40 %">Score</span>
+          </div>
+          <div class="card-body">
+            <div class="product-list">
+              {% for p in top_produits %}
+                <div class="product-item">
+                  <div class="product-rank">{{ loop.index }}</div>
+                  <div class="product-info">
+                    <span class="product-name" title="{{ p.designation }}">{{ p.designation }}</span>
+                  </div>
+                  <div class="product-amount" title="Score / 100">{{ '%.0f'|format(p.score) }}<small>/100</small></div>
+                </div>
+              {% else %}
+                <p class="text-muted small mb-0">Pas encore de ventes cette année.</p>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-12 col-md-6 col-xl-5">
+        <div class="card">
+          <div class="card-header">
+            <h5 class="card-title mb-0">Actions rapides</h5>
+          </div>
+          <div class="card-body">
+            <div class="quick-actions">
+              <a href="{{ url_for('ventes.nouveau_facture') }}" class="quick-action-btn">
+                <i class="bi bi-plus-circle"></i><span>Nouvelle facture</span>
+              </a>
+              <a href="{{ url_for('stock.nouveau_mouvement', type='entree') }}" class="quick-action-btn">
+                <i class="bi bi-box-arrow-in-down"></i><span>Entrée stock</span>
+              </a>
+              <a href="{{ url_for('clients.index') }}" class="quick-action-btn">
+                <i class="bi bi-person-plus"></i><span>Clients</span>
+              </a>
+              <a href="{{ url_for('ventes.nouveau_proforma') }}" class="quick-action-btn">
+                <i class="bi bi-file-earmark-plus"></i><span>Nouveau devis</span>
+              </a>
+              <a href="{{ url_for('tresorerie.index') }}" class="quick-action-btn">
+                <i class="bi bi-cash"></i><span>Trésorerie</span>
+              </a>
+              <a href="{{ url_for('rapports.index') }}" class="quick-action-btn">
+                <i class="bi bi-printer"></i><span>Rapports</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-md-6 col-xl-7">
+        <div class="card h-100">
+          <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h5 class="card-title mb-0">Commandes fournisseur en attente</h5>
+            <a href="{{ url_for('achats.index') }}" class="btn btn-sm btn-outline-primary">Toutes</a>
+          </div>
+          <div class="card-body">
+            {% if commandes_fournisseur_attente %}
+              <div class="d-flex flex-column gap-2" style="max-height: 22rem; overflow-y: auto;">
+                {% for item in commandes_fournisseur_attente[:6] %}
+                  {% set c = item.commande %}
+                  <a href="{{ url_for('achats.detail_commande', id=c.id) }}" class="dash-cmd-item text-decoration-none">
+                    <div class="min-w-0">
+                      <div class="cmd-num text-truncate">{{ c.numero }}</div>
+                      <div class="cmd-four text-truncate">{{ c.fournisseur.raison_sociale if c.fournisseur else '—' }}</div>
+                    </div>
+                    <i class="bi bi-chevron-right text-muted"></i>
+                  </a>
+                {% endfor %}
+              </div>
+            {% else %}
+              <p class="text-muted small mb-2">Aucune commande en attente.</p>
+              <a href="{{ url_for('achats.approvisionnement') }}" class="btn btn-primary btn-sm">
+                <i class="bi bi-cart-plus me-1"></i> Nouvelle commande
+              </a>
             {% endif %}
           </div>
         </div>
-        <div class="card-body">
-          <div class="chart-container ca-chart">
-            <div class="chart-grid" aria-hidden="true">
-              <span></span><span></span><span></span><span></span>
-            </div>
-            <div class="chart-bars">
-              {% for row in ca_evolution %}
-                <div class="chart-bar-wrapper{% if row.is_current %} is-current{% endif %}{% if row.is_peak %} is-peak{% endif %}"
-                     title="{{ row.label }} {{ row.year }} — {{ row.value_full }} FCFA">
-                  <span class="chart-value{% if row.value <= 0 %} is-zero{% endif %}">{{ row.value_label if row.value > 0 else '—' }}</span>
-                  <div class="chart-bar{% if row.is_current %} active{% elif row.is_peak %} peak{% endif %}"
-                       style="--height: {{ row.pct if row.pct > 0 else 2 }}%"></div>
-                  <span class="chart-label">
-                    <span class="chart-label__m">{{ row.label }}</span>
-                    <span class="chart-label__y">’{{ row.year_short }}</span>
-                  </span>
-                </div>
-              {% endfor %}
-            </div>
-          </div>
-          <div class="ca-chart-legend">
-            <span><i class="ca-dot ca-dot--current"></i> Mois en cours</span>
-            <span><i class="ca-dot ca-dot--peak"></i> Pic de la période</span>
-          </div>
-        </div>
       </div>
     </div>
-    <div class="col-12 col-lg-4">
-      <div class="card h-100">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <h5 class="card-title mb-0">Alertes</h5>
-          {% if alerts_count > 0 %}
-            <span class="badge bg-danger">{{ alerts_count }}</span>
-          {% else %}
-            <span class="badge bg-success">OK</span>
-          {% endif %}
-        </div>
-        <div class="card-body">
-          <div class="d-flex flex-column gap-3 small">
-            <div class="d-flex justify-content-between align-items-center">
-              <span><i class="bi bi-box-seam text-warning me-1"></i>Stock sous seuil</span>
-              <strong>{{ alertes.sous_seuil }}</strong>
-            </div>
-            <div class="d-flex justify-content-between align-items-center">
-              <span><i class="bi bi-calendar-x text-danger me-1"></i>Péremption &lt; 90 j</span>
-              <strong>{{ alertes.peremption_90 }}</strong>
-            </div>
-            <div class="d-flex justify-content-between align-items-center">
-              <span><i class="bi bi-hourglass-split text-primary me-1"></i>Créances</span>
-              <strong>{{ format_fcfa(impayes_montant) }} FCFA</strong>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  {# Contenu analytique (ex-page Statistiques) #}
-  {% with stats_form_action=url_for('dashboard.index'), show_filters=true %}
-    {% include 'statistiques/_contenu.html' %}
-  {% endwith %}
-
-  {# Opérationnel #}
-  <p class="dash-section-label">Activité récente</p>
-  <div class="row g-4 mb-4">
-    <div class="col-12 col-xl-9">
-      <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <h5 class="card-title mb-0">Factures récentes</h5>
-          <a href="{{ url_for('ventes.factures') }}" class="btn btn-sm btn-outline-primary">Voir tout</a>
-        </div>
-        <div class="card-body p-0">
-          <div class="table-responsive">
-            <table class="table table-hover mb-0">
-              <thead>
-                <tr>
-                  <th>N° facture</th>
-                  <th>Client</th>
-                  <th>Date</th>
-                  <th>Montant</th>
-                  <th>Statut</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for f in factures_recentes %}
-                  <tr>
-                    <td><strong>{{ f.numero }}</strong></td>
-                    <td>{{ f.client.raison_sociale if f.client else '—' }}</td>
-                    <td>{{ f.date_emission.strftime('%d/%m/%Y') if f.date_emission else '' }}</td>
-                    <td>{{ format_fcfa(f.total_ttc) }} <span class="fcfa-unit">FCFA</span></td>
-                    <td>{{ statut_facture_badge(f.statut) }}</td>
-                    <td>
-                      <a href="{{ url_for('ventes.facture_detail', id=f.id) }}" class="btn btn-sm btn-icon" title="Voir"><i class="bi bi-eye"></i></a>
-                      <a href="{{ url_for('ventes.facture_pdf', id=f.id) }}"
-                         class="btn btn-sm btn-icon btn-primary js-facture-download"
-                         data-pdf-url="{{ url_for('ventes.facture_pdf', id=f.id) }}"
-                         data-has-bl="{{ '1' if bl_par_facture.get(f.id) else '0' }}"
-                         data-has-cachet="{{ '1' if has_cachet else '0' }}"
-                         {% if bl_par_facture.get(f.id) %}data-bl-num="{{ bl_par_facture[f.id].numero }}"{% endif %}
-                         title="Télécharger PDF"><i class="bi bi-download"></i></a>
-                      <a href="{{ url_for('ventes.facture_imprimer', id=f.id) }}"
-                         class="btn btn-sm btn-icon js-facture-print"
-                         data-print-url="{{ url_for('ventes.facture_imprimer', id=f.id) }}"
-                         data-has-bl="{{ '1' if bl_par_facture.get(f.id) else '0' }}"
-                         data-has-cachet="{{ '1' if has_cachet else '0' }}"
-                         {% if bl_par_facture.get(f.id) %}data-bl-num="{{ bl_par_facture[f.id].numero }}"{% endif %}
-                         title="Aperçu"><i class="bi bi-printer"></i></a>
-                    </td>
-                  </tr>
-                {% else %}
-                  <tr>
-                    <td colspan="6" class="text-center text-muted py-4">Aucune facture pour le moment</td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-12 col-xl-3">
-      <div class="card h-100 dash-top-produits">
-        <div class="card-header">
-          <h5 class="card-title">Top 10 produits ({{ today.year }})</h5>
-        </div>
-        <div class="card-body">
-          <div class="product-list">
-            {% for p in top_produits %}
-              <div class="product-item">
-                <div class="product-rank">{{ loop.index }}</div>
-                <div class="product-info">
-                  <span class="product-name" title="{{ p.designation }}">{{ p.designation }}</span>
-                </div>
-                <div class="product-amount" title="Score / 100">{{ '%.0f'|format(p.score) }}</div>
-              </div>
-            {% else %}
-              <p class="text-muted small mb-0">Pas encore de ventes cette année.</p>
-            {% endfor %}
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="row g-4">
-    <div class="col-12 col-md-6 col-xl-5">
-      <div class="card">
-        <div class="card-header">
-          <h5 class="card-title">Actions rapides</h5>
-        </div>
-        <div class="card-body">
-          <div class="quick-actions">
-            <a href="{{ url_for('ventes.nouveau_facture') }}" class="quick-action-btn">
-              <i class="bi bi-plus-circle"></i><span>Nouvelle facture</span>
-            </a>
-            <a href="{{ url_for('stock.nouveau_mouvement', type='entree') }}" class="quick-action-btn">
-              <i class="bi bi-box-arrow-in-down"></i><span>Entrée stock</span>
-            </a>
-            <a href="{{ url_for('clients.index') }}" class="quick-action-btn">
-              <i class="bi bi-person-plus"></i><span>Clients</span>
-            </a>
-            <a href="{{ url_for('ventes.nouveau_proforma') }}" class="quick-action-btn">
-              <i class="bi bi-file-earmark-plus"></i><span>Nouveau devis</span>
-            </a>
-            <a href="{{ url_for('tresorerie.index') }}" class="quick-action-btn">
-              <i class="bi bi-cash"></i><span>Trésorerie</span>
-            </a>
-            <a href="{{ url_for('rapports.index') }}" class="quick-action-btn">
-              <i class="bi bi-printer"></i><span>Rapports</span>
-            </a>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-12 col-md-6 col-xl-7">
-      <div class="card h-100">
-        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-          <h5 class="card-title mb-0">Commandes fournisseur en attente</h5>
-          <a href="{{ url_for('achats.index') }}" class="btn btn-sm btn-outline-primary">Toutes</a>
-        </div>
-        <div class="card-body">
-          {% if commandes_fournisseur_attente %}
-            <div class="dashboard-commandes-attente d-flex flex-column gap-2" style="max-height: 22rem; overflow-y: auto;">
-              {% for item in commandes_fournisseur_attente[:6] %}
-                {% set c = item.commande %}
-                <div class="border rounded-3 p-2 bg-body-secondary bg-opacity-25">
-                  <div class="fw-semibold small">{{ c.numero }}</div>
-                  <div class="text-muted small text-truncate">{{ c.fournisseur.raison_sociale if c.fournisseur else '—' }}</div>
-                </div>
-              {% endfor %}
-            </div>
-          {% else %}
-            <p class="text-muted small mb-2">Aucune commande en attente.</p>
-            <a href="{{ url_for('achats.approvisionnement') }}" class="btn btn-primary btn-sm">
-              <i class="bi bi-cart-plus me-1"></i> Nouvelle commande
-            </a>
-          {% endif %}
-        </div>
-      </div>
-    </div>
-  </div>
+  </section>
+</div>
 
   {% include 'ventes/_modal_imprimer_facture.html' %}
 {% endblock %}

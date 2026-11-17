@@ -6,19 +6,20 @@
 {% set show_filters = show_filters|default(true) %}
 
 {% if show_filters %}
-<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
-  <div>
-    <p class="dash-section-label mb-1">Analyse — {{ periode.label }}</p>
+<div class="stats-toolbar mb-3">
+  <div class="stats-toolbar__intro">
+    <p class="dash-section-label mb-1">Analyse détaillée</p>
     <p class="small text-muted mb-0">
-      {{ periode.debut.strftime('%d/%m/%Y') }} → {{ periode.fin.strftime('%d/%m/%Y') }}
+      <strong class="text-body">{{ periode.label }}</strong>
+      · {{ periode.debut.strftime('%d/%m/%Y') }} → {{ periode.fin.strftime('%d/%m/%Y') }}
       · hors factures annulées
     </p>
   </div>
-  <div class="d-flex flex-wrap align-items-end gap-2">
-    <form method="get" action="{{ stats_form_action }}" id="statsFiltersForm" class="d-flex flex-wrap align-items-end gap-2">
+  <div class="stats-toolbar__actions">
+    <form method="get" action="{{ stats_form_action }}" id="statsFiltersForm" class="stats-filters">
       <div>
         <label class="form-label mb-0 small text-muted" for="filtreGranularite">Vue</label>
-        <select class="form-select form-select-sm" id="filtreGranularite" name="granularite" style="width:auto;min-width:110px;">
+        <select class="form-select form-select-sm" id="filtreGranularite" name="granularite">
           <option value="annee" {% if periode.granularite == 'annee' %}selected{% endif %}>Année</option>
           <option value="trimestre" {% if periode.granularite == 'trimestre' %}selected{% endif %}>Trimestre</option>
           <option value="mois" {% if periode.granularite == 'mois' %}selected{% endif %}>Mois</option>
@@ -26,7 +27,7 @@
       </div>
       <div>
         <label class="form-label mb-0 small text-muted" for="filtreAnnee">Année</label>
-        <select class="form-select form-select-sm" id="filtreAnnee" name="annee" style="width:auto;min-width:100px;">
+        <select class="form-select form-select-sm" id="filtreAnnee" name="annee">
           {% for a in annees %}
             <option value="{{ a }}" {% if a == annee %}selected{% endif %}>{{ a }}</option>
           {% endfor %}
@@ -34,7 +35,7 @@
       </div>
       <div id="wrapTrimestre" class="{% if periode.granularite != 'trimestre' %}d-none{% endif %}">
         <label class="form-label mb-0 small text-muted" for="filtreTrimestre">Trimestre</label>
-        <select class="form-select form-select-sm" id="filtreTrimestre" name="trimestre" style="width:auto;min-width:90px;">
+        <select class="form-select form-select-sm" id="filtreTrimestre" name="trimestre">
           {% for t in range(1, 5) %}
             <option value="{{ t }}" {% if periode.trimestre == t %}selected{% endif %}>T{{ t }}</option>
           {% endfor %}
@@ -42,16 +43,16 @@
       </div>
       <div id="wrapMois" class="{% if periode.granularite != 'mois' %}d-none{% endif %}">
         <label class="form-label mb-0 small text-muted" for="filtreMois">Mois</label>
-        <select class="form-select form-select-sm" id="filtreMois" name="mois" style="width:auto;min-width:120px;">
+        <select class="form-select form-select-sm" id="filtreMois" name="mois">
           {% set mois_noms = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'] %}
           {% for m in range(1, 13) %}
             <option value="{{ m }}" {% if periode.mois == m %}selected{% endif %}>{{ mois_noms[m-1] }}</option>
           {% endfor %}
         </select>
       </div>
-      <button type="submit" class="btn btn-sm btn-primary">Appliquer</button>
+      <button type="submit" class="btn btn-sm btn-primary align-self-end">Appliquer</button>
     </form>
-    <div class="btn-group">
+    <div class="btn-group align-self-end">
       <a href="{{ url_for('dashboard.export_excel', **filtres_query) }}" class="btn btn-sm btn-outline-success" title="Export Excel" data-no-loader="1">
         <i class="bi bi-file-earmark-excel me-1"></i> Excel
       </a>
@@ -69,7 +70,7 @@
     <div class="kpi-card kpi-primary">
       <div class="kpi-icon"><i class="bi bi-graph-up"></i></div>
       <div class="kpi-content">
-        <span class="kpi-label">CA TTC ({{ periode.label }})</span>
+        <span class="kpi-label">CA TTC</span>
         <span class="kpi-value"><span class="kpi-amount">{{ format_fcfa(kpi.ca_ttc) }}</span><span class="fcfa-unit">FCFA</span></span>
         {% if kpi.ca_variation >= 0 %}
           <span class="kpi-change positive"><i class="bi bi-arrow-up"></i> {{ '%.1f'|format(kpi.ca_variation) }} % {{ kpi.variation_label }}</span>
@@ -112,12 +113,12 @@
 </div>
 
 {# KPI secondaires #}
-<div class="row g-3 mb-4">
+<div class="row g-2 g-md-3 mb-4">
   <div class="col-6 col-md-3">
     <div class="stat-mini-card">
       <span class="stat-mini-label">Bénéfice net estimé</span>
       <strong class="stat-mini-value {% if kpi.benefice_net >= 0 %}text-success{% else %}text-danger{% endif %}">
-        {{ format_fcfa(kpi.benefice_net) }} FCFA
+        {{ format_fcfa(kpi.benefice_net) }} <span class="fcfa-unit">FCFA</span>
       </strong>
     </div>
   </div>
@@ -135,22 +136,22 @@
   </div>
   <div class="col-6 col-md-3">
     <div class="stat-mini-card">
-      <span class="stat-mini-label">Alertes stock / péremption</span>
-      <strong class="stat-mini-value text-danger">
-        {{ alertes.sous_seuil }} / {{ alertes.peremption_90 }}
+      <span class="stat-mini-label">Lots &lt; 30 j</span>
+      <strong class="stat-mini-value {% if alertes.peremption_30 %}text-danger{% endif %}">
+        {{ alertes.peremption_30 }}
       </strong>
-      <span class="stat-mini-hint">{{ alertes.peremption_30 }} lot(s) &lt; 30 j</span>
+      <span class="stat-mini-hint">Sous seuil : {{ alertes.sous_seuil }}</span>
     </div>
   </div>
 </div>
 
 {# Graphiques principaux #}
-<div class="row g-4 mb-4">
+<div class="row g-3 mb-3">
   <div class="col-12 col-xl-8">
     <div class="card shadow-sm stat-chart-card h-100">
       <div class="card-header bg-white border-0 pt-3 pb-0">
         <h2 class="h6 mb-1">Évolution — {{ periode.label }}</h2>
-        <p class="small text-muted mb-0">CA, achats fournisseurs, dépenses et marge brute</p>
+        <p class="small text-muted mb-0">CA, achats, dépenses et marge brute</p>
       </div>
       <div class="card-body">
         <div class="stat-chart-wrap">
@@ -163,7 +164,7 @@
     <div class="card shadow-sm stat-chart-card h-100">
       <div class="card-header bg-white border-0 pt-3 pb-0">
         <h2 class="h6 mb-1">CA par type de client</h2>
-        <p class="small text-muted mb-0">Répartition hôpitaux, pharmacies, grossistes…</p>
+        <p class="small text-muted mb-0">Hôpitaux, pharmacies, grossistes…</p>
       </div>
       <div class="card-body d-flex align-items-center justify-content-center">
         <div class="stat-chart-wrap stat-chart-donut">
@@ -174,12 +175,12 @@
   </div>
 </div>
 
-<div class="row g-4 mb-4">
+<div class="row g-3 mb-3">
   <div class="col-12 col-lg-6">
     <div class="card shadow-sm stat-chart-card h-100">
       <div class="card-header bg-white border-0 pt-3 pb-0">
         <h2 class="h6 mb-1">Top produits (score)</h2>
-        <p class="small text-muted mb-0">CA 60 % + fréquence 40 % · {{ periode.label }} · hors factures annulées</p>
+        <p class="small text-muted mb-0">CA 60 % + fréquence 40 % · {{ periode.label }}</p>
       </div>
       <div class="card-body">
         <div class="stat-chart-wrap stat-chart-bar-h">
@@ -192,7 +193,7 @@
     <div class="card shadow-sm stat-chart-card h-100">
       <div class="card-header bg-white border-0 pt-3 pb-0">
         <h2 class="h6 mb-1">Dépenses par catégorie</h2>
-        <p class="small text-muted mb-0">Top catégories validées</p>
+        <p class="small text-muted mb-0">Catégories validées sur la période</p>
       </div>
       <div class="card-body">
         <div class="stat-chart-wrap stat-chart-donut">
@@ -203,7 +204,7 @@
   </div>
 </div>
 
-<div class="row g-4 mb-4">
+<div class="row g-3 mb-3">
   <div class="col-12 col-lg-5">
     <div class="card shadow-sm stat-chart-card h-100">
       <div class="card-header bg-white border-0 pt-3 pb-0">
@@ -220,8 +221,8 @@
   <div class="col-12 col-lg-7">
     <div class="card shadow-sm h-100">
       <div class="card-header bg-white border-0 pt-3 pb-0">
-        <h2 class="h6 mb-1">Top clients ({{ periode.label }})</h2>
-        <p class="small text-muted mb-0">Par chiffre d'affaires TTC</p>
+        <h2 class="h6 mb-1">Top clients</h2>
+        <p class="small text-muted mb-0">Par CA TTC · {{ periode.label }}</p>
       </div>
       <div class="card-body p-0">
         <div class="table-responsive">
@@ -237,10 +238,10 @@
             <tbody>
               {% for c in top_clients %}
                 <tr>
-                  <td>{{ c.nom }}</td>
-                  <td><span class="badge bg-light text-dark">{{ c.type }}</span></td>
+                  <td class="fw-medium">{{ c.nom }}</td>
+                  <td><span class="badge bg-light text-dark border">{{ c.type }}</span></td>
                   <td class="text-end">{{ c.nb_factures }}</td>
-                  <td class="text-end fw-medium">{{ format_fcfa(c.montant) }} FCFA</td>
+                  <td class="text-end fw-semibold">{{ format_fcfa(c.montant) }} <span class="fcfa-unit">FCFA</span></td>
                 </tr>
               {% else %}
                 <tr>
@@ -255,12 +256,12 @@
   </div>
 </div>
 
-<div class="row g-4 mb-4">
+<div class="row g-3 mb-3">
   <div class="col-12 col-md-6">
-    <div class="card shadow-sm stat-chart-card">
+    <div class="card shadow-sm stat-chart-card h-100">
       <div class="card-header bg-white border-0 pt-3 pb-0">
-        <h2 class="h6 mb-1">Commandes fournisseur ({{ periode.label }})</h2>
-        <p class="small text-muted mb-0">Répartition par statut</p>
+        <h2 class="h6 mb-1">Commandes fournisseur</h2>
+        <p class="small text-muted mb-0">Répartition par statut · {{ periode.label }}</p>
       </div>
       <div class="card-body">
         <div class="stat-chart-wrap stat-chart-sm">
@@ -270,22 +271,13 @@
     </div>
   </div>
   <div class="col-12 col-md-6">
-    <div class="card shadow-sm border-0 bg-body-tertiary">
+    <div class="card shadow-sm h-100 stats-insight-card">
       <div class="card-body">
-        <h2 class="h6 mb-3"><i class="bi bi-lightbulb me-2 text-warning"></i>Lecture rapide</h2>
+        <h2 class="h6 mb-3">À retenir</h2>
         <ul class="small mb-0 ps-3 stat-insights">
-          <li>
-            <strong>Marge brute</strong> = CA HT − coût d'achat des produits vendus (estimation catalogue).
-          </li>
-          <li>
-            <strong>Bénéfice net</strong> = CA TTC − dépenses validées (hors coût marchandises déjà dans la marge).
-          </li>
-          <li>
-            <strong>Valeur stock</strong> = quantités disponibles × prix d'achat HT.
-          </li>
-          <li>
-            Surveillez les créances <strong>90+ jours</strong> et les lots à péremption &lt; 30 jours.
-          </li>
+          <li><strong>Marge brute</strong> = CA HT − coût d’achat estimé des produits vendus.</li>
+          <li><strong>Bénéfice net</strong> = CA TTC − dépenses validées.</li>
+          <li>Priorisez les créances <strong>90+ jours</strong> et les lots à péremption &lt; 30 jours.</li>
         </ul>
         <div class="d-flex flex-wrap gap-2 mt-3">
           <a href="{{ url_for('ventes.factures') }}" class="btn btn-sm btn-outline-primary">Factures</a>
