@@ -221,11 +221,11 @@ def index():
         for bl_row in BonLivraison.query.filter(BonLivraison.facture_id.in_(fids)).all():
             bl_par_facture[bl_row.facture_id] = bl_row
 
-    # Top 5 produits : score CA (60 %) + fréquence d'achat (40 %), hors factures annulées
+    # Top 10 produits : score CA (60 %) + fréquence d'achat (40 %), hors factures annulées
     top_produits = classement_produits(
         date(today.year, 1, 1),
         date(today.year, 12, 31),
-        limit=5,
+        limit=10,
     )
 
     # Commandes fournisseur pas encore reçues (hors annulées), les plus récentes d’abord

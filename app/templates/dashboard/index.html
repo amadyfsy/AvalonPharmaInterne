@@ -26,6 +26,46 @@
 
 {% block title %}Tableau de bord - Avalon Pharma{% endblock %}
 
+{% block extra_css %}
+<style>
+  .dash-top-produits .card-header {
+    padding: 0.55rem 0.75rem;
+  }
+  .dash-top-produits .card-header .card-title {
+    font-size: 0.95rem;
+    margin-bottom: 0;
+  }
+  .dash-top-produits .card-body {
+    padding: 0.4rem 0.5rem 0.55rem;
+  }
+  .dash-top-produits .product-list {
+    gap: 4px;
+  }
+  .dash-top-produits .product-item {
+    gap: 8px;
+    padding: 4px 8px;
+    border-radius: 6px;
+  }
+  .dash-top-produits .product-rank {
+    width: 22px;
+    height: 22px;
+    font-size: 0.7rem;
+  }
+  .dash-top-produits .product-name {
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin-bottom: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .dash-top-produits .product-amount {
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
   <div class="page-header">
     <div>
@@ -213,7 +253,7 @@
 
   {# Factures récentes + Top produits #}
   <div class="row g-4 mb-4">
-    <div class="col-12 col-xl-8">
+    <div class="col-12 col-xl-9">
       <div class="card">
         <div class="card-header">
           <h5 class="card-title">Factures récentes</h5>
@@ -270,11 +310,10 @@
       </div>
     </div>
 
-    <div class="col-12 col-xl-4">
-      <div class="card h-100">
+    <div class="col-12 col-xl-3">
+      <div class="card h-100 dash-top-produits">
         <div class="card-header">
-          <h5 class="card-title">Top 5 produits ({{ today.year }})</h5>
-          <p class="small text-muted mb-0">Score = CA 60 % + fréquence 40 % · hors factures annulées</p>
+          <h5 class="card-title">Top 10 produits ({{ today.year }})</h5>
         </div>
         <div class="card-body">
           <div class="product-list">
@@ -282,16 +321,12 @@
               <div class="product-item">
                 <div class="product-rank">{{ loop.index }}</div>
                 <div class="product-info">
-                  <span class="product-name">{{ p.designation }}</span>
-                  <span class="product-sales">
-                    {{ p.qty|int }} u. · {{ p.nb_achats }} achat{{ 's' if p.nb_achats != 1 else '' }}
-                    · CA {{ '%.0f'|format(p.note_ca) }} / Freq {{ '%.0f'|format(p.note_frequence) }}
-                  </span>
+                  <span class="product-name" title="{{ p.designation }}">{{ p.designation }}</span>
                 </div>
-                <div class="product-amount" title="Score composite / 100">{{ '%.1f'|format(p.score) }}<span class="small text-muted">/100</span></div>
+                <div class="product-amount" title="Score / 100">{{ '%.0f'|format(p.score) }}</div>
               </div>
             {% else %}
-              <p class="text-muted small mb-0">Pas encore de ventes enregistrées cette année.</p>
+              <p class="text-muted small mb-0">Pas encore de ventes cette année.</p>
             {% endfor %}
           </div>
         </div>
