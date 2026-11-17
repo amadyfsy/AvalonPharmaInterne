@@ -64,80 +64,105 @@
   .dash-year-strip {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.85rem;
+    gap: 1rem;
   }
-  @media (max-width: 767.98px) {
+  @media (max-width: 991.98px) {
     .dash-year-strip { grid-template-columns: 1fr; }
   }
   .dash-year-card {
-    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
     background: #fff;
     border: 1px solid var(--dash-line);
-    border-radius: 0.9rem;
-    padding: 1rem 1.15rem 1.05rem;
-    box-shadow: 0 0.18rem 0.55rem rgba(33, 37, 41, 0.04);
-    overflow: hidden;
+    border-radius: 1rem;
+    padding: 1.15rem 1.2rem;
+    box-shadow: 0 0.2rem 0.7rem rgba(33, 37, 41, 0.05);
+    min-width: 0;
   }
-  .dash-year-card::before {
-    content: "";
-    position: absolute;
-    left: 0; top: 0; bottom: 0;
-    width: 4px;
+  .dash-year-card.is-ca {
+    background: linear-gradient(135deg, #fff 0%, rgba(114, 24, 24, 0.04) 100%);
+    border-color: rgba(114, 24, 24, 0.14);
   }
-  .dash-year-card.is-ca::before { background: #721818; }
-  .dash-year-card.is-dep::before { background: #b02a37; }
-  .dash-year-card.is-ben::before { background: #198754; }
-  .dash-year-card .dy-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    margin-bottom: 0.45rem;
+  .dash-year-card.is-dep {
+    background: linear-gradient(135deg, #fff 0%, rgba(176, 42, 55, 0.04) 100%);
+    border-color: rgba(176, 42, 55, 0.14);
   }
-  .dash-year-card .dy-label {
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: var(--dash-muted);
-    margin: 0;
+  .dash-year-card.is-ben {
+    background: linear-gradient(135deg, #fff 0%, rgba(25, 135, 84, 0.05) 100%);
+    border-color: rgba(25, 135, 84, 0.16);
   }
   .dash-year-card .dy-ico {
-    width: 2rem; height: 2rem;
-    border-radius: 0.55rem;
+    width: 3.15rem;
+    height: 3.15rem;
+    border-radius: 0.9rem;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.95rem;
+    font-size: 1.35rem;
     flex-shrink: 0;
   }
-  .dash-year-card.is-ca .dy-ico { background: rgba(114,24,24,.1); color: #721818; }
-  .dash-year-card.is-dep .dy-ico { background: rgba(176,42,55,.1); color: #b02a37; }
-  .dash-year-card.is-ben .dy-ico { background: rgba(25,135,84,.12); color: #198754; }
-  .dash-year-card .dy-value {
-    display: block;
-    font-size: 1.35rem;
-    font-weight: 700;
-    color: var(--dash-ink);
-    line-height: 1.15;
-    letter-spacing: -0.02em;
+  .dash-year-card.is-ca .dy-ico {
+    background: rgba(114, 24, 24, 0.12);
+    color: #721818;
+    box-shadow: inset 0 0 0 1px rgba(114, 24, 24, 0.08);
   }
-  .dash-year-card .dy-value .fcfa-unit {
-    font-size: 0.72rem;
+  .dash-year-card.is-dep .dy-ico {
+    background: rgba(176, 42, 55, 0.12);
+    color: #b02a37;
+    box-shadow: inset 0 0 0 1px rgba(176, 42, 55, 0.08);
+  }
+  .dash-year-card.is-ben .dy-ico {
+    background: rgba(25, 135, 84, 0.14);
+    color: #157347;
+    box-shadow: inset 0 0 0 1px rgba(25, 135, 84, 0.1);
+  }
+  .dash-year-card .dy-body {
+    flex: 1;
+    min-width: 0;
+  }
+  .dash-year-card .dy-label {
+    display: block;
+    font-size: 0.8rem;
     font-weight: 600;
     color: var(--dash-muted);
-    margin-left: 0.25rem;
+    margin: 0 0 0.35rem;
+  }
+  .dash-year-card .dy-value {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.35rem 0.4rem;
+    margin: 0;
+    font-size: clamp(1.15rem, 2.2vw, 1.45rem);
+    font-weight: 700;
+    color: var(--dash-ink);
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    word-break: break-word;
+  }
+  .dash-year-card .dy-value .fcfa-unit {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--dash-muted);
+    letter-spacing: 0.02em;
   }
   .dash-year-card .dy-meta {
     display: inline-flex;
     align-items: center;
-    gap: 0.2rem;
-    margin-top: 0.45rem;
-    padding: 0.15rem 0.45rem;
+    gap: 0.25rem;
+    margin-top: 0.55rem;
+    padding: 0.22rem 0.55rem;
     border-radius: 999px;
-    font-size: 0.75rem;
+    font-size: 0.76rem;
     font-weight: 600;
   }
-  .dash-year-card .dy-meta.up { background: rgba(25,135,84,.1); color: #157347; }
-  .dash-year-card .dy-meta.down { background: rgba(220,53,69,.1); color: #b02a37; }
+  .dash-year-card .dy-meta .vs {
+    font-weight: 500;
+    opacity: 0.85;
+  }
+  .dash-year-card .dy-meta.up { background: rgba(25,135,84,.12); color: #157347; }
+  .dash-year-card .dy-meta.down { background: rgba(220,53,69,.12); color: #b02a37; }
 
   .dash-alert-list { display: flex; flex-direction: column; gap: 0.65rem; }
   .dash-alert-item {
@@ -238,42 +263,69 @@
       <p class="dash-section-hint">Comparaison vs {{ today.year - 1 }}</p>
     </div>
     <div class="dash-year-strip">
-      <div class="dash-year-card is-ca">
-        <div class="dy-top">
-          <p class="dy-label">Chiffre d’affaires</p>
-          <span class="dy-ico" aria-hidden="true"><i class="bi bi-cash-stack"></i></span>
+      <article class="dash-year-card is-ca">
+        <span class="dy-ico" aria-hidden="true"><i class="bi bi-cash-coin"></i></span>
+        <div class="dy-body">
+          <span class="dy-label">Chiffre d’affaires</span>
+          <p class="dy-value">
+            <span>{{ format_fcfa(ca_annuel) }}</span>
+            <span class="fcfa-unit">FCFA</span>
+          </p>
+          {% if ca_annuel_variation >= 0 %}
+            <span class="dy-meta up">
+              <i class="bi bi-arrow-up-short"></i>{{ "%.1f"|format(ca_annuel_variation) }} %
+              <span class="vs">vs {{ today.year - 1 }}</span>
+            </span>
+          {% else %}
+            <span class="dy-meta down">
+              <i class="bi bi-arrow-down-short"></i>{{ "%.1f"|format(ca_annuel_variation|abs) }} %
+              <span class="vs">vs {{ today.year - 1 }}</span>
+            </span>
+          {% endif %}
         </div>
-        <span class="dy-value">{{ format_fcfa(ca_annuel) }}<span class="fcfa-unit">FCFA</span></span>
-        {% if ca_annuel_variation >= 0 %}
-          <span class="dy-meta up"><i class="bi bi-arrow-up-short"></i>{{ "%.1f"|format(ca_annuel_variation) }} %</span>
-        {% else %}
-          <span class="dy-meta down"><i class="bi bi-arrow-down-short"></i>{{ "%.1f"|format(ca_annuel_variation|abs) }} %</span>
-        {% endif %}
-      </div>
-      <div class="dash-year-card is-dep">
-        <div class="dy-top">
-          <p class="dy-label">Dépenses</p>
-          <span class="dy-ico" aria-hidden="true"><i class="bi bi-wallet2"></i></span>
+      </article>
+      <article class="dash-year-card is-dep">
+        <span class="dy-ico" aria-hidden="true"><i class="bi bi-wallet2"></i></span>
+        <div class="dy-body">
+          <span class="dy-label">Dépenses</span>
+          <p class="dy-value">
+            <span>{{ format_fcfa(depenses_annuelles) }}</span>
+            <span class="fcfa-unit">FCFA</span>
+          </p>
+          {% if depenses_annuelles_variation <= 0 %}
+            <span class="dy-meta up">
+              <i class="bi bi-arrow-down-short"></i>{{ "%.1f"|format(depenses_annuelles_variation|abs) }} %
+              <span class="vs">vs {{ today.year - 1 }}</span>
+            </span>
+          {% else %}
+            <span class="dy-meta down">
+              <i class="bi bi-arrow-up-short"></i>{{ "%.1f"|format(depenses_annuelles_variation) }} %
+              <span class="vs">vs {{ today.year - 1 }}</span>
+            </span>
+          {% endif %}
         </div>
-        <span class="dy-value">{{ format_fcfa(depenses_annuelles) }}<span class="fcfa-unit">FCFA</span></span>
-        {% if depenses_annuelles_variation <= 0 %}
-          <span class="dy-meta up"><i class="bi bi-arrow-down-short"></i>{{ "%.1f"|format(depenses_annuelles_variation|abs) }} %</span>
-        {% else %}
-          <span class="dy-meta down"><i class="bi bi-arrow-up-short"></i>{{ "%.1f"|format(depenses_annuelles_variation) }} %</span>
-        {% endif %}
-      </div>
-      <div class="dash-year-card is-ben">
-        <div class="dy-top">
-          <p class="dy-label">Résultat estimé</p>
-          <span class="dy-ico" aria-hidden="true"><i class="bi bi-graph-up-arrow"></i></span>
+      </article>
+      <article class="dash-year-card is-ben">
+        <span class="dy-ico" aria-hidden="true"><i class="bi bi-graph-up-arrow"></i></span>
+        <div class="dy-body">
+          <span class="dy-label">Résultat estimé</span>
+          <p class="dy-value">
+            <span>{{ format_fcfa(benefice_annuel) }}</span>
+            <span class="fcfa-unit">FCFA</span>
+          </p>
+          {% if benefice_annuel_variation >= 0 %}
+            <span class="dy-meta up">
+              <i class="bi bi-arrow-up-short"></i>{{ "%.1f"|format(benefice_annuel_variation) }} %
+              <span class="vs">vs {{ today.year - 1 }}</span>
+            </span>
+          {% else %}
+            <span class="dy-meta down">
+              <i class="bi bi-arrow-down-short"></i>{{ "%.1f"|format(benefice_annuel_variation|abs) }} %
+              <span class="vs">vs {{ today.year - 1 }}</span>
+            </span>
+          {% endif %}
         </div>
-        <span class="dy-value">{{ format_fcfa(benefice_annuel) }}<span class="fcfa-unit">FCFA</span></span>
-        {% if benefice_annuel_variation >= 0 %}
-          <span class="dy-meta up"><i class="bi bi-arrow-up-short"></i>{{ "%.1f"|format(benefice_annuel_variation) }} %</span>
-        {% else %}
-          <span class="dy-meta down"><i class="bi bi-arrow-down-short"></i>{{ "%.1f"|format(benefice_annuel_variation|abs) }} %</span>
-        {% endif %}
-      </div>
+      </article>
     </div>
   </section>
 
